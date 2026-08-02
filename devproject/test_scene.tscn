@@ -1,0 +1,55 @@
+[gd_scene load_steps=4 format=3]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_1"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1"]
+
+[node name="TestScene" type="Node"]
+
+[node name="VAWorld" type="VAWorld" parent="."]
+
+[node name="VAMaterial" type="VAMaterial" parent="VAWorld"]
+material_type = 1000
+material_name = "carpet"
+absorption_lf = 0.4
+absorption_hf = 0.6
+
+[node name="Listener" type="VAEmitter" parent="."]
+is_main_listener = true
+
+[node name="VASource" type="VASource" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -5)
+
+[node name="VASourceRelative" type="VASourceRelative" parent="."]
+
+[node name="VASourceAmbient" type="VASourceAmbient" parent="."]
+
+[node name="CsgBox3D" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -5)
+metadata/vercidium_audio_material = "concrete"
+
+[node name="StaticBody3D" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
+shape = SubResource("BoxShape3D_1")
+metadata/vercidium_audio_material = "brick"
+
+[node name="StaticBody3D2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D2"]
+shape = SubResource("SphereShape3D_1")
+metadata/vercidium_audio_material = "metal"
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5, 0)
+mesh = SubResource("BoxMesh_1")
+metadata/vercidium_audio_material = "woodindoor"
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, -5, 0)
+mesh = SubResource("BoxMesh_1")
+metadata/vercidium_audio_material = "carpet"
