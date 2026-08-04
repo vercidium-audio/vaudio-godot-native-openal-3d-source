@@ -1122,6 +1122,22 @@ void VAWorld::remove_primitive(Node *node, bool recursive)
     }
 }
 
+void VAWorld::validate_materials_in_editor(Node *node)
+{
+    // get_material already pushes a warning for an unrecognized string - just
+    // need to trigger it for every node carrying the metadata.
+    if (node->has_meta(MaterialMetaKey()))
+    {
+        get_material(node);
+    }
+
+    TypedArray<Node> children = node->get_children();
+    for (int i = 0; i < children.size(); i++)
+    {
+        validate_materials_in_editor(Object::cast_to<Node>(children[i]));
+    }
+}
+
 void VAWorld::init_scene()
 {
     // Scans from get_tree()->get_root() rather than get_current_scene() - a

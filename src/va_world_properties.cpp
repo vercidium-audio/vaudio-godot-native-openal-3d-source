@@ -18,48 +18,72 @@ namespace va_godot
 void VAWorld::set_position(Vector3 value)
 {
     position = value;
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetPosition(world, ToVAudio(value));
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_position failed (world is NULL, or value contains NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_position failed (value contains NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
 void VAWorld::set_size(Vector3 value)
 {
     size = value;
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetSize(world, ToVAudio(value));
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_size failed (world is NULL, value contains NaN/Infinity, or a component is negative) (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_size failed (value contains NaN/Infinity, or a component is negative) (VAResult=", VAResultToString(result), ")");
     }
 }
 
 void VAWorld::set_epsilon(float value)
 {
     epsilon = value;
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetEpsilon(world, value);
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_epsilon failed: world is NULL (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_epsilon failed (VAResult=", VAResultToString(result), ")");
     }
 }
 
 void VAWorld::set_world_is_indoors(bool value)
 {
     world_is_indoors = value;
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetWorldIsIndoors(world, value);
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_world_is_indoors failed: world is NULL (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_world_is_indoors failed (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -68,6 +92,12 @@ void VAWorld::set_maximum_grouped_eax_count(int value)
     // SDK requires >= 1 (VA_OUT_OF_RANGE otherwise); only the negative side is clamped here,
     // so a caller passing 0 will still be rejected by the SDK and reported below.
     maximum_grouped_eax_count = std::max(0, value);
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetMaximumGroupedEAXCount(world, maximum_grouped_eax_count);
 
     if (result != VA_SUCCESS)
@@ -81,30 +111,48 @@ void VAWorld::set_maximum_grouped_eax_count(int value)
 void VAWorld::set_meters_per_unit(float value)
 {
     meters_per_unit = std::max(0.0001f, value);
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetMetersPerUnit(world, meters_per_unit);
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_meters_per_unit failed (world is NULL, or value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_meters_per_unit failed (value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
 void VAWorld::set_speed_of_sound(float value)
 {
     speed_of_sound = std::max(0.0001f, value);
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetInverseSpeedOfSound(world, 1.0f / speed_of_sound);
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_speed_of_sound failed (world is NULL, or inverse speed is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_speed_of_sound failed (inverse speed is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
 void VAWorld::set_humidity(float value)
 {
     humidity = value;
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetAirAbsorptionHumidity(world, value);
 
     if (result != VA_SUCCESS && result != VA_UNCHANGED)
@@ -118,6 +166,12 @@ void VAWorld::set_humidity(float value)
 void VAWorld::set_temperature(float value)
 {
     temperature = value;
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetAirAbsorptionTemperature(world, value);
 
     if (result != VA_SUCCESS && result != VA_UNCHANGED)
@@ -131,6 +185,12 @@ void VAWorld::set_temperature(float value)
 void VAWorld::set_pressure(float value)
 {
     pressure = value;
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetAirAbsorptionPressure(world, value);
 
     if (result != VA_SUCCESS && result != VA_UNCHANGED)
@@ -144,48 +204,72 @@ void VAWorld::set_pressure(float value)
 void VAWorld::set_reference_frequency_lf(float value)
 {
     reference_frequency_lf = std::max(0.0001f, value);
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetReferenceFrequencyLF(world, reference_frequency_lf);
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_reference_frequency_lf failed (world is NULL, or value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_reference_frequency_lf failed (value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
 void VAWorld::set_reference_frequency_hf(float value)
 {
     reference_frequency_hf = std::max(0.0001f, value);
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetReferenceFrequencyHF(world, reference_frequency_hf);
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_reference_frequency_hf failed (world is NULL, or value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_reference_frequency_hf failed (value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
 void VAWorld::set_emitters_outside_the_world_are_muffled(bool value)
 {
     emitters_outside_the_world_are_muffled = value;
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetEmittersOutsideTheWorldAreMuffled(world, value);
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_emitters_outside_the_world_are_muffled failed: world is NULL (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_emitters_outside_the_world_are_muffled failed (VAResult=", VAResultToString(result), ")");
     }
 }
 
 void VAWorld::set_maximum_concurrency_level(int value)
 {
     maximum_concurrency_level = std::max(1, value);
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetMaximumConcurrencyLevel(world, maximum_concurrency_level);
 
     if (result != VA_SUCCESS)
     {
         UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_maximum_concurrency_level failed: world is NULL (VAResult=", VAResultToString(result), ")");
+            "[vaudio-godot-native-openal] VAWorld::set_maximum_concurrency_level failed (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -194,6 +278,12 @@ void VAWorld::set_work_item_count(int value)
     // SDK requires >= 1 (VA_OUT_OF_RANGE otherwise); only the negative side is clamped here,
     // so a caller passing 0 will still be rejected by the SDK and reported below.
     work_item_count = std::max(0, value);
+
+    if (!world)
+    {
+        return;
+    }
+
     VAResult result = vaWorldSetWorkItemCount(world, work_item_count);
 
     if (result != VA_SUCCESS)

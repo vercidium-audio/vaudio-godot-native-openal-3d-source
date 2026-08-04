@@ -21,23 +21,20 @@
 #include "va_primitive_ref.h"
 #include "va_source.h"
 #include "va_source_ambient.h"
+#include "va_source_leech.h"
 #include "va_source_relative.h"
 #include "va_world.h"
 
 using namespace godot;
 
-// Process-wide OpenAL device/context owner. Constructed/destroyed alongside
-// the module rather than tied to any single node's lifetime, since there's
-// only ever one OpenAL device for the whole plugin (see al_manager.h).
+// Process-wide OpenAL device/context owner. Constructed/destroyed alongside the module rather than tied to any single node's lifetime, since there's only ever one OpenAL device for the whole plugin (see al_manager.h).
 static ALManager al_manager;
 
 void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_level)
 {
     if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR)
     {
-        // Scene tree right-click "Convert to VASource"/"Convert to
-        // VASourceRelative" items - editor-only, so registered at the
-        // EDITOR level rather than alongside the SCENE-level classes below.
+        // Scene tree right-click "Convert to VASource"/"Convert to VASourceRelative" items - editor-only, so registered at the Editor level rather than alongside the Scene-level classes below.
         ClassDB::register_class<va_godot::ConversionContextMenuPlugin>();
         ClassDB::register_class<va_godot::VAConversionPlugin>();
         EditorPlugins::add_by_type<va_godot::VAConversionPlugin>();
@@ -49,12 +46,7 @@ void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_le
         return;
     }
 
-    // ALSourceNode (and its ALSourceNode3D/ALSourceNodeRelative subclasses)
-    // must be registered before VASource/VASourceRelative/VASourceAmbient -
-    // they're their base classes, and ClassDB::register_class requires parent
-    // classes to already be registered. ALSourceNode itself is never
-    // instantiated directly (configure_source is pure virtual), so it's
-    // registered as abstract.
+    // AL* nodes must be registered before VA* nodes
     ClassDB::register_abstract_class<ALSourceNode>();
     ClassDB::register_class<ALSourceNode3D>();
     ClassDB::register_class<ALSourceNodeRelative>();
@@ -68,11 +60,9 @@ void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_le
     ClassDB::register_class<VASource>();
     ClassDB::register_class<VASourceRelative>();
     ClassDB::register_class<VASourceAmbient>();
+    ClassDB::register_class<VASourceLeech>();
 
-    // Internal helper classes - not part of the 6-node public surface, but
-    // still need ClassDB registration since they're GDCLASS-derived and
-    // instantiated via memnew (TransformWatcher as a real scene node,
-    // VAPrimitiveRef as node metadata).
+    // Internal helper classes
     ClassDB::register_class<TransformWatcher>();
     ClassDB::register_class<VAPrimitiveRef>();
 
@@ -96,7 +86,6 @@ void uninitialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_
 }
 
 extern "C" {
-// Initialization.
 GDExtensionBool GDE_EXPORT vaudio_godot_native_openal_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_address, GDExtensionClassLibraryPtr p_library, GDExtensionInitialization *r_initialization) {
 	godot::GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, r_initialization);
 

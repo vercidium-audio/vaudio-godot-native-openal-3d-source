@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -226,6 +227,16 @@ void VAWorld::_ready()
 {
     if (Engine::get_singleton()->is_editor_hint())
     {
+        // world stays null in the editor (see the constructor), so
+        // init_scene's primitive-building walk can't run here - but still
+        // scan for unknown vercidium_audio_material values, so a typo shows
+        // up while editing instead of only once the game runs.
+        Node *root = get_tree() ? get_tree()->get_root() : nullptr;
+        if (root)
+        {
+            validate_materials_in_editor(root);
+        }
+
         return;
     }
 

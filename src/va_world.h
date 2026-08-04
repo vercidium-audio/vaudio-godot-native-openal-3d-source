@@ -100,6 +100,12 @@ private:
     void on_node_added(Node *node);
     void on_node_removed(Node *node);
 
+    // Editor-only counterpart to init_scene's tree walk - runs when
+    // is_editor_hint() is true (so init_scene itself never runs), just to
+    // surface get_material's unknown-material warning while editing. Doesn't
+    // create any primitives/watchers - world is null in the editor.
+    void validate_materials_in_editor(Node *node);
+
     // VAWorldMaterials.cs port: metadata-key based lookup, matching either a
     // registered custom VACustomMaterial node's MaterialName or a built-in name.
     VAMaterialType get_material(Node *node);

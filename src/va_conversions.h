@@ -40,9 +40,7 @@ inline VAMatrix ToVAudio(const Transform3D &transform)
         origin.x,  origin.y,  origin.z,  1.0f);
 }
 
-// Human-readable name for a VAResult code, for error/warning logging - see
-// the VA_* defines in vaudio.h. Falls back to the raw integer for anything
-// unrecognised (e.g. a future SDK version adding new codes).
+// Convert VAResults to their string name
 inline String VAResultToString(VAResult result)
 {
     switch (result)
@@ -84,7 +82,7 @@ inline Transform3D RemoveScale(const Transform3D &transform, Vector3 &out_scale)
     return Transform3D(transform.basis.orthonormalized(), transform.origin);
 }
 
-// Flattens every surface of a Godot Mesh into a flat CW-wound triangle vertex list for a VAMeshPrimitive, computing the local-space AABB along the way.
+// Flatten every surface of a Godot Mesh into a flat CW-wound triangle vertex list for a VAMeshPrimitive, computing the local-space AABB along the way.
 inline std::vector<VAVector> ConvertMeshToVAudio(const Ref<Mesh> &mesh, VAVector &out_min, VAVector &out_max)
 {
     std::vector<VAVector> vertices;
@@ -128,18 +126,15 @@ inline std::vector<VAVector> ConvertMeshToVAudio(const Ref<Mesh> &mesh, VAVector
     {
         Array arrays = mesh->surface_get_arrays(surface_index);
         if (arrays.is_empty())
-        {
             continue;
-        }
 
         PackedVector3Array surface_vertices = arrays[Mesh::ARRAY_VERTEX];
         if (surface_vertices.is_empty())
-        {
             continue;
-        }
 
         Variant normals_variant = arrays[Mesh::ARRAY_NORMAL];
         PackedVector3Array normals;
+        
         if (normals_variant.get_type() != Variant::NIL)
         {
             normals = normals_variant;

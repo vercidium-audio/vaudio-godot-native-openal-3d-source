@@ -16,6 +16,7 @@ ALSourceNodeRelative::~ALSourceNodeRelative()
 
 void ALSourceNodeRelative::configure_source(ALSource &source)
 {
+    // Relative to the listener with zero offset
     source.set_relative(true);
     source.set_position(Vector3());
 }
