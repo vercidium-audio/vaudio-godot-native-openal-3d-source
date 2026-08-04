@@ -51,7 +51,13 @@ void ALSourceNode::_ready()
 
 void ALSourceNode::ensure_stream_decoded()
 {
-    if (stream == decoded_stream)
+    // AudioStreamRandomizer picks a sub-stream inside instantiate_playback(),
+    // so it must be re-decoded on every play() to get a fresh random pick -
+    // caching it like a regular stream would freeze on whichever sub-stream
+    // was picked first.
+    bool is_randomizer = Object::cast_to<AudioStreamRandomizer>(stream.ptr()) != nullptr;
+
+    if (!is_randomizer && stream == decoded_stream)
         return;
 
     if (stream.is_null())
@@ -67,7 +73,7 @@ void ALSourceNode::ensure_stream_decoded()
     }
     else
     {
-        VA_ERROR(get_name(), ": failed to decode the stream");
+        VA_ERROR_NAMED("failed to decode the stream");
     }
 }
 

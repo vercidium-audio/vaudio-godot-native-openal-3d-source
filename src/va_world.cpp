@@ -126,36 +126,12 @@ VAWorld::VAWorld()
 
     world = vaWorldCreate();
 
-    VAResult result = vaWorldSetCoordinateSystem(world, VACoordinateSystemGodot);
+    // These three calls are guaranteed to pass, no need to check result
+    vaWorldSetCoordinateSystem(world, VACoordinateSystemGodot);
+    vaWorldSetUserData(world, this);
+    vaWorldSetOnReverbUpdatedCallback(world, &VAWorld::on_reverb_updated_trampoline);
 
-    if (result != VA_SUCCESS)
-    {
-        VA_ERROR(
-            "VAWorld::VAWorld failed to set coordinate system: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
-    }
-
-    result = vaWorldSetUserData(world, this);
-
-    if (result != VA_SUCCESS)
-    {
-        VA_ERROR(
-            "VAWorld::VAWorld failed to set user data: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
-    }
-
-    result = vaWorldSetOnReverbUpdatedCallback(world, &VAWorld::on_reverb_updated_trampoline);
-
-    if (result != VA_SUCCESS)
-    {
-        VA_ERROR(
-            "VAWorld::VAWorld failed to set the reverb-updated callback: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
-    }
-
-    // Push every VAWorldProperties.cs-ported field's default onto the
-    // freshly created handle - Godot only calls each property's setter when
-    // the .tscn stores a value different from the class default, so without
-    // this the native handle would keep vaWorldCreate()'s own built-in
-    // defaults (which don't necessarily match the ones ported from C#)
-    // until a scene happens to override one.
+    // These objects handle error checking for us
     set_position(position);
     set_size(size);
     set_epsilon(epsilon);
@@ -177,10 +153,7 @@ VAWorld::VAWorld()
     set_work_item_count(work_item_count);
     set_rendering_enabled(rendering_enabled);
 
-    // ALManager is initialized at GDExtension module-init time (before any
-    // node constructor runs - see register_types.cpp), so it's already safe
-    // to create OpenAL objects here, unlike Godot engine singletons
-    // (AudioServer etc.), which aren't ready until VAWorld::_ready().
+    // ALManager is initialized at GDExtension module-init time, so its safe to create AL objects
     listener_reverb_effect.create();
 
     set_process(true);

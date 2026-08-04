@@ -1,6 +1,7 @@
 #pragma once
 
 #include <godot_cpp/classes/audio_stream.hpp>
+#include <godot_cpp/classes/audio_stream_randomizer.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 
 #include "openal/al_buffer.h"
@@ -42,10 +43,11 @@ protected:
     ALBuffer decoded_buffer;
     Ref<AudioStream> decoded_stream;
 
-    // TODO - what does it mean by 'matches'?
     // Ensures decoded_buffer matches `stream`, uploading it and pointing
     // buffer_handle at it if needed. No-op once already decoded for the
-    // current `stream`.
+    // current `stream`, except when `stream` is an AudioStreamRandomizer -
+    // that picks a new sub-stream on every call, matching
+    // AudioStreamPlayer3D's behaviour of rolling a new random pick each play().
     void ensure_stream_decoded();
 
     float gain = 1.0f;

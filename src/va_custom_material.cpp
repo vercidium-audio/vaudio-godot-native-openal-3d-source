@@ -30,8 +30,8 @@ namespace
 
         // TODO - don't log material_type as its an internal field. Log the material name string
         VA_ERROR(
-            "VACustomMaterial::set_", property_name,
-            " failed for material_type=", material_type, " (VAResult=", VAResultToString(result), ")");
+            "VACustomMaterial: failed to set property ", property_name,
+            " for material_type ", material_type, " (VAResult=", VAResultToString(result), ")");
     }
 }
 
