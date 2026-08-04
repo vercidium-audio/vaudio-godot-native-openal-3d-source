@@ -6,6 +6,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "va_world.h"
+#include "va_world_lookup.h"
 
 // Port of vaudio-godot-openal's VACustomMaterial.cs. Only the material-property
 // side is ported here - DebugColor/GetDebugColor/_GetConfigurationWarnings/
@@ -57,28 +58,6 @@ VACustomMaterial::VACustomMaterial()
 
 VACustomMaterial::~VACustomMaterial()
 {
-}
-
-// Finds the (singleton) VAWorld under the current scene root's children -
-// port of NodeExtensions.cs's GetVAWorldParent.
-static VAWorld *find_va_world(Node *node)
-{
-    Node *scene_root = node->get_tree()->get_current_scene();
-    if (!scene_root)
-    {
-        return nullptr;
-    }
-
-    TypedArray<Node> children = scene_root->get_children();
-    for (int i = 0; i < children.size(); i++)
-    {
-        if (VAWorld *world = Object::cast_to<VAWorld>(children[i]))
-        {
-            return world;
-        }
-    }
-
-    return nullptr;
 }
 
 void VACustomMaterial::_enter_tree()

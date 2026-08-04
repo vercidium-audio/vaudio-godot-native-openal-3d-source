@@ -5,6 +5,7 @@
 #include <godot_cpp/core/class_db.hpp>
 
 #include "va_world.h"
+#include "va_world_lookup.h"
 
 // Dropdown order must match VAMaterialType's declaration order in vaudio.h
 // (VAMaterialAir = 0, ...) - the enum property value is used directly as the
@@ -57,28 +58,6 @@ VADefaultMaterial::~VADefaultMaterial()
 {
 }
 
-// Finds the (singleton) VAWorld under the current scene root's children -
-// same lookup VACustomMaterial::_enter_tree uses.
-static va_godot::VAWorld *find_va_world(Node *node)
-{
-    Node *scene_root = node->get_tree()->get_current_scene();
-    if (!scene_root)
-    {
-        return nullptr;
-    }
-
-    TypedArray<Node> children = scene_root->get_children();
-    for (int i = 0; i < children.size(); i++)
-    {
-        if (va_godot::VAWorld *world = Object::cast_to<va_godot::VAWorld>(children[i]))
-        {
-            return world;
-        }
-    }
-
-    return nullptr;
-}
-
 void VADefaultMaterial::_enter_tree()
 {
     if (Engine::get_singleton()->is_editor_hint())
@@ -86,7 +65,7 @@ void VADefaultMaterial::_enter_tree()
         return;
     }
 
-    va_godot::VAWorld *va_world = find_va_world(this);
+    va_godot::VAWorld *va_world = va_godot::find_va_world(this);
     if (!va_world)
     {
         return;

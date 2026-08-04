@@ -77,6 +77,13 @@ private:
 
     void create_emitter();
 
+    // Set while _enter_tree found no VAWorld yet - see VAEmitter's identical
+    // waiting_for_world field for the rationale (a source's owning scene, e.g.
+    // a car, may enter the tree before being parented under the level).
+    bool waiting_for_world = false;
+
+    void retry_find_va_world(Node *node);
+
     void apply_raytracing_results(va_godot::VAEmitter *other);
 
     // Bound to the child VAEmitter's per-frame result-application hook

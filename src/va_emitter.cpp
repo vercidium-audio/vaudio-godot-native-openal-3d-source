@@ -3,39 +3,17 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "openal/al_filter.h"
 #include "openal/al_reverb.h"
 #include "va_conversions.h"
 #include "va_world.h"
+#include "va_world_lookup.h"
 
 namespace va_godot
 {
-
-// Finds the (singleton) VAWorld under the current scene root's children -
-// same helper as VACustomMaterial's find_va_world (NodeExtensions.cs's
-// GetVAWorldParent port). Duplicated locally rather than shared since it's a
-// two-line static helper and each caller only needs it during _enter_tree.
-static VAWorld *find_va_world(Node *node)
-{
-    Node *scene_root = node->get_tree()->get_current_scene();
-    if (!scene_root)
-    {
-        return nullptr;
-    }
-
-    TypedArray<Node> children = scene_root->get_children();
-    for (int i = 0; i < children.size(); i++)
-    {
-        if (VAWorld *world = Object::cast_to<VAWorld>(children[i]))
-        {
-            return world;
-        }
-    }
-
-    return nullptr;
-}
 
 void VAEmitter::_bind_methods()
 {
@@ -209,8 +187,11 @@ void VAEmitter::set_is_main_listener(bool value)
 
 void VAEmitter::_enter_tree()
 {
+    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::_enter_tree. Node: ", get_name());
+
     if (Engine::get_singleton()->is_editor_hint())
     {
+        UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::_enter_tree: editor hint, skipping. Node: ", get_name());
         return;
     }
 
@@ -218,7 +199,14 @@ void VAEmitter::_enter_tree()
 
     if (!va_world)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] VAEmitter has no sibling VAWorld node. Node: ", get_name());
+        // No VAWorld anywhere in the tree yet - likely this node's scene
+        // (e.g. a car with a pre-configured VAListener) was instanced/entered
+        // the tree before being parented under the level. Stay dormant and
+        // retry on every future node addition instead of erroring out
+        // permanently - see retry_find_va_world.
+        UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::_enter_tree: no VAWorld yet, waiting for node_added. Node: ", get_name());
+        waiting_for_world = true;
+        get_tree()->connect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
         return;
     }
 
@@ -227,14 +215,47 @@ void VAEmitter::_enter_tree()
 
 void VAEmitter::_exit_tree()
 {
+    if (waiting_for_world)
+    {
+        if (get_tree() && get_tree()->is_connected("node_added", callable_mp(this, &VAEmitter::retry_find_va_world)))
+        {
+            get_tree()->disconnect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
+        }
+
+        waiting_for_world = false;
+    }
+
     if (emitter)
     {
         remove_emitter();
     }
 }
 
+// Re-attempts find_va_world each time a node is added anywhere in the tree
+// (connected from _enter_tree while waiting_for_world) - once a VAWorld
+// becomes reachable (e.g. this emitter's scene is finally parented under the
+// level), disconnects and initialises normally via create_emitter().
+void VAEmitter::retry_find_va_world(Node *node)
+{
+    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::retry_find_va_world: node_added fired for '", node->get_name(), "'. Waiting node: ", get_name());
+
+    va_world = find_va_world(this);
+
+    if (!va_world)
+    {
+        return;
+    }
+
+    get_tree()->disconnect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
+    waiting_for_world = false;
+
+    create_emitter();
+}
+
 void VAEmitter::create_emitter()
 {
+    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::create_emitter: creating handle. Node: ", get_name(), " is_main_listener=", is_main_listener);
+
     emitter = vaEmitterCreate();
     vaEmitterSetUserData(emitter, this);
     vaEmitterSetName(emitter, String(get_name()).utf8().get_data());

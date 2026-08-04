@@ -22,6 +22,12 @@ class VASourceRelative : public ALSourceNode3D
 private:
     va_godot::VAWorld *va_world = nullptr;
 
+    // Set while _enter_tree found no VAWorld yet - see VAEmitter's identical
+    // waiting_for_world field for the rationale.
+    bool waiting_for_world = false;
+
+    void retry_find_va_world(Node *node);
+
 protected:
     static void _bind_methods();
 
@@ -30,6 +36,7 @@ public:
     ~VASourceRelative();
 
     void _enter_tree() override;
+    void _exit_tree() override;
     void _ready() override;
 
     // Matches VASourceRelative.cs's Play() override: routes into the

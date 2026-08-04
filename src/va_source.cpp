@@ -3,32 +3,12 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "va_emitter.h"
 #include "va_world.h"
-
-// Finds the (singleton) VAWorld under the current scene root's children -
-// same helper as VACustomMaterial/VAEmitter's find_va_world.
-static va_godot::VAWorld *find_va_world(Node *node)
-{
-    Node *scene_root = node->get_tree()->get_current_scene();
-    if (!scene_root)
-    {
-        return nullptr;
-    }
-
-    TypedArray<Node> children = scene_root->get_children();
-    for (int i = 0; i < children.size(); i++)
-    {
-        if (va_godot::VAWorld *world = Object::cast_to<va_godot::VAWorld>(children[i]))
-        {
-            return world;
-        }
-    }
-
-    return nullptr;
-}
+#include "va_world_lookup.h"
 
 void VASource::_bind_methods()
 {
@@ -185,11 +165,15 @@ void VASource::_enter_tree()
         return;
     }
 
-    va_world = find_va_world(this);
+    va_world = va_godot::find_va_world(this);
 
     if (!va_world)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] VASource has no sibling VAWorld node. Node: ", get_name());
+        // No VAWorld anywhere in the tree yet - stay dormant and retry on
+        // every future node addition instead of erroring out permanently -
+        // see VAEmitter::_enter_tree's identical pattern for the rationale.
+        waiting_for_world = true;
+        get_tree()->connect("node_added", callable_mp(this, &VASource::retry_find_va_world));
         return;
     }
 
@@ -198,6 +182,16 @@ void VASource::_enter_tree()
 
 void VASource::_exit_tree()
 {
+    if (waiting_for_world)
+    {
+        if (get_tree() && get_tree()->is_connected("node_added", callable_mp(this, &VASource::retry_find_va_world)))
+        {
+            get_tree()->disconnect("node_added", callable_mp(this, &VASource::retry_find_va_world));
+        }
+
+        waiting_for_world = false;
+    }
+
     if (emitter)
     {
         // remove_child alone only detaches - VAEmitter is exclusively owned
@@ -208,6 +202,23 @@ void VASource::_exit_tree()
         memdelete(emitter);
         emitter = nullptr;
     }
+}
+
+// Re-attempts find_va_world each time a node is added anywhere in the tree -
+// see VAEmitter::retry_find_va_world's identical pattern.
+void VASource::retry_find_va_world(Node *node)
+{
+    va_world = va_godot::find_va_world(this);
+
+    if (!va_world)
+    {
+        return;
+    }
+
+    get_tree()->disconnect("node_added", callable_mp(this, &VASource::retry_find_va_world));
+    waiting_for_world = false;
+
+    create_emitter();
 }
 
 // Matches VASource.cs's CreateEmitter: a private child VAEmitter, never the

@@ -24,6 +24,12 @@ private:
     va_godot::VAWorld *va_world = nullptr;
     bool played = false;
 
+    // Set while _enter_tree found no VAWorld yet - see VAEmitter's identical
+    // waiting_for_world field for the rationale.
+    bool waiting_for_world = false;
+
+    void retry_find_va_world(Node *node);
+
 protected:
     static void _bind_methods();
 
@@ -32,6 +38,7 @@ public:
     ~VASourceAmbient();
 
     void _enter_tree() override;
+    void _exit_tree() override;
     void _ready() override;
     void _process(double delta) override;
 

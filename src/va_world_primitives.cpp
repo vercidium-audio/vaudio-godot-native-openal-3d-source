@@ -7,6 +7,7 @@
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/shape3d.hpp>
 #include <godot_cpp/classes/sphere_shape3d.hpp>
+#include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/classes/world_boundary_shape3d.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -588,13 +589,20 @@ void VAWorld::remove_primitive(Node *node, bool recursive)
 
 void VAWorld::init_scene()
 {
-    Node *scene_root = get_tree()->get_current_scene();
-    if (!scene_root)
+    // Scans from get_tree()->get_root() rather than get_current_scene() - a
+    // VAWorld's own subtree isn't always get_current_scene() itself (e.g.
+    // truck_town's car_select.gd adds its level scene as a sibling of the
+    // current scene via get_parent().add_child(town), so get_current_scene()
+    // would stay pointed at the menu and miss every primitive already baked
+    // into the level's .tscn). See va_world_lookup.h's find_va_world for the
+    // same fix applied to VAWorld discovery.
+    Node *root = get_tree()->get_root();
+    if (!root)
     {
         return;
     }
 
-    TypedArray<Node> children = scene_root->get_children();
+    TypedArray<Node> children = root->get_children();
     for (int i = 0; i < children.size(); i++)
     {
         add_primitive(Object::cast_to<Node>(children[i]), VAMaterialAir, true);

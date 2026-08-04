@@ -105,6 +105,16 @@ private:
     void create_emitter();
     void remove_emitter();
 
+    // Set while _enter_tree found no VAWorld yet (e.g. this node's scene was
+    // instanced/entered the tree before being parented under the level) -
+    // listens for get_tree()'s "node_added" signal and retries find_va_world
+    // on every node addition, so a car/prop spawned with a pre-configured
+    // VAListener/VAEmitter still initialises once it's actually added under
+    // a VAWorld-containing scene, instead of erroring out permanently.
+    bool waiting_for_world = false;
+
+    void retry_find_va_world(Node *node);
+
     void apply_raytracing_results();
 
     // SDK callback trampolines (registered via vaEmitterSetOnXCallback,
