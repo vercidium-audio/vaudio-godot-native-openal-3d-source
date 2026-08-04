@@ -346,7 +346,17 @@ void VAEmitter::remove_emitter()
     // comment). Matches VAEmitter.cs's RemoveEmitter, which deliberately
     // doesn't null `emitter` here either, for the same reason - the SDK
     // doesn't destroy the handle synchronously.
-    vaWorldRemoveEmitter(va_world->get_handle(), emitter);
+    VAResult result = vaWorldRemoveEmitter(va_world->get_handle(), emitter);
+
+    // VA_PENDING_REMOVAL just means the reverb tail hasn't finished yet -
+    // OnRemoved will still fire once it has, which is the normal case for any
+    // emitter that casts reverb rays. Not an error.
+    if (result != VA_SUCCESS && result != VA_PENDING_REMOVAL)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAEmitter::remove_emitter failed for '", get_name(),
+            "' (VAResult=", VAResultToString(result), ")");
+    }
 }
 
 bool VAEmitter::is_raytraced() const
@@ -367,7 +377,35 @@ bool VAEmitter::get_within_world_bounds() const
 
 void VAEmitter::add_target(VAEmitter *target)
 {
-    vaEmitterAddTarget(emitter, target->get_handle());
+    VAResult result = vaEmitterAddTarget(emitter, target->get_handle());
+
+    switch (result)
+    {
+        case VA_SUCCESS:
+        case VA_ALREADY_EXISTS:
+            // Matches VAEmitter.cs's AddTarget, which treats re-adding an
+            // existing target as a no-op rather than an error.
+            break;
+
+        case VA_NOT_ADDED_TO_WORLD:
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAEmitter::add_target failed for '", get_name(),
+                "' -> '", target->get_name(), "': target has not been added to the same VAWorld as this emitter.");
+            break;
+
+        case VA_FEATURE_DISABLED:
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAEmitter::add_target failed for '", get_name(),
+                "' -> '", target->get_name(), "': this emitter casts neither occlusion nor permeation rays, "
+                "so it cannot have targets. Set occlusion_ray_count or permeation_ray_count above 0 first.");
+            break;
+
+        default:
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAEmitter::add_target failed for '", get_name(),
+                "' -> '", target->get_name(), "' (VAResult=", VAResultToString(result), ")");
+            break;
+    }
 }
 
 bool VAEmitter::has_raytraced_target(VAEmitter *target) const

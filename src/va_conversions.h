@@ -40,6 +40,43 @@ inline VAMatrix ToVAudio(const Transform3D &transform)
         origin.x,  origin.y,  origin.z,  1.0f);
 }
 
+// Human-readable name for a VAResult code, for error/warning logging - see
+// the VA_* defines in vaudio.h. Falls back to the raw integer for anything
+// unrecognised (e.g. a future SDK version adding new codes).
+inline String VAResultToString(VAResult result)
+{
+    switch (result)
+    {
+        case VA_SUCCESS: return "VA_SUCCESS";
+        case VA_INVALID_VALUE: return "VA_INVALID_VALUE";
+        case VA_OUT_OF_RANGE: return "VA_OUT_OF_RANGE";
+        case VA_ALREADY_EXISTS: return "VA_ALREADY_EXISTS";
+        case VA_FEATURE_DISABLED: return "VA_FEATURE_DISABLED";
+        case VA_ERROR_IN_USE: return "VA_ERROR_IN_USE";
+        case VA_INVALID_COUNT: return "VA_INVALID_COUNT";
+        case VA_WORLD_CONFLICT: return "VA_WORLD_CONFLICT";
+        case VA_ERROR_FILE_OPEN: return "VA_ERROR_FILE_OPEN";
+        case VA_ERROR_FILE_WRITE: return "VA_ERROR_FILE_WRITE";
+        case VA_ERROR_FILE_VERSION: return "VA_ERROR_FILE_VERSION";
+        case VA_ERROR_FILE_CORRUPT: return "VA_ERROR_FILE_CORRUPT";
+        case VA_INVALID_MATERIAL: return "VA_INVALID_MATERIAL";
+        case VA_MATERIAL_DOES_NOT_EXIST: return "VA_MATERIAL_DOES_NOT_EXIST";
+        case VA_NOT_ADDED_TO_WORLD: return "VA_NOT_ADDED_TO_WORLD";
+        case VA_INSUFFICIENT_VERTICES: return "VA_INSUFFICIENT_VERTICES";
+        case VA_INVALID_VERTEX_COUNT: return "VA_INVALID_VERTEX_COUNT";
+        case VA_INVALID_ARRAY: return "VA_INVALID_ARRAY";
+        case VA_INVALID_POINTER: return "VA_INVALID_POINTER";
+        case VA_UNCHANGED: return "VA_UNCHANGED";
+        case VA_NOT_FOUND: return "VA_NOT_FOUND";
+        case VA_STILL_RUNNING: return "VA_STILL_RUNNING";
+        case VA_PENDING_REMOVAL: return "VA_PENDING_REMOVAL";
+        case VA_CONFIG_ERROR: return "VA_CONFIG_ERROR";
+        case VA_TRUE: return "VA_TRUE";
+        case VA_FALSE: return "VA_FALSE";
+        default: return "UNKNOWN(" + String::num_int64(result) + ")";
+    }
+}
+
 // Remove the scale from a matrix (most vaudio primitives only support rotation/translation, not scale)
 inline Transform3D RemoveScale(const Transform3D &transform, Vector3 &out_scale)
 {

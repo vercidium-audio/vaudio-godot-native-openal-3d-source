@@ -124,10 +124,30 @@ VAWorld::VAWorld()
     }
 
     world = vaWorldCreate();
-    vaWorldSetCoordinateSystem(world, VACoordinateSystemGodot);
 
-    vaWorldSetUserData(world, this);
-    vaWorldSetOnReverbUpdatedCallback(world, &VAWorld::on_reverb_updated_trampoline);
+    VAResult result = vaWorldSetCoordinateSystem(world, VACoordinateSystemGodot);
+
+    if (result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::VAWorld failed to set coordinate system: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
+    }
+
+    result = vaWorldSetUserData(world, this);
+
+    if (result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::VAWorld failed to set user data: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
+    }
+
+    result = vaWorldSetOnReverbUpdatedCallback(world, &VAWorld::on_reverb_updated_trampoline);
+
+    if (result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::VAWorld failed to set the reverb-updated callback: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
+    }
 
     // Push every VAWorldProperties.cs-ported field's default onto the
     // freshly created handle - Godot only calls each property's setter when
@@ -177,11 +197,27 @@ VAWorld::~VAWorld()
 
         for (::VAEmitter *emitter : pending_emitter_destroys)
         {
-            vaEmitterDestroy(emitter);
+            VAResult result = vaEmitterDestroy(emitter);
+
+            if (result != VA_SUCCESS)
+            {
+                // Should never trigger: vaWorldWait above already drained any
+                // in-flight raytracing cycle, so this emitter can't still be
+                // in use.
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::~VAWorld failed to destroy a pending emitter (VAResult=", VAResultToString(result), ")");
+            }
         }
         pending_emitter_destroys.clear();
 
-        vaWorldDestroy(world);
+        VAResult result = vaWorldDestroy(world);
+
+        if (result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::~VAWorld failed to destroy the world (VAResult=", VAResultToString(result), ")");
+        }
+
         world = nullptr;
     }
 }
@@ -256,6 +292,12 @@ void VAWorld::_process(double delta)
     if (world)
     {
         VAResult result = vaWorldUpdate(world);
+
+        if (result != VA_SUCCESS && result != VA_STILL_RUNNING)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::_process failed to update the world (VAResult=", VAResultToString(result), ")");
+        }
     }
 }
 
@@ -282,7 +324,30 @@ bool VAWorld::register_custom_material(va_godot::VACustomMaterial *material)
 
 void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener)
 {
-    vaWorldAddEmitter(world, emitter->get_handle());
+    VAResult result = vaWorldAddEmitter(world, emitter->get_handle());
+
+    switch (result)
+    {
+        case VA_SUCCESS:
+            break;
+
+        case VA_ALREADY_EXISTS:
+            // Already added to this world - treat as a no-op, matching
+            // VAEmitter::add_target's handling of re-adding an existing target.
+            break;
+
+        case VA_WORLD_CONFLICT:
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::register_emitter failed for '", emitter->get_name(),
+                "': emitter is already added to a different VAWorld.");
+            break;
+
+        default:
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::register_emitter failed for '", emitter->get_name(),
+                "' (VAResult=", VAResultToString(result), ")");
+            break;
+    }
 
     if (is_main_listener)
     {

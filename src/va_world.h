@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/csg_sphere3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
 extern "C"
@@ -14,6 +15,7 @@ extern "C"
 }
 
 #include "openal/al_reverb.h"
+#include "va_conversions.h"
 #include "va_primitive_ref.h"
 
 #include <memory>
@@ -202,7 +204,15 @@ public:
 
         if (world)
         {
-            vaWorldSetPendingShutdown(world, value);
+            VAResult result = vaWorldSetPendingShutdown(world, value);
+
+            if (result != VA_SUCCESS)
+            {
+                // Should never trigger: the only failure mode is world being
+                // NULL, already ruled out by the check above.
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::set_pending_shutdown failed (VAResult=", VAResultToString(result), ")");
+            }
         }
     }
 
@@ -217,7 +227,15 @@ public:
 
         if (world)
         {
-            vaWorldSetRenderingEnabled(world, value);
+            VAResult result = vaWorldSetRenderingEnabled(world, value);
+
+            if (result != VA_SUCCESS)
+            {
+                // Should never trigger: the only failure mode is world being
+                // NULL, already ruled out by the check above.
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::set_rendering_enabled failed (VAResult=", VAResultToString(result), ")");
+            }
         }
     }
 

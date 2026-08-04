@@ -103,22 +103,56 @@ void VAWorld::create_primitive(CSGBox3D *csg_box, VAMaterialType material)
     Transform3D transform = RemoveScale(csg_box->get_global_transform(), scale);
 
     VAPrismPrimitive *prim = vaPrismPrimitiveCreate();
-    vaPrismPrimitiveSetMaterial(prim, material);
+
+    VAResult material_result = vaPrismPrimitiveSetMaterial(prim, material);
+    if (material_result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGBox3D) failed to set material for '",
+            csg_box->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
+    }
+
     VAVector size = ToVAudio(csg_box->get_size() * scale);
     vaPrismPrimitiveSetSize(prim, size);
     VAMatrix mat = ToVAudio(transform);
     vaPrismPrimitiveSetTransform(prim, &mat);
 
-    vaWorldAddPrimitive_(world, prim);
+    VAResult add_result = vaWorldAddPrimitive_(world, prim);
+    if (add_result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGBox3D) failed to add '",
+            csg_box->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+        vaPrismPrimitiveDestroy(prim);
+        return;
+    }
 
     VAPrimitiveRef *ref = attach_watcher(csg_box, prim, VAPrimitiveKind::Prism, [this, csg_box, prim]()
     {
         Vector3 updated_scale;
         Transform3D updated_transform = RemoveScale(csg_box->get_global_transform(), updated_scale);
         VAVector updated_size = ToVAudio(csg_box->get_size() * updated_scale);
-        vaPrismPrimitiveSetSize(prim, updated_size);
+
+        // TransformWatcher only fires on an actual transform change, so
+        // VA_UNCHANGED here just means this particular setter's value (e.g.
+        // size when only rotation changed) happened to stay the same - not
+        // an error.
+        VAResult size_result = vaPrismPrimitiveSetSize(prim, updated_size);
+        if (size_result != VA_SUCCESS && size_result != VA_UNCHANGED)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGBox3D) failed to update size for '",
+                csg_box->get_name(), "' (VAResult=", VAResultToString(size_result), ")");
+        }
+
         VAMatrix updated_mat = ToVAudio(updated_transform);
-        vaPrismPrimitiveSetTransform(prim, &updated_mat);
+        VAResult transform_result = vaPrismPrimitiveSetTransform(prim, &updated_mat);
+        if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGBox3D) failed to update transform for '",
+                csg_box->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+        }
     });
 
     csg_box->set_meta(PrimitiveMetaKey(), ref);
@@ -139,21 +173,61 @@ void VAWorld::create_primitive(CSGCylinder3D *csg_cylinder, VAMaterialType mater
         Transform3D offset_transform = csg_cylinder->get_global_transform().translated_local(Vector3(0, -csg_cylinder->get_height() / 2, 0));
 
         VAConePrimitive *prim = vaConePrimitiveCreate();
-        vaConePrimitiveSetMaterial(prim, material);
+
+        VAResult material_result = vaConePrimitiveSetMaterial(prim, material);
+        if (material_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D cone) failed to set material for '",
+                csg_cylinder->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
+        }
+
         vaConePrimitiveSetRadius(prim, csg_cylinder->get_radius());
         vaConePrimitiveSetHeight(prim, csg_cylinder->get_height());
         VAMatrix mat = ToVAudio(offset_transform);
         vaConePrimitiveSetTransform(prim, &mat);
 
-        vaWorldAddPrimitive_(world, prim);
+        VAResult add_result = vaWorldAddPrimitive_(world, prim);
+        if (add_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D cone) failed to add '",
+                csg_cylinder->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaConePrimitiveDestroy(prim);
+            return;
+        }
 
         VAPrimitiveRef *ref = attach_watcher(csg_cylinder, prim, VAPrimitiveKind::Cone, [this, csg_cylinder, prim]()
         {
             Transform3D updated_offset = csg_cylinder->get_global_transform().translated_local(Vector3(0, -csg_cylinder->get_height() / 2, 0));
-            vaConePrimitiveSetRadius(prim, csg_cylinder->get_radius());
-            vaConePrimitiveSetHeight(prim, csg_cylinder->get_height());
+
+            // TransformWatcher only fires on an actual transform change, so
+            // VA_UNCHANGED here just means this setter's own value happened
+            // to stay the same - not an error.
+            VAResult radius_result = vaConePrimitiveSetRadius(prim, csg_cylinder->get_radius());
+            if (radius_result != VA_SUCCESS && radius_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D cone) failed to update radius for '",
+                    csg_cylinder->get_name(), "' (VAResult=", VAResultToString(radius_result), ")");
+            }
+
+            VAResult height_result = vaConePrimitiveSetHeight(prim, csg_cylinder->get_height());
+            if (height_result != VA_SUCCESS && height_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D cone) failed to update height for '",
+                    csg_cylinder->get_name(), "' (VAResult=", VAResultToString(height_result), ")");
+            }
+
             VAMatrix updated_mat = ToVAudio(updated_offset);
-            vaConePrimitiveSetTransform(prim, &updated_mat);
+            VAResult transform_result = vaConePrimitiveSetTransform(prim, &updated_mat);
+            if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D cone) failed to update transform for '",
+                    csg_cylinder->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+            }
         });
 
         csg_cylinder->set_meta(PrimitiveMetaKey(), ref);
@@ -161,20 +235,59 @@ void VAWorld::create_primitive(CSGCylinder3D *csg_cylinder, VAMaterialType mater
     else
     {
         VACylinderPrimitive *prim = vaCylinderPrimitiveCreate();
-        vaCylinderPrimitiveSetMaterial(prim, material);
+
+        VAResult material_result = vaCylinderPrimitiveSetMaterial(prim, material);
+        if (material_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D) failed to set material for '",
+                csg_cylinder->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
+        }
+
         vaCylinderPrimitiveSetRadius(prim, csg_cylinder->get_radius());
         vaCylinderPrimitiveSetLength(prim, csg_cylinder->get_height());
         VAMatrix mat = ToVAudio(csg_cylinder->get_global_transform());
         vaCylinderPrimitiveSetTransform(prim, &mat);
 
-        vaWorldAddPrimitive_(world, prim);
+        VAResult add_result = vaWorldAddPrimitive_(world, prim);
+        if (add_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D) failed to add '",
+                csg_cylinder->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaCylinderPrimitiveDestroy(prim);
+            return;
+        }
 
         VAPrimitiveRef *ref = attach_watcher(csg_cylinder, prim, VAPrimitiveKind::Cylinder, [this, csg_cylinder, prim]()
         {
-            vaCylinderPrimitiveSetRadius(prim, csg_cylinder->get_radius());
-            vaCylinderPrimitiveSetLength(prim, csg_cylinder->get_height());
+            // TransformWatcher only fires on an actual transform change, so
+            // VA_UNCHANGED here just means this setter's own value happened
+            // to stay the same - not an error.
+            VAResult radius_result = vaCylinderPrimitiveSetRadius(prim, csg_cylinder->get_radius());
+            if (radius_result != VA_SUCCESS && radius_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D) failed to update radius for '",
+                    csg_cylinder->get_name(), "' (VAResult=", VAResultToString(radius_result), ")");
+            }
+
+            VAResult length_result = vaCylinderPrimitiveSetLength(prim, csg_cylinder->get_height());
+            if (length_result != VA_SUCCESS && length_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D) failed to update length for '",
+                    csg_cylinder->get_name(), "' (VAResult=", VAResultToString(length_result), ")");
+            }
+
             VAMatrix updated_mat = ToVAudio(csg_cylinder->get_global_transform());
-            vaCylinderPrimitiveSetTransform(prim, &updated_mat);
+            VAResult transform_result = vaCylinderPrimitiveSetTransform(prim, &updated_mat);
+            if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGCylinder3D) failed to update transform for '",
+                    csg_cylinder->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+            }
         });
 
         csg_cylinder->set_meta(PrimitiveMetaKey(), ref);
@@ -189,16 +302,48 @@ void VAWorld::create_primitive(CSGSphere3D *csg_sphere, VAMaterialType material)
     }
 
     VASpherePrimitive *prim = vaSpherePrimitiveCreate();
-    vaSpherePrimitiveSetMaterial(prim, material);
+
+    VAResult material_result = vaSpherePrimitiveSetMaterial(prim, material);
+    if (material_result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGSphere3D) failed to set material for '",
+            csg_sphere->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
+    }
+
     vaSpherePrimitiveSetCenter(prim, ToVAudio(csg_sphere->get_global_transform().origin));
     vaSpherePrimitiveSetRadius(prim, csg_sphere->get_radius());
 
-    vaWorldAddPrimitive_(world, prim);
+    VAResult add_result = vaWorldAddPrimitive_(world, prim);
+    if (add_result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGSphere3D) failed to add '",
+            csg_sphere->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+        vaSpherePrimitiveDestroy(prim);
+        return;
+    }
 
     VAPrimitiveRef *ref = attach_watcher(csg_sphere, prim, VAPrimitiveKind::Sphere, [this, csg_sphere, prim]()
     {
-        vaSpherePrimitiveSetCenter(prim, ToVAudio(csg_sphere->get_global_transform().origin));
-        vaSpherePrimitiveSetRadius(prim, csg_sphere->get_radius());
+        // TransformWatcher only fires on an actual transform change, so
+        // VA_UNCHANGED here just means this setter's own value happened to
+        // stay the same - not an error.
+        VAResult center_result = vaSpherePrimitiveSetCenter(prim, ToVAudio(csg_sphere->get_global_transform().origin));
+        if (center_result != VA_SUCCESS && center_result != VA_UNCHANGED)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGSphere3D) failed to update center for '",
+                csg_sphere->get_name(), "' (VAResult=", VAResultToString(center_result), ")");
+        }
+
+        VAResult radius_result = vaSpherePrimitiveSetRadius(prim, csg_sphere->get_radius());
+        if (radius_result != VA_SUCCESS && radius_result != VA_UNCHANGED)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CSGSphere3D) failed to update radius for '",
+                csg_sphere->get_name(), "' (VAResult=", VAResultToString(radius_result), ")");
+        }
     });
 
     csg_sphere->set_meta(PrimitiveMetaKey(), ref);
@@ -230,24 +375,84 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
         Transform3D box_transform = RemoveScale(global_transform, box_scale);
 
         VAPrismPrimitive *p = vaPrismPrimitiveCreate();
-        vaPrismPrimitiveSetMaterial(p, material);
-        VAVector size = ToVAudio(box->get_size() * box_scale);
-        vaPrismPrimitiveSetSize(p, size);
-        VAMatrix mat = ToVAudio(box_transform);
-        vaPrismPrimitiveSetTransform(p, &mat);
 
-        vaWorldAddPrimitive_(world, p);
+        VAResult material_result = vaPrismPrimitiveSetMaterial(p, material);
+        if (material_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D box) failed to set material for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
+        }
+
+        VAVector size = ToVAudio(box->get_size() * box_scale);
+        VAResult size_result = vaPrismPrimitiveSetSize(p, size);
+        if (size_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D box) failed to set size for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(size_result), ")");
+        }
+
+        VAMatrix mat = ToVAudio(box_transform);
+        VAResult transform_result = vaPrismPrimitiveSetTransform(p, &mat);
+        if (transform_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D box) failed to set transform for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D box) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaPrismPrimitiveDestroy(p);
+            return;
+        }
+
         prim = p;
         kind = VAPrimitiveKind::Prism;
     }
     else if (Ref<SphereShape3D> sphere = shape; sphere.is_valid())
     {
         VASpherePrimitive *p = vaSpherePrimitiveCreate();
-        vaSpherePrimitiveSetMaterial(p, material);
-        vaSpherePrimitiveSetCenter(p, ToVAudio(position));
-        vaSpherePrimitiveSetRadius(p, sphere->get_radius() * scale.x);
 
-        vaWorldAddPrimitive_(world, p);
+        VAResult material_result = vaSpherePrimitiveSetMaterial(p, material);
+        if (material_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D sphere) failed to set material for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
+        }
+
+        VAResult center_result = vaSpherePrimitiveSetCenter(p, ToVAudio(position));
+        if (center_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D sphere) failed to set center for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(center_result), ")");
+        }
+
+        VAResult radius_result = vaSpherePrimitiveSetRadius(p, sphere->get_radius() * scale.x);
+        if (radius_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D sphere) failed to set radius for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(radius_result), ")");
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D sphere) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaSpherePrimitiveDestroy(p);
+            return;
+        }
+
         prim = p;
         kind = VAPrimitiveKind::Sphere;
     }
@@ -263,26 +468,100 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
         }
 
         VACapsulePrimitive *p = vaCapsulePrimitiveCreate();
-        vaCapsulePrimitiveSetMaterial(p, material);
-        vaCapsulePrimitiveSetRadius(p, capsule->get_radius() * scale.x);
-        vaCapsulePrimitiveSetLength(p, cylinder_length * scale.y);
-        VAMatrix mat = ToVAudio(global_transform);
-        vaCapsulePrimitiveSetTransform(p, &mat);
 
-        vaWorldAddPrimitive_(world, p);
+        VAResult material_result = vaCapsulePrimitiveSetMaterial(p, material);
+        if (material_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D capsule) failed to set material for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
+        }
+
+        VAResult radius_result = vaCapsulePrimitiveSetRadius(p, capsule->get_radius() * scale.x);
+        if (radius_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D capsule) failed to set radius for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(radius_result), ")");
+        }
+
+        VAResult length_result = vaCapsulePrimitiveSetLength(p, cylinder_length * scale.y);
+        if (length_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D capsule) failed to set length for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(length_result), ")");
+        }
+
+        VAMatrix mat = ToVAudio(global_transform);
+        VAResult transform_result = vaCapsulePrimitiveSetTransform(p, &mat);
+        if (transform_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D capsule) failed to set transform for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D capsule) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaCapsulePrimitiveDestroy(p);
+            return;
+        }
+
         prim = p;
         kind = VAPrimitiveKind::Capsule;
     }
     else if (Ref<CylinderShape3D> cylinder = shape; cylinder.is_valid())
     {
         VACylinderPrimitive *p = vaCylinderPrimitiveCreate();
-        vaCylinderPrimitiveSetMaterial(p, material);
-        vaCylinderPrimitiveSetRadius(p, cylinder->get_radius() * scale.x);
-        vaCylinderPrimitiveSetLength(p, cylinder->get_height() * scale.y);
-        VAMatrix mat = ToVAudio(global_transform);
-        vaCylinderPrimitiveSetTransform(p, &mat);
 
-        vaWorldAddPrimitive_(world, p);
+        VAResult material_result = vaCylinderPrimitiveSetMaterial(p, material);
+        if (material_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D cylinder) failed to set material for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
+        }
+
+        VAResult radius_result = vaCylinderPrimitiveSetRadius(p, cylinder->get_radius() * scale.x);
+        if (radius_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D cylinder) failed to set radius for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(radius_result), ")");
+        }
+
+        VAResult length_result = vaCylinderPrimitiveSetLength(p, cylinder->get_height() * scale.y);
+        if (length_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D cylinder) failed to set length for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(length_result), ")");
+        }
+
+        VAMatrix mat = ToVAudio(global_transform);
+        VAResult transform_result = vaCylinderPrimitiveSetTransform(p, &mat);
+        if (transform_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D cylinder) failed to set transform for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D cylinder) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaCylinderPrimitiveDestroy(p);
+            return;
+        }
+
         prim = p;
         kind = VAPrimitiveKind::Cylinder;
     }
@@ -320,15 +599,52 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
         float world_magnitude = Vector3(world_size.x, world_size.y, world_size.z).length();
 
         VAPlanePrimitive *p = vaPlanePrimitiveCreate();
-        vaPlanePrimitiveSetMaterial(p, material);
+
+        VAResult material_result = vaPlanePrimitiveSetMaterial(p, material);
+        if (material_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to set material for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
+        }
+
         // Use the max world size to ensure the plane covers the raytracing
         // scene, *2 in case the plane is positioned in the corner of the world.
-        vaPlanePrimitiveSetWidth(p, world_magnitude * 2);
-        vaPlanePrimitiveSetHeight(p, world_magnitude * 2);
-        VAMatrix mat = ToVAudio(plane_transform);
-        vaPlanePrimitiveSetTransform(p, &mat);
+        VAResult width_result = vaPlanePrimitiveSetWidth(p, world_magnitude * 2);
+        if (width_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to set width for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(width_result), ")");
+        }
 
-        vaWorldAddPrimitive_(world, p);
+        VAResult height_result = vaPlanePrimitiveSetHeight(p, world_magnitude * 2);
+        if (height_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to set height for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(height_result), ")");
+        }
+
+        VAMatrix mat = ToVAudio(plane_transform);
+        VAResult transform_result = vaPlanePrimitiveSetTransform(p, &mat);
+        if (transform_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to set transform for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaPlanePrimitiveDestroy(p);
+            return;
+        }
+
         prim = p;
         kind = VAPrimitiveKind::Plane;
     }
@@ -378,16 +694,47 @@ void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType mat
     VAMatrix mat = ToVAudio(mesh_instance->get_global_transform());
 
     VAMeshPrimitive *prim = nullptr;
-    vaMeshPrimitiveCreate(material, triangles.data(), (int)triangles.size(), min, max, &mat, &prim);
-    // TODO - make this a metadata / inspector flag in Godot.
-    vaMeshPrimitiveSetSupports3DPermeation(prim, true);
+    VAResult create_result = vaMeshPrimitiveCreate(material, triangles.data(), (int)triangles.size(), min, max, &mat, &prim);
+    if (create_result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::create_primitive(MeshInstance3D) failed to create the mesh primitive for '",
+            mesh_instance->get_name(), "' (VAResult=", VAResultToString(create_result), ")");
+        return;
+    }
 
-    vaWorldAddPrimitive_(world, prim);
+    // TODO - make this a metadata / inspector flag in Godot.
+    VAResult permeation_result = vaMeshPrimitiveSetSupports3DPermeation(prim, true);
+    if (permeation_result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::create_primitive(MeshInstance3D) failed to set 3D permeation support for '",
+            mesh_instance->get_name(), "' (VAResult=", VAResultToString(permeation_result), ")");
+    }
+
+    VAResult add_result = vaWorldAddPrimitive_(world, prim);
+    if (add_result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VAWorld::create_primitive(MeshInstance3D) failed to add '",
+            mesh_instance->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+        vaMeshPrimitiveDestroy(prim);
+        return;
+    }
 
     VAPrimitiveRef *ref = attach_watcher(mesh_instance, prim, VAPrimitiveKind::Mesh, [this, mesh_instance, prim]()
     {
         VAMatrix updated_mat = ToVAudio(mesh_instance->get_global_transform());
-        vaMeshPrimitiveSetTransform(prim, &updated_mat);
+
+        // TransformWatcher only fires on an actual transform change, so
+        // VA_UNCHANGED is not expected here, but isn't an error either.
+        VAResult transform_result = vaMeshPrimitiveSetTransform(prim, &updated_mat);
+        if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+        {
+            UtilityFunctions::push_error(
+                "[vaudio-godot-native-openal] VAWorld::create_primitive(MeshInstance3D) failed to update transform for '",
+                mesh_instance->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+        }
     });
 
     mesh_instance->set_meta(PrimitiveMetaKey(), ref);
@@ -405,8 +752,25 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
         {
             VASpherePrimitive *p = (VASpherePrimitive *)ref->primitive;
             Ref<SphereShape3D> sphere = shape;
-            vaSpherePrimitiveSetCenter(p, ToVAudio(global_transform.origin));
-            vaSpherePrimitiveSetRadius(p, sphere->get_radius() * scale.x);
+
+            // TransformWatcher only fires on an actual transform change, so
+            // VA_UNCHANGED here just means this setter's own value happened
+            // to stay the same - not an error.
+            VAResult center_result = vaSpherePrimitiveSetCenter(p, ToVAudio(global_transform.origin));
+            if (center_result != VA_SUCCESS && center_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(sphere) failed to update center for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(center_result), ")");
+            }
+
+            VAResult radius_result = vaSpherePrimitiveSetRadius(p, sphere->get_radius() * scale.x);
+            if (radius_result != VA_SUCCESS && radius_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(sphere) failed to update radius for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(radius_result), ")");
+            }
             break;
         }
         case VAPrimitiveKind::Prism:
@@ -416,9 +780,23 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
             Vector3 box_scale;
             Transform3D box_transform = RemoveScale(global_transform, box_scale);
             VAVector size = ToVAudio(box->get_size() * box_scale);
-            vaPrismPrimitiveSetSize(p, size);
+
+            VAResult size_result = vaPrismPrimitiveSetSize(p, size);
+            if (size_result != VA_SUCCESS && size_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(box) failed to update size for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(size_result), ")");
+            }
+
             VAMatrix mat = ToVAudio(box_transform);
-            vaPrismPrimitiveSetTransform(p, &mat);
+            VAResult transform_result = vaPrismPrimitiveSetTransform(p, &mat);
+            if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(box) failed to update transform for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+            }
             break;
         }
         case VAPrimitiveKind::Capsule:
@@ -430,20 +808,62 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
             {
                 cylinder_length = 0;
             }
-            vaCapsulePrimitiveSetRadius(p, capsule->get_radius() * scale.x);
-            vaCapsulePrimitiveSetLength(p, cylinder_length * scale.y);
+
+            VAResult radius_result = vaCapsulePrimitiveSetRadius(p, capsule->get_radius() * scale.x);
+            if (radius_result != VA_SUCCESS && radius_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(capsule) failed to update radius for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(radius_result), ")");
+            }
+
+            VAResult length_result = vaCapsulePrimitiveSetLength(p, cylinder_length * scale.y);
+            if (length_result != VA_SUCCESS && length_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(capsule) failed to update length for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(length_result), ")");
+            }
+
             VAMatrix mat = ToVAudio(global_transform);
-            vaCapsulePrimitiveSetTransform(p, &mat);
+            VAResult transform_result = vaCapsulePrimitiveSetTransform(p, &mat);
+            if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(capsule) failed to update transform for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+            }
             break;
         }
         case VAPrimitiveKind::Cylinder:
         {
             VACylinderPrimitive *p = (VACylinderPrimitive *)ref->primitive;
             Ref<CylinderShape3D> cylinder = shape;
-            vaCylinderPrimitiveSetRadius(p, cylinder->get_radius() * scale.x);
-            vaCylinderPrimitiveSetLength(p, cylinder->get_height() * scale.y);
+
+            VAResult radius_result = vaCylinderPrimitiveSetRadius(p, cylinder->get_radius() * scale.x);
+            if (radius_result != VA_SUCCESS && radius_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(cylinder) failed to update radius for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(radius_result), ")");
+            }
+
+            VAResult length_result = vaCylinderPrimitiveSetLength(p, cylinder->get_height() * scale.y);
+            if (length_result != VA_SUCCESS && length_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(cylinder) failed to update length for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(length_result), ")");
+            }
+
             VAMatrix mat = ToVAudio(global_transform);
-            vaCylinderPrimitiveSetTransform(p, &mat);
+            VAResult transform_result = vaCylinderPrimitiveSetTransform(p, &mat);
+            if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(cylinder) failed to update transform for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+            }
             break;
         }
         case VAPrimitiveKind::Plane:
@@ -470,7 +890,13 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
 
             Transform3D plane_transform(plane_basis, plane_position);
             VAMatrix mat = ToVAudio(plane_transform);
-            vaPlanePrimitiveSetTransform(p, &mat);
+            VAResult transform_result = vaPlanePrimitiveSetTransform(p, &mat);
+            if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+            {
+                UtilityFunctions::push_error(
+                    "[vaudio-godot-native-openal] VAWorld::update_collision_shape_primitive(plane) failed to update transform for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+            }
             break;
         }
         default:
@@ -526,36 +952,145 @@ void VAWorld::remove_primitive(Node *node, bool recursive)
                 ref->watcher->queue_free();
             }
 
+            // vaWorldRemovePrimitive_ failing with VA_NOT_ADDED_TO_WORLD means
+            // our bookkeeping (VAPrimitiveRef) disagrees with the SDK about
+            // this primitive's membership - still proceed to Destroy so we
+            // don't leak the primitive, but surface the mismatch.
             switch (ref->kind)
             {
                 case VAPrimitiveKind::Prism:
-                    vaWorldRemovePrimitive_(world, ref->primitive);
-                    vaPrismPrimitiveDestroy((VAPrismPrimitive *)ref->primitive);
+                {
+                    VAResult remove_result = vaWorldRemovePrimitive_(world, ref->primitive);
+                    if (remove_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(prism) failed to remove '",
+                            node->get_name(), "' from the world (VAResult=", VAResultToString(remove_result), ")");
+                    }
+
+                    VAResult destroy_result = vaPrismPrimitiveDestroy((VAPrismPrimitive *)ref->primitive);
+                    if (destroy_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(prism) failed to destroy '",
+                            node->get_name(), "' (VAResult=", VAResultToString(destroy_result), ")");
+                    }
                     break;
+                }
                 case VAPrimitiveKind::Cylinder:
-                    vaWorldRemovePrimitive_(world, ref->primitive);
-                    vaCylinderPrimitiveDestroy((VACylinderPrimitive *)ref->primitive);
+                {
+                    VAResult remove_result = vaWorldRemovePrimitive_(world, ref->primitive);
+                    if (remove_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(cylinder) failed to remove '",
+                            node->get_name(), "' from the world (VAResult=", VAResultToString(remove_result), ")");
+                    }
+
+                    VAResult destroy_result = vaCylinderPrimitiveDestroy((VACylinderPrimitive *)ref->primitive);
+                    if (destroy_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(cylinder) failed to destroy '",
+                            node->get_name(), "' (VAResult=", VAResultToString(destroy_result), ")");
+                    }
                     break;
+                }
                 case VAPrimitiveKind::Cone:
-                    vaWorldRemovePrimitive_(world, ref->primitive);
-                    vaConePrimitiveDestroy((VAConePrimitive *)ref->primitive);
+                {
+                    VAResult remove_result = vaWorldRemovePrimitive_(world, ref->primitive);
+                    if (remove_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(cone) failed to remove '",
+                            node->get_name(), "' from the world (VAResult=", VAResultToString(remove_result), ")");
+                    }
+
+                    VAResult destroy_result = vaConePrimitiveDestroy((VAConePrimitive *)ref->primitive);
+                    if (destroy_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(cone) failed to destroy '",
+                            node->get_name(), "' (VAResult=", VAResultToString(destroy_result), ")");
+                    }
                     break;
+                }
                 case VAPrimitiveKind::Sphere:
-                    vaWorldRemovePrimitive_(world, ref->primitive);
-                    vaSpherePrimitiveDestroy((VASpherePrimitive *)ref->primitive);
+                {
+                    VAResult remove_result = vaWorldRemovePrimitive_(world, ref->primitive);
+                    if (remove_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(sphere) failed to remove '",
+                            node->get_name(), "' from the world (VAResult=", VAResultToString(remove_result), ")");
+                    }
+
+                    VAResult destroy_result = vaSpherePrimitiveDestroy((VASpherePrimitive *)ref->primitive);
+                    if (destroy_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(sphere) failed to destroy '",
+                            node->get_name(), "' (VAResult=", VAResultToString(destroy_result), ")");
+                    }
                     break;
+                }
                 case VAPrimitiveKind::Capsule:
-                    vaWorldRemovePrimitive_(world, ref->primitive);
-                    vaCapsulePrimitiveDestroy((VACapsulePrimitive *)ref->primitive);
+                {
+                    VAResult remove_result = vaWorldRemovePrimitive_(world, ref->primitive);
+                    if (remove_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(capsule) failed to remove '",
+                            node->get_name(), "' from the world (VAResult=", VAResultToString(remove_result), ")");
+                    }
+
+                    VAResult destroy_result = vaCapsulePrimitiveDestroy((VACapsulePrimitive *)ref->primitive);
+                    if (destroy_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(capsule) failed to destroy '",
+                            node->get_name(), "' (VAResult=", VAResultToString(destroy_result), ")");
+                    }
                     break;
+                }
                 case VAPrimitiveKind::Plane:
-                    vaWorldRemovePrimitive_(world, ref->primitive);
-                    vaPlanePrimitiveDestroy((VAPlanePrimitive *)ref->primitive);
+                {
+                    VAResult remove_result = vaWorldRemovePrimitive_(world, ref->primitive);
+                    if (remove_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(plane) failed to remove '",
+                            node->get_name(), "' from the world (VAResult=", VAResultToString(remove_result), ")");
+                    }
+
+                    VAResult destroy_result = vaPlanePrimitiveDestroy((VAPlanePrimitive *)ref->primitive);
+                    if (destroy_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(plane) failed to destroy '",
+                            node->get_name(), "' (VAResult=", VAResultToString(destroy_result), ")");
+                    }
                     break;
+                }
                 case VAPrimitiveKind::Mesh:
-                    vaWorldRemovePrimitive_(world, ref->primitive);
-                    vaMeshPrimitiveDestroy((VAMeshPrimitive *)ref->primitive);
+                {
+                    VAResult remove_result = vaWorldRemovePrimitive_(world, ref->primitive);
+                    if (remove_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(mesh) failed to remove '",
+                            node->get_name(), "' from the world (VAResult=", VAResultToString(remove_result), ")");
+                    }
+
+                    VAResult destroy_result = vaMeshPrimitiveDestroy((VAMeshPrimitive *)ref->primitive);
+                    if (destroy_result != VA_SUCCESS)
+                    {
+                        UtilityFunctions::push_error(
+                            "[vaudio-godot-native-openal] VAWorld::remove_primitive(mesh) failed to destroy '",
+                            node->get_name(), "' (VAResult=", VAResultToString(destroy_result), ")");
+                    }
                     break;
+                }
             }
         }
 

@@ -5,6 +5,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include "va_conversions.h"
 #include "va_world.h"
 #include "va_world_lookup.h"
 
@@ -16,6 +17,27 @@
 
 namespace va_godot
 {
+
+namespace
+{
+    // Shared by every vaWorldSetMaterialXxx call below - they all document the
+    // same result vocabulary (VA_INVALID_POINTER/VA_MATERIAL_DOES_NOT_EXIST
+    // can't happen here: world is always valid and material_type has just been
+    // created via vaWorldCreateMaterial in _enter_tree before any setter runs.
+    // VA_INVALID_VALUE/VA_OUT_OF_RANGE are real, since the value comes from
+    // the editor's property panel. VA_UNCHANGED is a no-op, not an error).
+    void log_if_material_setter_failed(VAResult result, const char *property_name, int material_type)
+    {
+        if (result == VA_SUCCESS || result == VA_UNCHANGED)
+        {
+            return;
+        }
+
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VACustomMaterial::set_", property_name,
+            " failed for material_type=", material_type, " (VAResult=", VAResultToString(result), ")");
+    }
+}
 
 void VACustomMaterial::_bind_methods()
 {
@@ -81,14 +103,29 @@ void VACustomMaterial::_enter_tree()
     }
 
     ::VAWorld *world = va_world->get_handle();
-    vaWorldCreateMaterial(world, material_type);
-    vaWorldSetMaterialAbsorptionLF(world, material_type, absorption_lf);
-    vaWorldSetMaterialAbsorptionHF(world, material_type, absorption_hf);
-    vaWorldSetMaterialScattering(world, material_type, scattering);
-    vaWorldSetMaterialTransmissionLF(world, material_type, transmission_lf);
-    vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf);
-    vaWorldSetMaterialPlaneTransmissionLF(world, material_type, plane_transmission_lf);
-    vaWorldSetMaterialPlaneTransmissionHF(world, material_type, plane_transmission_hf);
+
+    // Unlike the setters below, a failure here means the material was never
+    // created, so none of the property setters would have anything to act
+    // on - bail instead of pushing them anyway. VA_OUT_OF_RANGE would mean
+    // register_custom_material handed out an id < 1000, and VA_ALREADY_EXISTS
+    // would mean it handed out an id already claimed - both indicate a bug in
+    // that allocation, not user error, so this is logged accordingly.
+    VAResult create_result = vaWorldCreateMaterial(world, material_type);
+    if (create_result != VA_SUCCESS)
+    {
+        UtilityFunctions::push_error(
+            "[vaudio-godot-native-openal] VACustomMaterial::_enter_tree: vaWorldCreateMaterial failed for material_type=",
+            material_type, " (VAResult=", VAResultToString(create_result), ")");
+        return;
+    }
+
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(world, material_type, absorption_lf), "absorption_lf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(world, material_type, absorption_hf), "absorption_hf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialScattering(world, material_type, scattering), "scattering", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(world, material_type, transmission_lf), "transmission_lf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf), "transmission_hf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(world, material_type, plane_transmission_lf), "plane_transmission_lf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(world, material_type, plane_transmission_hf), "plane_transmission_hf", material_type);
 
     va_world_handle = world;
     registered = true;
@@ -131,7 +168,7 @@ void VACustomMaterial::set_absorption_lf(float value)
 
     if (registered)
     {
-        vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, value);
+        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, value), "absorption_lf", material_type);
     }
 }
 
@@ -146,7 +183,7 @@ void VACustomMaterial::set_absorption_hf(float value)
 
     if (registered)
     {
-        vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, value);
+        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, value), "absorption_hf", material_type);
     }
 }
 
@@ -161,7 +198,7 @@ void VACustomMaterial::set_scattering(float value)
 
     if (registered)
     {
-        vaWorldSetMaterialScattering(va_world_handle, material_type, value);
+        log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, value), "scattering", material_type);
     }
 }
 
@@ -176,7 +213,7 @@ void VACustomMaterial::set_transmission_lf(float value)
 
     if (registered)
     {
-        vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, value);
+        log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, value), "transmission_lf", material_type);
     }
 }
 
@@ -191,7 +228,7 @@ void VACustomMaterial::set_transmission_hf(float value)
 
     if (registered)
     {
-        vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, value);
+        log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, value), "transmission_hf", material_type);
     }
 }
 
@@ -206,7 +243,7 @@ void VACustomMaterial::set_plane_transmission_lf(float value)
 
     if (registered)
     {
-        vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, value);
+        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, value), "plane_transmission_lf", material_type);
     }
 }
 
@@ -221,7 +258,7 @@ void VACustomMaterial::set_plane_transmission_hf(float value)
 
     if (registered)
     {
-        vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, value);
+        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, value), "plane_transmission_hf", material_type);
     }
 }
 
