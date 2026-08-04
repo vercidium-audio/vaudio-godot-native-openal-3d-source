@@ -190,6 +190,14 @@ void VASource::_exit_tree()
         }
 
         waiting_for_world = false;
+
+        // Never found a VAWorld anywhere in the tree for this node's entire
+        // time in it - see VAEmitter::_exit_tree's identical warning.
+        UtilityFunctions::push_warning(
+            "[vaudio-godot-native-openal] '", get_name(),
+            "' left the tree without ever finding a VAWorld - "
+            "no emitter was created for it. Make sure this node's scene "
+            "was added under a VAWorld while it was in the tree.");
     }
 
     if (emitter)
