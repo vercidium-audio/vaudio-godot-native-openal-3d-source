@@ -24,11 +24,12 @@ class VADefaultMaterial : public Node
 private:
     VAMaterialType material_name = VAMaterialMetal;
 
-    float absorption_lf = 0.02f;
-    float absorption_hf = 0.1f;
-    float scattering = 0.1f;
-    float transmission_lf = 10.0f;
-    float transmission_hf = 5.0f;
+    // Matches VAMaterialMetal, the default material_name above.
+    float absorption_lf = 0.05f;
+    float absorption_hf = 0.02f;
+    float scattering = 0.01f;
+    float transmission_lf = 0.1f;
+    float transmission_hf = 0.05f;
     float plane_transmission_lf = 0.1f;
     float plane_transmission_hf = 0.25f;
 
@@ -40,6 +41,12 @@ private:
     // Cached handle of the owning VAWorld, set in _enter_tree once registered
     // so property setters don't need to re-resolve the VAWorld node every call.
     ::VAWorld *va_world_handle = nullptr;
+
+    // Overwrites the 7 editable properties with the SDK's built-in defaults
+    // for material_name, and pushes them to the live world if registered.
+    // Called whenever material_name changes so the inspector reflects the
+    // newly-selected material instead of stale values from the previous one.
+    void reset_properties_to_material_defaults();
 
 protected:
     static void _bind_methods();

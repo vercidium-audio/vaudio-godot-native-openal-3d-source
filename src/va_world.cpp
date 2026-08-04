@@ -254,7 +254,9 @@ void VAWorld::_process(double delta)
 
     if (world)
     {
-        vaWorldUpdate(world);
+        UtilityFunctions::print("[vaudio-godot-native-openal] VAWorld: calling vaWorldUpdate");
+        VAResult result = vaWorldUpdate(world);
+        UtilityFunctions::print("[vaudio-godot-native-openal] VAWorld: vaWorldUpdate returned (VAResult=", (int)result, ")");
     }
 }
 

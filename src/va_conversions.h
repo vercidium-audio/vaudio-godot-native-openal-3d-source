@@ -14,11 +14,6 @@ extern "C"
 
 using namespace godot;
 
-// Port of vaudio-godot-openal's Extensions.cs ToVAudio helpers. Matrix ABI
-// verified directly against native/src/types/matrix.c and vaVectorMultiplyMatrix
-// (see native_godot_plan.md): VAMatrix is row-vector convention, translation in
-// row-group 4 - each row-group of 4 floats is one world-space basis axis (or
-// translation), matching Basis::get_column(i) here and basis.X/Y/Z in the C# port.
 inline VAVector ToVAudio(const Vector3 &v)
 {
     return vaVectorCreate(v.x, v.y, v.z);
@@ -42,22 +37,17 @@ inline VAMatrix ToVAudio(const Transform3D &transform)
         basis_x.x, basis_x.y, basis_x.z, 0.0f,
         basis_y.x, basis_y.y, basis_y.z, 0.0f,
         basis_z.x, basis_z.y, basis_z.z, 0.0f,
-        origin.x, origin.y, origin.z, 1.0f);
+        origin.x,  origin.y,  origin.z,  1.0f);
 }
 
-// PrismPrimitive (and several other primitive types) only support
-// rotation/translation, not scale - any scale present in the transform's
-// basis must be pre-applied to the primitive's size and stripped from the
-// returned transform. Mirrors VAWorldPrimitives.cs's RemoveScale.
+// Remove the scale from a matrix (most vaudio primitives only support rotation/translation, not scale)
 inline Transform3D RemoveScale(const Transform3D &transform, Vector3 &out_scale)
 {
     out_scale = transform.basis.get_scale();
     return Transform3D(transform.basis.orthonormalized(), transform.origin);
 }
 
-// Port of Conversions.cs's ConvertMeshToVector3FList. Flattens every surface
-// of a Godot Mesh into a flat CW-wound triangle vertex list for
-// VAMeshPrimitive, computing the local-space AABB along the way.
+// Flattens every surface of a Godot Mesh into a flat CW-wound triangle vertex list for a VAMeshPrimitive, computing the local-space AABB along the way.
 inline std::vector<VAVector> ConvertMeshToVAudio(const Ref<Mesh> &mesh, VAVector &out_min, VAVector &out_max)
 {
     std::vector<VAVector> vertices;

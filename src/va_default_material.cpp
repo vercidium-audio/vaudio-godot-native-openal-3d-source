@@ -15,6 +15,54 @@ static const char *DEFAULT_MATERIAL_NAME_HINT =
     "Gyprock,Ice,Leaf,Marble,Metal,Mud,Rock,Sand,Snow,Tile,Tree,Water,"
     "Wood Indoor,Wood Outdoor";
 
+namespace
+{
+    struct MaterialDefaults
+    {
+        float absorption_lf;
+        float absorption_hf;
+        float scattering;
+        float transmission_lf;
+        float transmission_hf;
+        float plane_transmission_lf;
+        float plane_transmission_hf;
+    };
+
+    // Queried from the SDK on first use and cached for the lifetime of the
+    // process, so the vaudio-side defaults never need to be hand-copied here
+    // (see material_settings.c in the vaudio SDK repo, which this avoids
+    // duplicating). A throwaway ::VAWorld is the only SDK-supported way to
+    // read a built-in material's default properties.
+    const MaterialDefaults &get_material_defaults(VAMaterialType material_name)
+    {
+        static MaterialDefaults defaults[VAMaterialTypeCount];
+        static bool loaded = false;
+
+        if (!loaded)
+        {
+            ::VAWorld *world = vaWorldCreate();
+
+            for (int i = 0; i < VAMaterialTypeCount; i++)
+            {
+                defaults[i].absorption_lf = vaWorldGetMaterialAbsorptionLF(world, i);
+                defaults[i].absorption_hf = vaWorldGetMaterialAbsorptionHF(world, i);
+                defaults[i].scattering = vaWorldGetMaterialScattering(world, i);
+                defaults[i].transmission_lf = vaWorldGetMaterialTransmissionLF(world, i);
+                defaults[i].transmission_hf = vaWorldGetMaterialTransmissionHF(world, i);
+                defaults[i].plane_transmission_lf = vaWorldGetMaterialPlaneTransmissionLF(world, i);
+                defaults[i].plane_transmission_hf = vaWorldGetMaterialPlaneTransmissionHF(world, i);
+            }
+
+            vaWorldWait(world);
+            vaWorldDestroy(world);
+
+            loaded = true;
+        }
+
+        return defaults[material_name];
+    }
+}
+
 void VADefaultMaterial::_bind_methods()
 {
     ClassDB::bind_method(D_METHOD("get_material_name"), &VADefaultMaterial::get_material_name);
@@ -95,6 +143,34 @@ int VADefaultMaterial::get_material_name() const
 void VADefaultMaterial::set_material_name(int value)
 {
     material_name = (VAMaterialType)value;
+
+    reset_properties_to_material_defaults();
+}
+
+void VADefaultMaterial::reset_properties_to_material_defaults()
+{
+    const MaterialDefaults &defaults = get_material_defaults(material_name);
+
+    absorption_lf = defaults.absorption_lf;
+    absorption_hf = defaults.absorption_hf;
+    scattering = defaults.scattering;
+    transmission_lf = defaults.transmission_lf;
+    transmission_hf = defaults.transmission_hf;
+    plane_transmission_lf = defaults.plane_transmission_lf;
+    plane_transmission_hf = defaults.plane_transmission_hf;
+
+    if (registered)
+    {
+        vaWorldSetMaterialAbsorptionLF(va_world_handle, material_name, absorption_lf);
+        vaWorldSetMaterialAbsorptionHF(va_world_handle, material_name, absorption_hf);
+        vaWorldSetMaterialScattering(va_world_handle, material_name, scattering);
+        vaWorldSetMaterialTransmissionLF(va_world_handle, material_name, transmission_lf);
+        vaWorldSetMaterialTransmissionHF(va_world_handle, material_name, transmission_hf);
+        vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_name, plane_transmission_lf);
+        vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_name, plane_transmission_hf);
+    }
+
+    notify_property_list_changed();
 }
 
 float VADefaultMaterial::get_absorption_lf() const

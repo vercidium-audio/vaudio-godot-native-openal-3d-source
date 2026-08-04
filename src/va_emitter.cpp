@@ -761,12 +761,20 @@ int VAEmitter::get_ambient_permeation_ray_count() const
 
 void VAEmitter::set_ambient_permeation_ray_count(int value)
 {
+    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: enter. Node: ", get_name(), " value=", value, " emitter=", (int64_t)(intptr_t)emitter);
+
     ambient_permeation_ray_count = MAX(0, value);
+
+    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: clamped value=", ambient_permeation_ray_count);
 
     if (emitter)
     {
+        UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: calling vaEmitterSetAmbientPermeationRayCount");
         vaEmitterSetAmbientPermeationRayCount(emitter, ambient_permeation_ray_count);
+        UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: returned from vaEmitterSetAmbientPermeationRayCount");
     }
+
+    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: exit");
 }
 
 int VAEmitter::get_ambient_permeation_bounce_count() const
