@@ -364,7 +364,15 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
 
     Transform3D global_transform = collision_shape->get_global_transform();
     Vector3 position = global_transform.origin;
-    Vector3 scale = collision_shape->get_scale();
+
+    // get_global_transform() bakes in any non-uniform scale inherited from
+    // parent Node3Ds, not just this CollisionShape3D's own local scale - so
+    // RemoveScale (which reads it back off the basis) is what must drive
+    // radius/length, and orthonormalized_transform (scale-free basis) is
+    // what must go to Set*Transform - passing a non-uniformly-scaled basis
+    // there is what caused VA_INVALID_VALUE.
+    Vector3 scale;
+    Transform3D orthonormalized_transform = RemoveScale(global_transform, scale);
 
     void *prim = nullptr;
     VAPrimitiveKind kind;
@@ -493,7 +501,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
                 collision_shape->get_name(), "' (VAResult=", VAResultToString(length_result), ")");
         }
 
-        VAMatrix mat = ToVAudio(global_transform);
+        VAMatrix mat = ToVAudio(orthonormalized_transform);
         VAResult transform_result = vaCapsulePrimitiveSetTransform(p, &mat);
         if (transform_result != VA_SUCCESS)
         {
@@ -543,7 +551,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
                 collision_shape->get_name(), "' (VAResult=", VAResultToString(length_result), ")");
         }
 
-        VAMatrix mat = ToVAudio(global_transform);
+        VAMatrix mat = ToVAudio(orthonormalized_transform);
         VAResult transform_result = vaCylinderPrimitiveSetTransform(p, &mat);
         if (transform_result != VA_SUCCESS)
         {
@@ -611,7 +619,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
         // Use the max world size to ensure the plane covers the raytracing
         // scene, *2 in case the plane is positioned in the corner of the world.
         VAResult width_result = vaPlanePrimitiveSetWidth(p, world_magnitude * 2);
-        if (width_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+        if (width_result != VA_SUCCESS && width_result != VA_UNCHANGED)
         {
             UtilityFunctions::push_error(
                 "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to set width for '",
@@ -619,7 +627,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
         }
 
         VAResult height_result = vaPlanePrimitiveSetHeight(p, world_magnitude * 2);
-        if (height_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+        if (height_result != VA_SUCCESS && height_result != VA_UNCHANGED)
         {
             UtilityFunctions::push_error(
                 "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to set height for '",
@@ -743,7 +751,14 @@ void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType mat
 void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape, VAPrimitiveRef *ref)
 {
     Transform3D global_transform = collision_shape->get_global_transform();
-    Vector3 scale = collision_shape->get_scale();
+
+    // See create_primitive(CollisionShape3D)'s comment: scale here must be
+    // read back off the global transform's basis (which bakes in inherited
+    // parent scale too), not collision_shape->get_scale() alone, and
+    // orthonormalized_transform (not global_transform) is what's safe to
+    // pass to Set*Transform.
+    Vector3 scale;
+    Transform3D orthonormalized_transform = RemoveScale(global_transform, scale);
     Ref<Shape3D> shape = collision_shape->get_shape();
 
     switch (ref->kind)
@@ -825,7 +840,7 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
                     collision_shape->get_name(), "' (VAResult=", VAResultToString(length_result), ")");
             }
 
-            VAMatrix mat = ToVAudio(global_transform);
+            VAMatrix mat = ToVAudio(orthonormalized_transform);
             VAResult transform_result = vaCapsulePrimitiveSetTransform(p, &mat);
             if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
             {
@@ -856,7 +871,7 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
                     collision_shape->get_name(), "' (VAResult=", VAResultToString(length_result), ")");
             }
 
-            VAMatrix mat = ToVAudio(global_transform);
+            VAMatrix mat = ToVAudio(orthonormalized_transform);
             VAResult transform_result = vaCylinderPrimitiveSetTransform(p, &mat);
             if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
             {
