@@ -51,49 +51,69 @@ void ConversionContextMenuPlugin::_bind_methods()
 {
 }
 
-// Multi-selection conversion isn't supported since every node needs its own reparent/owner fixup, and there's no undo grouping across them yet.
+// Menu items are only offered when every selected node is eligible for that conversion, since convert_node() runs once per node with no shared undo grouping across them.
 void ConversionContextMenuPlugin::_popup_menu(const PackedStringArray &paths)
 {
-    if (paths.size() != 1)
+    if (paths.is_empty())
         return;
 
     Node *scene_root = EditorInterface::get_singleton()->get_edited_scene_root();
     if (!scene_root)
         return;
 
-    Node *node = scene_root->get_node_or_null(NodePath(paths[0]));
-    if (!node)
+    bool any_eligible = false;
+    bool all_not_va_source = true;
+    bool all_not_va_source_relative = true;
+    bool all_not_va_source_leech_and_parent_is_emitter = true;
+
+    for (int i = 0; i < paths.size(); i++)
+    {
+        Node *node = scene_root->get_node_or_null(NodePath(paths[i]));
+        if (!node)
+            return;
+
+        bool is_audio_player_3d = node->get_class() == "AudioStreamPlayer3D";
+        bool is_va_source = Object::cast_to<VASource>(node) != nullptr;
+        bool is_va_source_relative = Object::cast_to<VASourceRelative>(node) != nullptr;
+        bool is_va_source_leech = Object::cast_to<VASourceLeech>(node) != nullptr;
+
+        if (!is_audio_player_3d && !is_va_source && !is_va_source_relative && !is_va_source_leech)
+            return;
+
+        any_eligible = true;
+
+        if (is_va_source)
+            all_not_va_source = false;
+
+        if (is_va_source_relative)
+            all_not_va_source_relative = false;
+
+        // VASourceLeech must be a direct child of a VAEmitter to function (it
+        // leeches that parent's raytracing results instead of casting its own) -
+        // only offer the conversion when that's actually every node's parent.
+        bool parent_is_va_emitter = Object::cast_to<VAEmitter>(node->get_parent()) != nullptr;
+
+        if (is_va_source_leech || !parent_is_va_emitter)
+            all_not_va_source_leech_and_parent_is_emitter = false;
+    }
+
+    if (!any_eligible)
         return;
 
-    bool is_audio_player_3d = node->get_class() == "AudioStreamPlayer3D";
-    bool is_va_source = Object::cast_to<VASource>(node) != nullptr;
-    bool is_va_source_relative = Object::cast_to<VASourceRelative>(node) != nullptr;
-    bool is_va_source_leech = Object::cast_to<VASourceLeech>(node) != nullptr;
-
-    if (!is_audio_player_3d && !is_va_source && !is_va_source_relative && !is_va_source_leech)
-        return;
-
-    if (!is_va_source)
+    if (all_not_va_source)
         add_context_menu_item("Convert to VASource", callable_mp(this, &ConversionContextMenuPlugin::convert_selected_to).bind("VASource"));
 
-    if (!is_va_source_relative)
+    if (all_not_va_source_relative)
         add_context_menu_item("Convert to VASourceRelative", callable_mp(this, &ConversionContextMenuPlugin::convert_selected_to).bind("VASourceRelative"));
 
-    // VASourceLeech must be a direct child of a VAEmitter to function (it
-    // leeches that parent's raytracing results instead of casting its own) -
-    // only offer the conversion when that's actually the node's parent.
-    bool parent_is_va_emitter = Object::cast_to<VAEmitter>(node->get_parent()) != nullptr;
-
-    if (!is_va_source_leech && parent_is_va_emitter)
+    if (all_not_va_source_leech_and_parent_is_emitter)
         add_context_menu_item("Convert to VASourceLeech", callable_mp(this, &ConversionContextMenuPlugin::convert_selected_to).bind("VASourceLeech"));
 }
 
 void ConversionContextMenuPlugin::convert_selected_to(const TypedArray<Node> &nodes, const String &target_class)
 {
-    if (nodes.size() != 1)
-        return;
-
-    convert_node(Object::cast_to<Node>(nodes[0]), target_class);
+    for (int i = 0; i < nodes.size(); i++)
+        convert_node(Object::cast_to<Node>(nodes[i]), target_class);
 }
 
 void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &target_class)

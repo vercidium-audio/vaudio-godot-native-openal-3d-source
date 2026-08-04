@@ -3,7 +3,6 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-// Shorthand for the Engine::get_singleton()->is_editor_hint() check repeated across the plugin.
 #define IS_EDITOR_HINT() (godot::Engine::get_singleton()->is_editor_hint())
 
 // Plugin-wide log tag, prepended by VA_LOG/VA_WARN/VA_ERROR so it doesn't need to be retyped at every call site.
@@ -21,6 +20,6 @@
 #define VA_WARN_NAMED(...) (godot::UtilityFunctions::push_warning(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__))
 #define VA_ERROR_NAMED(...) (godot::UtilityFunctions::push_error(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__))
 
-#define VA_LOG_NAMED_RESULT(result, ...) (godot::UtilityFunctions::print(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__, "Error code: ", VAResultToString(result)))
-#define VA_WARN_NAMED_RESULT(result, ...) (godot::UtilityFunctions::push_warning(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__, "Error code: ", VAResultToString(result)))
-#define VA_ERROR_NAMED_RESULT(result, ...) (godot::UtilityFunctions::push_error(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__, "Error code: ", VAResultToString(result)))
+#define VA_LOG_NAMED_RESULT(result, ...) (godot::UtilityFunctions::print(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__, " Error code: ", VAResultToString(result)))
+#define VA_WARN_NAMED_RESULT(result, ...) (godot::UtilityFunctions::push_warning(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__, " Error code: ", VAResultToString(result)))
+#define VA_ERROR_NAMED_RESULT(result, ...) (godot::UtilityFunctions::push_error(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__, " Error code: ", VAResultToString(result)))

@@ -260,7 +260,7 @@ bool VAWorld::register_custom_material(va_godot::VACustomMaterial *material)
 {
     // Get the lowest id not already claimed by other custom materials
     int type = FirstCustomMaterialId;
-    
+
     for (const auto &kvp : custom_materials)
         if (kvp.first >= type)
             type = kvp.first + 1;
@@ -280,40 +280,31 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
             break;
 
         case VA_ALREADY_EXISTS:
-            // Already added to this world - treat as a no-op, matching
-            // VAEmitter::add_target's handling of re-adding an existing target.
+            VA_ERROR_NAMED("Failed to register emitter '", emitter->get_name(), "' as it is already added to this VAWorld.");
             break;
 
         case VA_WORLD_CONFLICT:
-            VA_ERROR(
-                "VAWorld::register_emitter failed for '", emitter->get_name(),
-                "': emitter is already added to a different VAWorld.");
+            VA_ERROR_NAMED("Failed to register emitter '", emitter->get_name(), "' as it is already added to a different VAWorld.");
             break;
 
         default:
-            VA_ERROR(
-                "VAWorld::register_emitter failed for '", emitter->get_name(),
-                "' (VAResult=", VAResultToString(result), ")");
+            VA_ERROR_NAMED_RESULT(result, "Failed to register emitter '", emitter->get_name(), "'.");
             break;
     }
 
     if (is_main_listener)
     {
         if (!listener)
-        {
             listener = emitter;
-        }
         else
-        {
-            VA_WARN("Only one VAEmitter can be the main listener. Node: ", emitter->get_name());
-        }
+            VA_WARN_NAMED("This world can only have one VAListener node. Current listener: '", listener->get_name(), "' Second listener: '", emitter->get_name(), "'");
 
         return;
     }
 
     if (!listener)
     {
-        // TODO - yuck! In Unreal you can add anything in any order, and actors will initialise each other if they aren't ready yet
+        // TODO - yuck! In Unreal you can add anything in any order, and actors will initialise each other if they aren't ready yet (as they have direct field references to the world / targets / listener / etc). Is there a workaround for this?
         VA_WARN("VAEmitter nodes cannot be added before the main listener. Node: ", emitter->get_name());
 
         return;
@@ -332,14 +323,12 @@ void VAWorld::on_reverb_updated_trampoline(::VAWorld *world)
     }
 }
 
-// VAWorldReverb.cs's CopyReverb port for the shared (non-grouped-EAX)
-// fields - every field CopyReverb sets regardless of isGroupedEAX.
 static VAEAXReverbParams CopyReverbParams(const VAEAXReverb *eax)
 {
     VAEAXReverbParams params;
     params.density = 0.5f; // hardcoded per openal-soft issue #1229 (static when updated live), matching VAWorldReverb.cs's CopyReverb
     params.diffusion = eax->diffusion;
-    params.gain = 1.0f; // VAWorldReverb.cs's CopyReverb also hardcodes gain=1 rather than using the SDK's live value
+    params.gain = 1.0f; // gainLF and gainHF control the actual gain
     params.gainHF = eax->gainHF;
     params.gainLF = eax->gainLF;
     params.decayTime = eax->decayTime;
@@ -362,18 +351,11 @@ static VAEAXReverbParams CopyReverbParams(const VAEAXReverb *eax)
     return params;
 }
 
-// VAWorldReverb.cs's OnReverbUpdated/CopyReverb port. Refreshes the single
-// global listener slot from the listener's own raytraced EAX, then rebuilds
-// every grouped-EAX slot (VAWorldReverb.cs's groupedReverbEffects) from
-// vaWorldGetGroupedEAX, blending in the listener-relative pan/gain
-// (CopyReverb's "isGroupedEAX" branch) so each grouped zone's reverb fades
-// and pans according to the listener's position within it.
 void VAWorld::on_reverb_updated()
 {
+    // TODO - is it warned somewhere that we don't have a main listener?
     if (!listener || !listener->get_handle())
-    {
         return;
-    }
 
     VAEAXReverb *eax = vaEmitterGetEAX(listener->get_handle());
 
