@@ -39,6 +39,11 @@ ALSourceNode::ALSourceNode()
 
 ALSourceNode::~ALSourceNode()
 {
+    // A decode task holds a raw pointer to decoded_buffer via userdata (see
+    // ensure_stream_decode_started()) - must not let it run after this node
+    // (and decoded_buffer with it) is destroyed.
+    if (decode_task_id != WorkerThreadPool::INVALID_TASK_ID)
+        WorkerThreadPool::get_singleton()->wait_for_task_completion(decode_task_id);
 }
 
 void ALSourceNode::_ready()
@@ -49,7 +54,18 @@ void ALSourceNode::_ready()
     }
 }
 
-void ALSourceNode::ensure_stream_decoded()
+void ALSourceNode::_process(double delta)
+{
+    poll_decode_task();
+}
+
+void ALSourceNode::decode_stream_task(void *userdata)
+{
+    ALSourceNode *node = static_cast<ALSourceNode *>(userdata);
+    node->decode_succeeded = node->decoded_buffer.decode(node->decoding_stream);
+}
+
+bool ALSourceNode::ensure_stream_decode_started()
 {
     // AudioStreamRandomizer picks a sub-stream inside instantiate_playback(),
     // so it must be re-decoded on every play() to get a fresh random pick -
@@ -58,29 +74,58 @@ void ALSourceNode::ensure_stream_decoded()
     bool is_randomizer = Object::cast_to<AudioStreamRandomizer>(stream.ptr()) != nullptr;
 
     if (!is_randomizer && stream == decoded_stream)
-        return;
+        return true;
 
     if (stream.is_null())
     {
         decoded_stream = stream;
-        return;
+        return false;
     }
 
-    if (decoded_buffer.load(stream))
+    // A decode for this exact stream is already in flight - let it finish
+    // rather than starting a second, redundant one.
+    if (decode_task_id != WorkerThreadPool::INVALID_TASK_ID)
+        return true;
+
+    decoding_stream = stream;
+    decode_task_id = WorkerThreadPool::get_singleton()->add_native_task(
+        &ALSourceNode::decode_stream_task, this, false, "vaudio stream decode");
+
+    return true;
+}
+
+void ALSourceNode::poll_decode_task()
+{
+    if (decode_task_id == WorkerThreadPool::INVALID_TASK_ID)
+        return;
+
+    if (!WorkerThreadPool::get_singleton()->is_task_completed(decode_task_id))
+        return;
+
+    WorkerThreadPool::get_singleton()->wait_for_task_completion(decode_task_id);
+    decode_task_id = WorkerThreadPool::INVALID_TASK_ID;
+
+    if (decode_succeeded && decoded_buffer.upload())
     {
         buffer_handle = decoded_buffer.get_handle();
-        decoded_stream = stream;
+        decoded_stream = decoding_stream;
     }
     else
     {
         VA_ERROR_NAMED("failed to decode the stream");
     }
+
+    decoding_stream.unref();
+
+    if (play_requested)
+    {
+        play_requested = false;
+        start_playing();
+    }
 }
 
-bool ALSourceNode::play()
+bool ALSourceNode::start_playing()
 {
-    ensure_stream_decoded();
-
     // TODO - what's this about? Could buffer_handle be null? Why?
     if (buffer_handle == 0)
         return false;
@@ -108,8 +153,28 @@ bool ALSourceNode::play()
     return true;
 }
 
+bool ALSourceNode::play()
+{
+    bool is_randomizer = Object::cast_to<AudioStreamRandomizer>(stream.ptr()) != nullptr;
+    bool already_decoded = !is_randomizer && stream == decoded_stream && stream.is_valid();
+
+    if (!ensure_stream_decode_started())
+        return false;
+
+    if (already_decoded)
+        return start_playing();
+
+    // Stream isn't decoded yet (or is a randomizer re-rolling) - a decode
+    // task is now in flight (or already was); poll_decode_task() will start
+    // playback once it finishes.
+    play_requested = true;
+    return true;
+}
+
 void ALSourceNode::stop()
 {
+    play_requested = false;
+
     for (auto &source : sources)
         source->stop();
 }

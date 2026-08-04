@@ -94,6 +94,8 @@ bool VASourceAmbient::play()
 
 void VASourceAmbient::_process(double delta)
 {
+    ALSourceNodeRelative::_process(delta);
+
     if (IS_EDITOR_HINT())
     {
         return;

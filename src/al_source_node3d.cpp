@@ -32,6 +32,8 @@ void ALSourceNode3D::configure_source(ALSource &source)
 
 void ALSourceNode3D::_process(double delta)
 {
+    ALSourceNode::_process(delta);
+
     // Matches ALSource3D.cs's _Process: keeps every live source's OpenAL
     // position in sync with this node's current global position every frame
     // - play() only sets it once, at the moment the source starts, so

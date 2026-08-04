@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/audio_stream.hpp>
 #include <godot_cpp/classes/audio_stream_randomizer.hpp>
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/classes/worker_thread_pool.hpp>
 
 #include "openal/al_buffer.h"
 #include "openal/al_filter.h"
@@ -33,22 +34,51 @@ protected:
     // registry yet, so the buffer handle is supplied directly instead.
     ALuint buffer_handle = 0;
 
-    // TODO - lazy decode causes game to hang when ambience first plays (20 minute ogg is expensive to load). Can we decode on background threads and play when it's ready, rather than hanging the main thread?
     // Inspector-facing sound to play - decoded into `decoded_buffer` (and
     // buffer_handle pointed at it) lazily on first play(), rather than
     // eagerly in a setter, since a setter can run before the OpenAL device is
     // initialized (e.g. deserializing a .tscn before _enter_tree/VAWorld
     // exist). Re-decoded if the stream is changed after the first play().
+    //
+    // Decoding a long stream (e.g. a 20 minute ambience ogg) is expensive, so
+    // it runs on a WorkerThreadPool task (decode_task_id) rather than
+    // blocking play()'s caller - ALBuffer::decode() only pulls PCM (safe off
+    // the main thread), then _process() notices the task finished and calls
+    // ALBuffer::upload() (the actual alGenBuffers/alBufferData call) on the
+    // main thread, starting playback afterwards if play() was requested
+    // while the decode was still in flight.
     Ref<AudioStream> stream;
     ALBuffer decoded_buffer;
     Ref<AudioStream> decoded_stream;
 
-    // Ensures decoded_buffer matches `stream`, uploading it and pointing
-    // buffer_handle at it if needed. No-op once already decoded for the
-    // current `stream`, except when `stream` is an AudioStreamRandomizer -
-    // that picks a new sub-stream on every call, matching
-    // AudioStreamPlayer3D's behaviour of rolling a new random pick each play().
-    void ensure_stream_decoded();
+    WorkerThreadPool::TaskID decode_task_id = WorkerThreadPool::INVALID_TASK_ID;
+    Ref<AudioStream> decoding_stream;
+    bool decode_succeeded = false;
+    bool play_requested = false;
+
+    // Starts a background decode of `stream` if one isn't already in flight
+    // for it. Returns true if a decode is in flight or `stream` is already
+    // decoded (i.e. play() should proceed), false if `stream` is null or
+    // decoding failed to even start.
+    bool ensure_stream_decode_started();
+
+    // WorkerThreadPool::add_native_task entry point - runs on a worker
+    // thread, only touches decoded_buffer.decode() (pure CPU, no OpenAL
+    // calls) and decode_succeeded. Both are only read/written on the main
+    // thread after is_task_completed() reports true (see
+    // poll_decode_task()), so there's no concurrent access to race.
+    static void decode_stream_task(void *userdata);
+
+    // Polled every frame from _process(): once decode_task_id completes,
+    // uploads the decoded PCM to OpenAL and, if play() was called while the
+    // decode was in flight, starts playback.
+    void poll_decode_task();
+
+    // Actually creates and starts an ALSource against the current
+    // buffer_handle - the part of play() that used to run right after a
+    // (blocking) decode, now also called from poll_decode_task() once a
+    // background decode finishes.
+    bool start_playing();
 
     float gain = 1.0f;
     float pitch = 1.0f;
@@ -68,6 +98,10 @@ public:
     // (its play() defers to raytracing completing, so the call here just arms
     // it the same way a manual play() call would).
     void _ready() override;
+
+    // Polls decode_task_id for completion - see poll_decode_task(). Subclasses
+    // overriding _process (e.g. ALSourceNode3D) must call this base version.
+    void _process(double delta) override;
 
     // Low pass filter,  lazily created on first UpdateFilter/Play call
     ALFilter filter;

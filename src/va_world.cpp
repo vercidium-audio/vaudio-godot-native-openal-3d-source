@@ -163,34 +163,24 @@ VAWorld::~VAWorld()
 {
     if (world)
     {
-        // vaWorldWait drains any in-flight raytracing cycle - only safe past
-        // this point to destroy emitter handles queued by
-        // VAEmitter::on_emitter_removed (see defer_emitter_destroy's doc
-        // comment / the use-after-free this avoids).
+        // Will block the main thread if the user hasn't set pendingShutdown=true first
         vaWorldWait(world);
 
         for (::VAEmitter *emitter : pending_emitter_destroys)
         {
             VAResult result = vaEmitterDestroy(emitter);
 
+            // Should never fail as we've called vaWorldWait() above
             if (result != VA_SUCCESS)
-            {
-                // Should never trigger: vaWorldWait above already drained any
-                // in-flight raytracing cycle, so this emitter can't still be
-                // in use.
-                VA_ERROR(
-                    "VAWorld::~VAWorld failed to destroy a pending emitter (VAResult=", VAResultToString(result), ")");
-            }
+                VA_ERROR("Failed to destroy a pending emitter (VAResult=", VAResultToString(result), ")");
         }
         pending_emitter_destroys.clear();
 
         VAResult result = vaWorldDestroy(world);
 
+        // Should never fail as we've called vaWorldWait() above
         if (result != VA_SUCCESS)
-        {
-            VA_ERROR(
-                "VAWorld::~VAWorld failed to destroy the world (VAResult=", VAResultToString(result), ")");
-        }
+            VA_ERROR("Failed to destroy the world (VAResult=", VAResultToString(result), ")");
 
         world = nullptr;
     }
@@ -200,64 +190,46 @@ void VAWorld::_ready()
 {
     if (IS_EDITOR_HINT())
     {
-        // world stays null in the editor (see the constructor), so
-        // init_scene's primitive-building walk can't run here - but still
-        // scan for unknown vercidium_audio_material values, so a typo shows
-        // up while editing instead of only once the game runs.
+        // Scan for unknown vercidium_audio_material values, so warnings appear while editing
         Node *root = get_tree() ? get_tree()->get_root() : nullptr;
+
+        // TODO - why could this be null?
         if (root)
-        {
             validate_materials_in_editor(root);
-        }
 
         return;
     }
 
-    // Wait a frame for the scene to be fully loaded, matching
-    // vaudio-godot-openal's CallDeferred(nameof(InitializeScene)).
+    // Wait a frame to ensure all children/siblings have been added to the scene
     callable_mp(this, &VAWorld::init_scene).call_deferred();
 }
 
-// VAWorldGodot.cs's _ExitTree port: unsubscribe from the SceneTree signals
-// connected in init_scene() and sweep vercidium_audio_primitive/
-// vercidium_audio_material metadata off the whole scene, so a VAWorld that's
-// removed/reloaded mid-session (scene switch, editor live-reload) doesn't
-// leave stale primitive refs or dangling signal connections behind. This was
-// deliberately not ported alongside init_scene() originally - see
-// native_godot_plan.md's "Add live scene-tree tracking" checklist item.
 void VAWorld::_exit_tree()
 {
     if (IS_EDITOR_HINT())
-    {
         return;
-    }
 
     if (get_tree())
     {
+        // Disconnect callbacks
         if (get_tree()->is_connected("node_added", callable_mp(this, &VAWorld::on_node_added)))
-        {
             get_tree()->disconnect("node_added", callable_mp(this, &VAWorld::on_node_added));
-        }
 
         if (get_tree()->is_connected("node_removed", callable_mp(this, &VAWorld::on_node_removed)))
-        {
             get_tree()->disconnect("node_removed", callable_mp(this, &VAWorld::on_node_removed));
-        }
 
+        // Unregister all primitives
         Node *scene_root = get_tree()->get_current_scene();
+        
+        // TODO - why could this be null?
         if (scene_root)
-        {
             remove_primitive(scene_root, true);
-        }
     }
 }
 
 void VAWorld::_process(double delta)
 {
-    // Sync the AL listener from the scene's listener VAEmitter before
-    // updating the world, matching VAWorldGodot.cs's _Process order (sync AL
-    // listener, then world.Update()). No-op until a VAEmitter with
-    // is_main_listener=true has entered the tree.
+    // Sync the AL listener to the main listener
     if (listener)
     {
         ALManager *manager = ALManager::get_singleton();
@@ -279,27 +251,19 @@ void VAWorld::_process(double delta)
 
         if (result != VA_SUCCESS && result != VA_STILL_RUNNING)
         {
-            VA_ERROR(
-                "VAWorld::_process failed to update the world (VAResult=", VAResultToString(result), ")");
+            VA_ERROR_NAMED_RESULT(result, "Update failed");
         }
     }
 }
 
 bool VAWorld::register_custom_material(va_godot::VACustomMaterial *material)
 {
-    // Auto-allocate the lowest id >= FirstCustomMaterialId not already claimed
-    // by another custom material in this world - matches vaudio-unreal's
-    // UVAudioCustomMaterialAsset::GetMaterialId, so users never type/manage
-    // numeric material ids themselves (see va_custom_material.h's material_type doc
-    // comment).
+    // Get the lowest id not already claimed by other custom materials
     int type = FirstCustomMaterialId;
+    
     for (const auto &kvp : custom_materials)
-    {
         if (kvp.first >= type)
-        {
             type = kvp.first + 1;
-        }
-    }
 
     material->set_material_type(type);
     custom_materials[type] = material;

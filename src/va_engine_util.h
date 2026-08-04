@@ -20,3 +20,7 @@
 #define VA_LOG_NAMED(...) (godot::UtilityFunctions::print(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__))
 #define VA_WARN_NAMED(...) (godot::UtilityFunctions::push_warning(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__))
 #define VA_ERROR_NAMED(...) (godot::UtilityFunctions::push_error(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__))
+
+#define VA_LOG_NAMED_RESULT(result, ...) (godot::UtilityFunctions::print(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__, "Error code: ", VAResultToString(result)))
+#define VA_WARN_NAMED_RESULT(result, ...) (godot::UtilityFunctions::push_warning(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__, "Error code: ", VAResultToString(result)))
+#define VA_ERROR_NAMED_RESULT(result, ...) (godot::UtilityFunctions::push_error(VA_LOG_TAG, get_name(), ": ", __VA_ARGS__, "Error code: ", VAResultToString(result)))
