@@ -19,6 +19,8 @@ namespace va_godot
 
 void VACustomMaterial::_bind_methods()
 {
+    ClassDB::bind_method(D_METHOD("get_material_type"), &VACustomMaterial::get_material_type);
+
     ClassDB::bind_method(D_METHOD("get_material_name"), &VACustomMaterial::get_material_name);
     ClassDB::bind_method(D_METHOD("set_material_name", "value"), &VACustomMaterial::set_material_name);
     ADD_PROPERTY(PropertyInfo(Variant::STRING, "material_name"), "set_material_name", "get_material_name");

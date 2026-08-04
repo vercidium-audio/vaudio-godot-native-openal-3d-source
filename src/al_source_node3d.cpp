@@ -34,6 +34,10 @@ void ALSourceNode3D::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_reference_distance"), &ALSourceNode3D::get_reference_distance);
     ClassDB::bind_method(D_METHOD("set_reference_distance", "value"), &ALSourceNode3D::set_reference_distance);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reference_distance", PROPERTY_HINT_RANGE, "0.0,1000.0,0.1,or_greater"), "set_reference_distance", "get_reference_distance");
+
+    ClassDB::bind_method(D_METHOD("play"), &ALSourceNode3D::play);
+    ClassDB::bind_method(D_METHOD("stop"), &ALSourceNode3D::stop);
+    ClassDB::bind_method(D_METHOD("is_playing"), &ALSourceNode3D::is_playing);
 }
 
 ALSourceNode3D::ALSourceNode3D()
