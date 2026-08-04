@@ -1,6 +1,7 @@
 #include "va_world.h"
 
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -10,6 +11,8 @@
 #include "va_conversions.h"
 #include "va_emitter.h"
 #include "va_custom_material.h"
+
+#include <algorithm>
 
 namespace va_godot
 {
@@ -145,6 +148,10 @@ VAWorld::VAWorld()
     set_reference_frequency_lf(reference_frequency_lf);
     set_reference_frequency_hf(reference_frequency_hf);
     set_emitters_outside_the_world_are_muffled(emitters_outside_the_world_are_muffled);
+
+    // Default to processor count - 1 (leaving a core free for the main/render
+    // thread) rather than a fixed guess - matches vaWorld's own internal default.
+    maximum_concurrency_level = std::max(1, OS::get_singleton()->get_processor_count() - 1);
     set_maximum_concurrency_level(maximum_concurrency_level);
     set_work_item_count(work_item_count);
     set_rendering_enabled(rendering_enabled);

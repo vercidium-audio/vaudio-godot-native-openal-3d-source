@@ -339,7 +339,7 @@ private:
     float reference_frequency_lf = 300.0f;
     float reference_frequency_hf = 4000.0f;
     bool emitters_outside_the_world_are_muffled = true;
-    int maximum_concurrency_level = 4;
+    int maximum_concurrency_level = 4; // overwritten in VAWorld::VAWorld() with processor count - 1
     int work_item_count = 128;
 };
 
