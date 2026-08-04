@@ -1,22 +1,15 @@
 #include "va_world.h"
 
-#include <godot_cpp/classes/audio_stream_wav.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include "al_source_node3d.h"
-#include "openal/al_buffer.h"
 #include "openal/al_manager.h"
-#include "openal/al_source.h"
 #include "va_conversions.h"
 #include "va_emitter.h"
-#include "va_material.h"
-#include "va_source.h"
-#include "va_source_ambient.h"
-#include "va_source_relative.h"
+#include "va_custom_material.h"
 
 namespace va_godot
 {
@@ -111,192 +104,15 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_grouped_eax_gain_hf", "index"), &VAWorld::get_grouped_eax_gain_hf);
     ClassDB::bind_method(D_METHOD("get_grouped_eax_decay_time", "index"), &VAWorld::get_grouped_eax_decay_time);
 
+    // Read-only ambient filter stats, same no-ADD_PROPERTY rationale as the
+    // timing stats above.
+    ClassDB::bind_method(D_METHOD("get_has_ambient_filter"), &VAWorld::get_has_ambient_filter);
+    ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_lf"), &VAWorld::get_ambient_filter_gain_lf);
+    ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_hf"), &VAWorld::get_ambient_filter_gain_hf);
+
     // Exports world settings/materials/primitives/emitters to a binary file
     // (vaWorldExport) - callable from GDScript, e.g. wired to a UI button.
     ClassDB::bind_method(D_METHOD("export_to_file", "file_path"), &VAWorld::export_to_file);
-}
-
-// Sanity check for architectural decision #7 (native_godot_plan.md): with
-// VACoordinateSystemGodot set, a listener facing forward (pitch=0, yaw=0) -
-// Godot's -Z - should see a world point directly in front of it (-Z) come
-// back as a relative vector still pointing down -Z, with no axis remapping.
-static void SanityCheckCoordinateSystem(::VAWorld *world)
-{
-    VAVector pointInFront = vaVectorCreate(0.0f, 0.0f, -1.0f);
-    VAVector relative = vaWorldCalculateListenerRelativePan(world, pointInFront, 0.0f, 0.0f);
-
-    bool asExpected = relative.x > -0.001f && relative.x < 0.001f &&
-                       relative.y > -0.001f && relative.y < 0.001f &&
-                       relative.z < -0.999f;
-
-    UtilityFunctions::print(
-        "VAWorld coordinate system sanity check: point in front (0,0,-1) -> relative (",
-        relative.x, ", ", relative.y, ", ", relative.z, ") - ",
-        asExpected ? "OK" : "UNEXPECTED");
-}
-
-// Sanity check for the OpenAL buffer upload + per-source playback layers
-// (native_godot_plan.md): decode project/audio/test.wav through Godot's own
-// AudioStreamWAV pipeline, upload it as an OpenAL buffer, then create a
-// source, attach the buffer, and play it - proving the decode -> mix_audio ->
-// alBufferData -> alGenSources/alSourcePlay round trip works end to end. Not
-// conceptually part of VAWorld's own job (raytracing, not audio playback) -
-// it's called from VAWorld::_ready()'s already-deferred callback purely
-// because that's the first safe point in this codebase where the full engine
-// API (AudioServer etc.) is guaranteed ready; AudioServer isn't registered
-// yet at GDExtension module-init time (confirmed by a crash when this was
-// first tried there). Buffer/source upload has no owning node yet - VASource
-// itself is still an empty stub, wiring it up is a separate, not-yet-done
-// checklist item - so this has nowhere better to live for now. Kept in place
-// permanently once added, same rationale as the coordinate-system check
-// above - cheap and keeps proving the decode/playback path works.
-static void SanityCheckBufferUpload()
-{
-    Ref<AudioStreamWAV> stream = AudioStreamWAV::load_from_file("res://audio/test.wav");
-
-    if (stream.is_null())
-    {
-        UtilityFunctions::push_warning("[vaudio-godot-native-openal] OpenAL buffer sanity check skipped - res://audio/test.wav not found");
-        return;
-    }
-
-    static ALBuffer buffer;
-    bool ok = buffer.load(stream);
-
-    UtilityFunctions::print(
-        "[vaudio-godot-native-openal] OpenAL buffer sanity check: ",
-        ok ? "OK" : "FAILED",
-        " - handle=", (int)buffer.get_handle(),
-        " sample_rate=", buffer.get_sample_rate(),
-        " duration=", buffer.get_duration_seconds(), "s");
-
-    if (!ok)
-    {
-        return;
-    }
-
-    static ALSource source;
-    bool source_ok = source.create();
-
-    if (source_ok)
-    {
-        source.set_buffer(buffer.get_handle());
-        source.set_gain(0.0f); // silent - this is a headless/editor sanity check, not audible playback
-        source.set_position(Vector3(0.0f, 0.0f, 0.0f));
-        source.play();
-    }
-
-    UtilityFunctions::print(
-        "[vaudio-godot-native-openal] OpenAL source playback sanity check: ",
-        source_ok ? "OK" : "FAILED",
-        " - handle=", (int)source.get_handle(),
-        " finished=", source.is_finished());
-}
-
-// Sanity check for VAEmitter/VASource's per-frame result application
-// (native_godot_plan.md): finds the scene's VASource (test_scene.tscn now
-// has a "Listener" VAEmitter with is_main_listener=true and a VASource
-// sibling), wires the already-uploaded test.wav buffer into it, and plays it
-// silently - proving the full chain (VAWorld::register_emitter listener/
-// target wiring -> VAEmitter/VASource raytracing callbacks ->
-// ALSourceNode3D::play/update_filter -> real ALSource/ALFilter/
-// ALReverbEffect calls) round-trips without error. Deliberately not folded
-// into SanityCheckBufferUpload above since it depends on the scene tree
-// (VASource must already be in the tree), unlike the raw OpenAL-only checks
-// there.
-static void SanityCheckSourceNode(VAWorld *world)
-{
-    Node *scene_root = world->get_tree()->get_current_scene();
-    if (!scene_root)
-    {
-        return;
-    }
-
-    VASource *va_source = nullptr;
-    TypedArray<Node> children = scene_root->get_children();
-    for (int i = 0; i < children.size(); i++)
-    {
-        if (VASource *candidate = Object::cast_to<VASource>(children[i]))
-        {
-            va_source = candidate;
-            break;
-        }
-    }
-
-    if (!va_source)
-    {
-        return;
-    }
-
-    Ref<AudioStreamWAV> stream = AudioStreamWAV::load_from_file("res://audio/test.wav");
-    if (stream.is_null())
-    {
-        return;
-    }
-
-    static ALBuffer buffer;
-    if (!buffer.load(stream))
-    {
-        UtilityFunctions::print("[vaudio-godot-native-openal] VASource sanity check: FAILED - buffer upload failed");
-        return;
-    }
-
-    va_source->set_buffer_handle(buffer.get_handle());
-    va_source->set_gain(0.0f); // silent - this is a headless/editor sanity check, not audible playback
-
-    UtilityFunctions::print("[vaudio-godot-native-openal] VASource sanity check: buffer wired, waiting for raytracing to trigger playback");
-}
-
-// Sanity check for VASourceRelative/VASourceAmbient (native_godot_plan.md
-// "Implement VASourceRelative and VASourceAmbient"): finds each in the scene
-// (test_scene.tscn has one of each as a sibling of VAWorld), wires the same
-// test.wav buffer in silently, and calls play() once - VASourceRelative
-// should succeed immediately (it only needs a VAWorld, not raytracing);
-// VASourceAmbient is expected to return false here (no ambient filter yet,
-// same "waiting" gate as VASource's raytracing wait) and instead pick itself
-// up via its own _process once the listener produces a result - both are
-// printed either way so a run's log makes the actual outcome unambiguous.
-static void SanityCheckRelativeAndAmbientSources(VAWorld *world)
-{
-    Node *scene_root = world->get_tree()->get_current_scene();
-    if (!scene_root)
-    {
-        return;
-    }
-
-    Ref<AudioStreamWAV> stream = AudioStreamWAV::load_from_file("res://audio/test.wav");
-    if (stream.is_null())
-    {
-        return;
-    }
-
-    static ALBuffer buffer;
-    if (!buffer.is_valid() && !buffer.load(stream))
-    {
-        UtilityFunctions::print("[vaudio-godot-native-openal] VASourceRelative/VASourceAmbient sanity check: FAILED - buffer upload failed");
-        return;
-    }
-
-    TypedArray<Node> children = scene_root->get_children();
-
-    for (int i = 0; i < children.size(); i++)
-    {
-        if (VASourceRelative *relative_source = Object::cast_to<VASourceRelative>(children[i]))
-        {
-            relative_source->set_buffer_handle(buffer.get_handle());
-            relative_source->set_gain(0.0f); // silent - this is a headless/editor sanity check, not audible playback
-
-            bool ok = relative_source->play();
-            UtilityFunctions::print("[vaudio-godot-native-openal] VASourceRelative sanity check: ", ok ? "OK" : "FAILED");
-        }
-        else if (VASourceAmbient *ambient_source = Object::cast_to<VASourceAmbient>(children[i]))
-        {
-            ambient_source->set_buffer_handle(buffer.get_handle());
-            ambient_source->set_gain(0.0f); // silent - this is a headless/editor sanity check, not audible playback
-
-            UtilityFunctions::print("[vaudio-godot-native-openal] VASourceAmbient sanity check: buffer wired, waiting for listener ambient filter to trigger playback");
-        }
-    }
 }
 
 VAWorld::VAWorld()
@@ -312,7 +128,6 @@ VAWorld::VAWorld()
 
     world = vaWorldCreate();
     vaWorldSetCoordinateSystem(world, VACoordinateSystemGodot);
-    SanityCheckCoordinateSystem(world);
 
     vaWorldSetUserData(world, this);
     vaWorldSetOnReverbUpdatedCallback(world, &VAWorld::on_reverb_updated_trampoline);
@@ -343,9 +158,7 @@ VAWorld::VAWorld()
     // ALManager is initialized at GDExtension module-init time (before any
     // node constructor runs - see register_types.cpp), so it's already safe
     // to create OpenAL objects here, unlike Godot engine singletons
-    // (AudioServer etc.), which aren't ready until VAWorld::_ready()'s
-    // deferred callback (see the module-init-timing gotcha documented on
-    // SanityCheckBufferUpload below).
+    // (AudioServer etc.), which aren't ready until VAWorld::_ready().
     listener_reverb_effect.create();
 
     set_process(true);
@@ -382,16 +195,6 @@ void VAWorld::_ready()
     // Wait a frame for the scene to be fully loaded, matching
     // vaudio-godot-openal's CallDeferred(nameof(InitializeScene)).
     callable_mp(this, &VAWorld::init_scene).call_deferred();
-
-    SanityCheckBufferUpload();
-
-    // VASource needs to already be in the tree (init_scene's scan isn't
-    // relevant here, but the VASource *node* itself must have run its own
-    // _enter_tree first) - deferring one more frame, same pattern as
-    // init_scene above, keeps this robust to sibling node ready-order.
-    callable_mp_static(&SanityCheckSourceNode).bind(this).call_deferred();
-
-    callable_mp_static(&SanityCheckRelativeAndAmbientSources).bind(this).call_deferred();
 }
 
 // VAWorldGodot.cs's _ExitTree port: unsubscribe from the SceneTree signals
@@ -455,12 +258,12 @@ void VAWorld::_process(double delta)
     }
 }
 
-bool VAWorld::register_custom_material(va_godot::VAMaterial *material)
+bool VAWorld::register_custom_material(va_godot::VACustomMaterial *material)
 {
     // Auto-allocate the lowest id >= FirstCustomMaterialId not already claimed
     // by another custom material in this world - matches vaudio-unreal's
     // UVAudioCustomMaterialAsset::GetMaterialId, so users never type/manage
-    // numeric material ids themselves (see va_material.h's material_type doc
+    // numeric material ids themselves (see va_custom_material.h's material_type doc
     // comment).
     int type = FirstCustomMaterialId;
     for (const auto &kvp : custom_materials)

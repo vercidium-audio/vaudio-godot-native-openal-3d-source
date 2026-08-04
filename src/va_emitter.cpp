@@ -14,7 +14,7 @@ namespace va_godot
 {
 
 // Finds the (singleton) VAWorld under the current scene root's children -
-// same helper as VAMaterial's find_va_world (NodeExtensions.cs's
+// same helper as VACustomMaterial's find_va_world (NodeExtensions.cs's
 // GetVAWorldParent port). Duplicated locally rather than shared since it's a
 // two-line static helper and each caller only needs it during _enter_tree.
 static VAWorld *find_va_world(Node *node)
@@ -47,6 +47,7 @@ void VAEmitter::_bind_methods()
     // GDScript like methods, e.g. emitter.get_va_position()).
     ClassDB::bind_method(D_METHOD("get_va_position"), &VAEmitter::get_va_position);
     ClassDB::bind_method(D_METHOD("get_within_world_bounds"), &VAEmitter::get_within_world_bounds);
+    ClassDB::bind_method(D_METHOD("is_raytraced"), &VAEmitter::is_raytraced);
 
     // Direct port of vaudio-godot-openal's VAEmitterProperties.cs groups
     // (Reverb/Muffling/Ambience/Visualisation/Advanced). Debug Rendering
@@ -236,6 +237,7 @@ void VAEmitter::create_emitter()
 {
     emitter = vaEmitterCreate();
     vaEmitterSetUserData(emitter, this);
+    vaEmitterSetName(emitter, String(get_name()).utf8().get_data());
     vaEmitterSetPosition(emitter, ToVAudio(get_global_position()));
 
     vaEmitterSetOnRaytracingCompleteCallback(emitter, &VAEmitter::on_raytracing_complete_trampoline);

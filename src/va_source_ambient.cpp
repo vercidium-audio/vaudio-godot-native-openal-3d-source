@@ -8,7 +8,7 @@
 #include "va_world.h"
 
 // Finds the (singleton) VAWorld under the current scene root's children -
-// same helper as VAMaterial/VAEmitter/VASource/VASourceRelative's
+// same helper as VACustomMaterial/VAEmitter/VASource/VASourceRelative's
 // find_va_world.
 static va_godot::VAWorld *find_va_world(Node *node)
 {
@@ -50,6 +50,20 @@ void VASourceAmbient::_enter_tree()
     }
 
     va_world = find_va_world(this);
+}
+
+void VASourceAmbient::_ready()
+{
+    if (Engine::get_singleton()->is_editor_hint())
+    {
+        return;
+    }
+
+    // Matches VASourceRelative::_ready(): ambient sources aren't raytraced
+    // relative to any specific source location (they just replay the
+    // listener's ambient muffling gain), so max_distance/reference_distance
+    // attenuation would be misleading - force relative/non-spatialised.
+    set_relative(true);
 }
 
 bool VASourceAmbient::play()

@@ -9,7 +9,7 @@
 #include "va_world.h"
 
 // Finds the (singleton) VAWorld under the current scene root's children -
-// same helper as VAMaterial/VAEmitter's find_va_world.
+// same helper as VACustomMaterial/VAEmitter's find_va_world.
 static va_godot::VAWorld *find_va_world(Node *node)
 {
     Node *scene_root = node->get_tree()->get_current_scene();
@@ -40,6 +40,7 @@ void VASource::_bind_methods()
     // VAWorld's timing stats (called directly from GDScript like methods).
     ClassDB::bind_method(D_METHOD("get_muffling_gain_lf"), &VASource::get_muffling_gain_lf);
     ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VASource::get_muffling_gain_hf);
+    ClassDB::bind_method(D_METHOD("is_raytraced"), &VASource::is_raytraced);
 
     // Direct port of vaudio-godot-openal's VASourceProperties.cs groups
     // (Reverb/Muffling/Ambience/Visualisation/Advanced) - see va_source.h for

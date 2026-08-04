@@ -26,7 +26,7 @@ class VAWorld;
 // are deliberately NOT ported here - the SDK's own defaults are used - and
 // are tracked as a separate future checklist item in native_godot_plan.md.
 //
-// Name collision note: same as VAWorld/VAMaterial, the vaudio C SDK's
+// Name collision note: same as VAWorld/VACustomMaterial, the vaudio C SDK's
 // opaque handle type is also called "VAEmitter", in the global namespace.
 // This Godot node class lives in namespace va_godot instead - see the
 // collision note on VAWorld (va_world.h) for why a namespace was used
@@ -51,15 +51,15 @@ private:
     // Debug Rendering colors (TrailColor/ReverbColor/OcclusionColor/
     // PermeationColor/AmbientPermeationColor) are NOT ported - this C SDK
     // version has no vaEmitterSet*Color API to back them (same rationale as
-    // VAMaterial's DebugColor being skipped).
+    // VACustomMaterial's DebugColor being skipped).
     int reverb_ray_count = 0;
     int reverb_bounce_count = 0;
     float reverb_energy_cap = 0.2f;
     float max_volume = 1.0f;
     int max_echogram_time = 5000;
     int echogram_granularity = 200;
-    bool affects_grouped_eax = true;
-    bool has_relative_reverb = true;
+    bool affects_grouped_eax = false;
+    bool has_relative_reverb = false;
     float relative_reverb_inner_threshold = 0.6f;
     float relative_reverb_outer_threshold = 0.8f;
 

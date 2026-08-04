@@ -58,7 +58,7 @@ VADefaultMaterial::~VADefaultMaterial()
 }
 
 // Finds the (singleton) VAWorld under the current scene root's children -
-// same lookup VAMaterial::_enter_tree uses.
+// same lookup VACustomMaterial::_enter_tree uses.
 static va_godot::VAWorld *find_va_world(Node *node)
 {
     Node *scene_root = node->get_tree()->get_current_scene();
@@ -93,7 +93,7 @@ void VADefaultMaterial::_enter_tree()
     }
 
     // Built-in materials (ids 0-22) already exist in every ::VAWorld - only
-    // the properties are overridden here, unlike VAMaterial which has to
+    // the properties are overridden here, unlike VACustomMaterial which has to
     // vaWorldCreateMaterial its custom id first.
     ::VAWorld *world = va_world->get_handle();
     vaWorldSetMaterialAbsorptionLF(world, material_name, absorption_lf);

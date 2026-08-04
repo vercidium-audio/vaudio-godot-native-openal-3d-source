@@ -25,7 +25,7 @@ using namespace godot;
 namespace va_godot
 {
 
-class VAMaterial;
+class VACustomMaterial;
 class VAEmitter;
 
 // Minimal VAWorld stub: proves the vaWorldCreate/vaWorldUpdate/vaWorldDestroy
@@ -47,9 +47,9 @@ private:
     ::VAWorld *world = nullptr;
 
     // VAWorldMaterials.cs's customMaterials dictionary port - keyed by
-    // MaterialType id (>= 1000), populated by VAMaterial::_enter_tree via
+    // MaterialType id (>= 1000), populated by VACustomMaterial::_enter_tree via
     // register_custom_material.
-    std::unordered_map<int, va_godot::VAMaterial *> custom_materials;
+    std::unordered_map<int, va_godot::VACustomMaterial *> custom_materials;
 
     // VAWorld.cs's listener field port - the one VAEmitter with
     // is_main_listener=true, set by register_emitter. Every other emitter is
@@ -111,7 +111,7 @@ private:
     void on_node_removed(Node *node);
 
     // VAWorldMaterials.cs port: metadata-key based lookup, matching either a
-    // registered custom VAMaterial node's MaterialName or a built-in name.
+    // registered custom VACustomMaterial node's MaterialName or a built-in name.
     VAMaterialType get_material(Node *node);
 
     // VAWorldPrimitives.cs port.
@@ -144,10 +144,10 @@ public:
         return world;
     }
 
-    // Called from VAMaterial::_enter_tree. Returns false (and logs a
-    // conflicting-id error) if another VAMaterial already claimed this
+    // Called from VACustomMaterial::_enter_tree. Returns false (and logs a
+    // conflicting-id error) if another VACustomMaterial already claimed this
     // MaterialType id - matches VAWorldMaterials.cs's duplicate check.
-    bool register_custom_material(va_godot::VAMaterial *material);
+    bool register_custom_material(va_godot::VACustomMaterial *material);
 
     // Called from VAEmitter::_enter_tree (VAWorld.cs's CreateEmitter
     // listener-wiring port): if is_main_listener and no listener is set yet,
@@ -358,7 +358,7 @@ private:
     Vector3 position = Vector3(-100, 0, -100);
     Vector3 size = Vector3(200, 100, 200);
     float epsilon = 0.01f;
-    bool world_is_indoors = true;
+    bool world_is_indoors = false;
     int maximum_grouped_eax_count = 3;
     float meters_per_unit = 1.0f;
     float speed_of_sound = 343.0f;

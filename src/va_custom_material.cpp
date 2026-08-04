@@ -1,4 +1,4 @@
-#include "va_material.h"
+#include "va_custom_material.h"
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
@@ -7,7 +7,7 @@
 
 #include "va_world.h"
 
-// Port of vaudio-godot-openal's VAMaterial.cs. Only the material-property
+// Port of vaudio-godot-openal's VACustomMaterial.cs. Only the material-property
 // side is ported here - DebugColor/GetDebugColor/_GetConfigurationWarnings/
 // _ValidateProperty are editor-only visualisation niceties with no SDK-facing
 // behaviour (and vaWorldSetMaterialColor doesn't exist in this C SDK version)
@@ -16,46 +16,46 @@
 namespace va_godot
 {
 
-void VAMaterial::_bind_methods()
+void VACustomMaterial::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("get_material_name"), &VAMaterial::get_material_name);
-    ClassDB::bind_method(D_METHOD("set_material_name", "value"), &VAMaterial::set_material_name);
+    ClassDB::bind_method(D_METHOD("get_material_name"), &VACustomMaterial::get_material_name);
+    ClassDB::bind_method(D_METHOD("set_material_name", "value"), &VACustomMaterial::set_material_name);
     ADD_PROPERTY(PropertyInfo(Variant::STRING, "material_name"), "set_material_name", "get_material_name");
 
-    ClassDB::bind_method(D_METHOD("get_absorption_lf"), &VAMaterial::get_absorption_lf);
-    ClassDB::bind_method(D_METHOD("set_absorption_lf", "value"), &VAMaterial::set_absorption_lf);
+    ClassDB::bind_method(D_METHOD("get_absorption_lf"), &VACustomMaterial::get_absorption_lf);
+    ClassDB::bind_method(D_METHOD("set_absorption_lf", "value"), &VACustomMaterial::set_absorption_lf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "absorption_lf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_absorption_lf", "get_absorption_lf");
 
-    ClassDB::bind_method(D_METHOD("get_absorption_hf"), &VAMaterial::get_absorption_hf);
-    ClassDB::bind_method(D_METHOD("set_absorption_hf", "value"), &VAMaterial::set_absorption_hf);
+    ClassDB::bind_method(D_METHOD("get_absorption_hf"), &VACustomMaterial::get_absorption_hf);
+    ClassDB::bind_method(D_METHOD("set_absorption_hf", "value"), &VACustomMaterial::set_absorption_hf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "absorption_hf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_absorption_hf", "get_absorption_hf");
 
-    ClassDB::bind_method(D_METHOD("get_scattering"), &VAMaterial::get_scattering);
-    ClassDB::bind_method(D_METHOD("set_scattering", "value"), &VAMaterial::set_scattering);
+    ClassDB::bind_method(D_METHOD("get_scattering"), &VACustomMaterial::get_scattering);
+    ClassDB::bind_method(D_METHOD("set_scattering", "value"), &VACustomMaterial::set_scattering);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "scattering", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_scattering", "get_scattering");
 
-    ClassDB::bind_method(D_METHOD("get_transmission_lf"), &VAMaterial::get_transmission_lf);
-    ClassDB::bind_method(D_METHOD("set_transmission_lf", "value"), &VAMaterial::set_transmission_lf);
+    ClassDB::bind_method(D_METHOD("get_transmission_lf"), &VACustomMaterial::get_transmission_lf);
+    ClassDB::bind_method(D_METHOD("set_transmission_lf", "value"), &VACustomMaterial::set_transmission_lf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "transmission_lf", PROPERTY_HINT_RANGE, "0.0001,10.0,0.001,or_greater"), "set_transmission_lf", "get_transmission_lf");
 
-    ClassDB::bind_method(D_METHOD("get_transmission_hf"), &VAMaterial::get_transmission_hf);
-    ClassDB::bind_method(D_METHOD("set_transmission_hf", "value"), &VAMaterial::set_transmission_hf);
+    ClassDB::bind_method(D_METHOD("get_transmission_hf"), &VACustomMaterial::get_transmission_hf);
+    ClassDB::bind_method(D_METHOD("set_transmission_hf", "value"), &VACustomMaterial::set_transmission_hf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "transmission_hf", PROPERTY_HINT_RANGE, "0.0001,10.0,0.001,or_greater"), "set_transmission_hf", "get_transmission_hf");
 
-    ClassDB::bind_method(D_METHOD("get_plane_transmission_lf"), &VAMaterial::get_plane_transmission_lf);
-    ClassDB::bind_method(D_METHOD("set_plane_transmission_lf", "value"), &VAMaterial::set_plane_transmission_lf);
+    ClassDB::bind_method(D_METHOD("get_plane_transmission_lf"), &VACustomMaterial::get_plane_transmission_lf);
+    ClassDB::bind_method(D_METHOD("set_plane_transmission_lf", "value"), &VACustomMaterial::set_plane_transmission_lf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "plane_transmission_lf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_plane_transmission_lf", "get_plane_transmission_lf");
 
-    ClassDB::bind_method(D_METHOD("get_plane_transmission_hf"), &VAMaterial::get_plane_transmission_hf);
-    ClassDB::bind_method(D_METHOD("set_plane_transmission_hf", "value"), &VAMaterial::set_plane_transmission_hf);
+    ClassDB::bind_method(D_METHOD("get_plane_transmission_hf"), &VACustomMaterial::get_plane_transmission_hf);
+    ClassDB::bind_method(D_METHOD("set_plane_transmission_hf", "value"), &VACustomMaterial::set_plane_transmission_hf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "plane_transmission_hf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_plane_transmission_hf", "get_plane_transmission_hf");
 }
 
-VAMaterial::VAMaterial()
+VACustomMaterial::VACustomMaterial()
 {
 }
 
-VAMaterial::~VAMaterial()
+VACustomMaterial::~VACustomMaterial()
 {
 }
 
@@ -81,7 +81,7 @@ static VAWorld *find_va_world(Node *node)
     return nullptr;
 }
 
-void VAMaterial::_enter_tree()
+void VACustomMaterial::_enter_tree()
 {
     if (Engine::get_singleton()->is_editor_hint())
     {
@@ -113,38 +113,38 @@ void VAMaterial::_enter_tree()
     registered = true;
 }
 
-int VAMaterial::get_material_type() const
+int VACustomMaterial::get_material_type() const
 {
     return material_type;
 }
 
-void VAMaterial::set_material_type(int value)
+void VACustomMaterial::set_material_type(int value)
 {
     material_type = value;
 }
 
-String VAMaterial::get_material_name() const
+String VACustomMaterial::get_material_name() const
 {
     return material_name;
 }
 
-void VAMaterial::set_material_name(const String &value)
+void VACustomMaterial::set_material_name(const String &value)
 {
     if (registered)
     {
-        UtilityFunctions::push_warning("[vaudio-godot-native-openal] Cannot change the name of VAMaterial nodes at runtime. Node: ", get_name());
+        UtilityFunctions::push_warning("[vaudio-godot-native-openal] Cannot change the name of VACustomMaterial nodes at runtime. Node: ", get_name());
         return;
     }
 
     material_name = value;
 }
 
-float VAMaterial::get_absorption_lf() const
+float VACustomMaterial::get_absorption_lf() const
 {
     return absorption_lf;
 }
 
-void VAMaterial::set_absorption_lf(float value)
+void VACustomMaterial::set_absorption_lf(float value)
 {
     absorption_lf = value;
 
@@ -154,12 +154,12 @@ void VAMaterial::set_absorption_lf(float value)
     }
 }
 
-float VAMaterial::get_absorption_hf() const
+float VACustomMaterial::get_absorption_hf() const
 {
     return absorption_hf;
 }
 
-void VAMaterial::set_absorption_hf(float value)
+void VACustomMaterial::set_absorption_hf(float value)
 {
     absorption_hf = value;
 
@@ -169,12 +169,12 @@ void VAMaterial::set_absorption_hf(float value)
     }
 }
 
-float VAMaterial::get_scattering() const
+float VACustomMaterial::get_scattering() const
 {
     return scattering;
 }
 
-void VAMaterial::set_scattering(float value)
+void VACustomMaterial::set_scattering(float value)
 {
     scattering = value;
 
@@ -184,12 +184,12 @@ void VAMaterial::set_scattering(float value)
     }
 }
 
-float VAMaterial::get_transmission_lf() const
+float VACustomMaterial::get_transmission_lf() const
 {
     return transmission_lf;
 }
 
-void VAMaterial::set_transmission_lf(float value)
+void VACustomMaterial::set_transmission_lf(float value)
 {
     transmission_lf = value;
 
@@ -199,12 +199,12 @@ void VAMaterial::set_transmission_lf(float value)
     }
 }
 
-float VAMaterial::get_transmission_hf() const
+float VACustomMaterial::get_transmission_hf() const
 {
     return transmission_hf;
 }
 
-void VAMaterial::set_transmission_hf(float value)
+void VACustomMaterial::set_transmission_hf(float value)
 {
     transmission_hf = value;
 
@@ -214,12 +214,12 @@ void VAMaterial::set_transmission_hf(float value)
     }
 }
 
-float VAMaterial::get_plane_transmission_lf() const
+float VACustomMaterial::get_plane_transmission_lf() const
 {
     return plane_transmission_lf;
 }
 
-void VAMaterial::set_plane_transmission_lf(float value)
+void VACustomMaterial::set_plane_transmission_lf(float value)
 {
     plane_transmission_lf = value;
 
@@ -229,12 +229,12 @@ void VAMaterial::set_plane_transmission_lf(float value)
     }
 }
 
-float VAMaterial::get_plane_transmission_hf() const
+float VACustomMaterial::get_plane_transmission_hf() const
 {
     return plane_transmission_hf;
 }
 
-void VAMaterial::set_plane_transmission_hf(float value)
+void VACustomMaterial::set_plane_transmission_hf(float value)
 {
     plane_transmission_hf = value;
 

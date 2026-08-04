@@ -11,7 +11,7 @@ using namespace godot;
 
 // Overrides the acoustic properties of one of the SDK's 23 built-in materials
 // (see VAMaterialType in vaudio.h) - picked from a dropdown rather than typed
-// as free text/a numeric id. Unlike VAMaterial, the target material already
+// as free text/a numeric id. Unlike VACustomMaterial, the target material already
 // exists in every ::VAWorld (vaWorldCreate pre-creates ids 0-22), so this
 // node only ever calls the vaWorldSetMaterialXxx setters, never
 // vaWorldCreateMaterial - and there's no id-collision case to guard against,
@@ -34,7 +34,7 @@ private:
 
     // Set once _enter_tree has pushed the initial values to the SDK - property
     // setters below push live updates to the SDK only once this is true,
-    // matching VAMaterial's pattern.
+    // matching VACustomMaterial's pattern.
     bool registered = false;
 
     // Cached handle of the owning VAWorld, set in _enter_tree once registered

@@ -18,15 +18,15 @@ namespace va_godot
 // class, which the original stub here got wrong).
 //
 // Name collision note: same as VAWorld/VAEmitter, the vaudio C SDK's opaque
-// handle type is also called "VAMaterial", in the global namespace. This
-// Godot node class lives in namespace va_godot instead - see the collision
-// note on VAWorld (va_world.h) for why a namespace was used instead of a
-// renamed class. Inside va_godot, the unqualified VAMaterial always means
-// this class; ::VAMaterial (global namespace) always means the SDK's opaque
-// handle type.
-class VAMaterial : public Node
+// handle type is called "VAMaterial", in the global namespace. This Godot
+// node class lives in namespace va_godot instead - see the collision note
+// on VAWorld (va_world.h) for why a namespace was used instead of a renamed
+// class. It's also named VACustomMaterial (not VAMaterial) to avoid reading
+// as a collision with the SDK's ::VAMaterial handle type even though the
+// namespace already disambiguates it.
+class VACustomMaterial : public Node
 {
-    GDCLASS(VAMaterial, Node);
+    GDCLASS(VACustomMaterial, Node);
 
 private:
     // Auto-assigned by VAWorld::register_custom_material (lowest unclaimed id
@@ -58,8 +58,8 @@ protected:
     static void _bind_methods();
 
 public:
-    VAMaterial();
-    ~VAMaterial();
+    VACustomMaterial();
+    ~VACustomMaterial();
 
     void _enter_tree() override;
 

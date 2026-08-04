@@ -8,7 +8,7 @@
 #include "va_world.h"
 
 // Finds the (singleton) VAWorld under the current scene root's children -
-// same helper as VAMaterial/VAEmitter/VASource's find_va_world.
+// same helper as VACustomMaterial/VAEmitter/VASource's find_va_world.
 static va_godot::VAWorld *find_va_world(Node *node)
 {
     Node *scene_root = node->get_tree()->get_current_scene();

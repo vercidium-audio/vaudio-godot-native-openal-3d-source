@@ -12,7 +12,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "va_conversions.h"
-#include "va_material.h"
+#include "va_custom_material.h"
 
 // Port of vaudio-godot-openal's VAWorldPrimitives.cs. CSG box/cylinder/sphere,
 // CollisionShape3D box/sphere/capsule/cylinder/world-boundary shapes, and
@@ -608,6 +608,18 @@ void VAWorld::init_scene()
 // parent node is invoked first.
 void VAWorld::on_node_added(Node *node)
 {
+    // Godot's node duplication (e.g. editor copy-paste) copies metadata
+    // along with it, so a freshly duplicated node can arrive here already
+    // carrying its source node's PrimitiveMetaKey ref (same VAPrimitiveRef
+    // instance, watcher and all). create_primitive's has_meta guard would
+    // then skip it as "already added", leaving the duplicate without its
+    // own primitive/watcher entirely. Strip any inherited primitive meta
+    // before add_primitive runs so duplicates always get created fresh.
+    if (node->has_meta(PrimitiveMetaKey()))
+    {
+        node->remove_meta(PrimitiveMetaKey());
+    }
+
     add_primitive(node, VAMaterialAir, false);
 }
 

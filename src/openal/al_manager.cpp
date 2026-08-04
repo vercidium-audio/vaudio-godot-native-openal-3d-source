@@ -2,6 +2,7 @@
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <cstring>
 #include <string>
 
 using namespace godot;
@@ -183,6 +184,72 @@ void ALManager::unload_library()
     }
 }
 
+// Opens device_name (empty = default playback device, matching
+// vaudio-godot-openal's ALManagerDevice.cs auto-selecting the first entry in
+// the output device list) and creates+activates a context against it, with
+// max_auxiliary_sends passed as ALC_MAX_AUXILIARY_SENDS when non-zero
+// (0 leaves it at the driver default). Assumes the library is already loaded
+// and functions already resolved - shared by initialize() and reinitialize().
+// Returns false (with a Godot error already logged) on any failure.
+bool ALManager::open_device_and_context()
+{
+    const ALCchar *requested_device = device_name.empty() ? nullptr : device_name.c_str();
+    device = alcOpenDevice_(requested_device);
+
+    if (!device)
+    {
+        UtilityFunctions::push_error("[vaudio-godot-native-openal] alcOpenDevice failed for device '", String::utf8(device_name.c_str()), "'");
+        return false;
+    }
+
+    ALCint attributes[3] = {0, 0, 0};
+    const ALCint *attribute_list = nullptr;
+
+    if (max_auxiliary_sends > 0)
+    {
+        attributes[0] = ALC_MAX_AUXILIARY_SENDS;
+        attributes[1] = max_auxiliary_sends;
+        attributes[2] = 0;
+        attribute_list = attributes;
+    }
+
+    context = alcCreateContext_(device, attribute_list);
+
+    if (!context)
+    {
+        UtilityFunctions::push_error("[vaudio-godot-native-openal] alcCreateContext failed, ALC error ", (int)alcGetError_(device));
+        alcCloseDevice_(device);
+        device = nullptr;
+        return false;
+    }
+
+    if (alcMakeContextCurrent_(context) == ALC_FALSE)
+    {
+        UtilityFunctions::push_error("[vaudio-godot-native-openal] alcMakeContextCurrent failed, ALC error ", (int)alcGetError_(device));
+        alcDestroyContext_(context);
+        context = nullptr;
+        alcCloseDevice_(device);
+        device = nullptr;
+        return false;
+    }
+
+    UtilityFunctions::print(
+        "[vaudio-godot-native-openal] OpenAL device created: ", alcGetString_(device, ALC_DEVICE_SPECIFIER),
+        " (", alGetString_(AL_VERSION), ")");
+
+    // AL_INVERSE_DISTANCE_CLAMPED is already OpenAL's spec-default distance
+    // model, but set it explicitly rather than relying on that - it's the
+    // physically-correct real-world falloff curve (gain ~ referenceDistance /
+    // (referenceDistance + rolloff * (distance - referenceDistance)), clamped
+    // to each source's reference/max distance), as opposed to
+    // AL_LINEAR_DISTANCE's straight-line falloff.
+    alDistanceModel_(AL_INVERSE_DISTANCE_CLAMPED);
+
+    efx_present = resolve_efx_functions();
+
+    return true;
+}
+
 bool ALManager::initialize()
 {
     if (is_initialized())
@@ -201,59 +268,17 @@ bool ALManager::initialize()
         return false;
     }
 
-    // nullptr requests the default playback device, matching
-    // vaudio-godot-openal's ALManagerDevice.cs auto-selecting the first
-    // entry in the output device list.
-    device = alcOpenDevice_(nullptr);
-
-    if (!device)
+    if (!open_device_and_context())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alcOpenDevice failed - no playback device available");
         unload_library();
         return false;
     }
-
-    context = alcCreateContext_(device, nullptr);
-
-    if (!context)
-    {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alcCreateContext failed, ALC error ", (int)alcGetError_(device));
-        alcCloseDevice_(device);
-        device = nullptr;
-        unload_library();
-        return false;
-    }
-
-    if (alcMakeContextCurrent_(context) == ALC_FALSE)
-    {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alcMakeContextCurrent failed, ALC error ", (int)alcGetError_(device));
-        alcDestroyContext_(context);
-        context = nullptr;
-        alcCloseDevice_(device);
-        device = nullptr;
-        unload_library();
-        return false;
-    }
-
-    UtilityFunctions::print(
-        "[vaudio-godot-native-openal] OpenAL device created: ", alcGetString_(device, ALC_DEVICE_SPECIFIER),
-        " (", alGetString_(AL_VERSION), ")");
-
-    // AL_INVERSE_DISTANCE_CLAMPED is already OpenAL's spec-default distance
-    // model, but set it explicitly rather than relying on that - it's the
-    // physically-correct real-world falloff curve (gain ~ referenceDistance /
-    // (referenceDistance + rolloff * (distance - referenceDistance)), clamped
-    // to each source's reference/max distance), as opposed to
-    // AL_LINEAR_DISTANCE's straight-line falloff.
-    alDistanceModel_(AL_INVERSE_DISTANCE_CLAMPED);
-
-    efx_present = resolve_efx_functions();
 
     singleton = this;
     return true;
 }
 
-void ALManager::shutdown()
+void ALManager::close_device()
 {
     if (singleton == this)
     {
@@ -272,6 +297,73 @@ void ALManager::shutdown()
         alcCloseDevice_(device);
         device = nullptr;
     }
+}
 
+bool ALManager::reinitialize(const String &new_device_name, int new_max_auxiliary_sends)
+{
+    CharString new_device_name_utf8 = new_device_name.utf8();
+    const char *new_device_name_cstr = new_device_name_utf8.get_data();
+
+    if (device_name == new_device_name_cstr && max_auxiliary_sends == new_max_auxiliary_sends && is_initialized())
+    {
+        return true;
+    }
+
+    device_name = new_device_name_cstr;
+    max_auxiliary_sends = new_max_auxiliary_sends;
+
+    if (!library)
+    {
+        return initialize();
+    }
+
+    close_device();
+
+    bool ok = open_device_and_context();
+
+    if (ok)
+    {
+        singleton = this;
+    }
+
+    return ok;
+}
+
+PackedStringArray ALManager::get_available_devices()
+{
+    PackedStringArray devices;
+
+    if (!alcGetString_)
+    {
+        return devices;
+    }
+
+    ALCenum specifier = alcIsExtensionPresent_ && alcIsExtensionPresent_(nullptr, "ALC_ENUMERATE_ALL_EXT")
+        ? ALC_ALL_DEVICES_SPECIFIER
+        : ALC_DEVICE_SPECIFIER;
+
+    // alcGetString(nullptr, ALC_ALL_DEVICES_SPECIFIER) returns a single
+    // buffer containing multiple null-terminated device name strings,
+    // itself terminated by an extra empty string (i.e. two consecutive
+    // nulls mark the end) - standard ALC enumeration string convention.
+    const ALCchar *list = alcGetString_(nullptr, specifier);
+
+    if (!list)
+    {
+        return devices;
+    }
+
+    while (*list)
+    {
+        devices.push_back(String::utf8(list));
+        list += strlen(list) + 1;
+    }
+
+    return devices;
+}
+
+void ALManager::shutdown()
+{
+    close_device();
     unload_library();
 }

@@ -11,7 +11,9 @@
 #include "transform_watcher.h"
 #include "va_default_material.h"
 #include "va_emitter.h"
-#include "va_material.h"
+#include "va_listener.h"
+#include "va_custom_material.h"
+#include "va_openal_settings.h"
 #include "va_primitive_ref.h"
 #include "va_source.h"
 #include "va_source_ambient.h"
@@ -39,7 +41,9 @@ void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_le
 
     ClassDB::register_class<va_godot::VAWorld>();
     ClassDB::register_class<va_godot::VAEmitter>();
-    ClassDB::register_class<va_godot::VAMaterial>();
+    ClassDB::register_class<va_godot::VAListener>();
+    ClassDB::register_class<va_godot::VACustomMaterial>();
+    ClassDB::register_class<va_godot::VAOpenALSettings>();
     ClassDB::register_class<VADefaultMaterial>();
     ClassDB::register_class<VASource>();
     ClassDB::register_class<VASourceRelative>();

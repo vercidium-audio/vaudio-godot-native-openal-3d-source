@@ -5,7 +5,10 @@
 // APIs rather than through an import .lib, since none is vendored.
 #include <windows.h>
 
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/vector3.hpp>
+
+#include <string>
 
 #include "al_functions.h"
 
@@ -82,10 +85,29 @@ private:
 
     bool efx_present = false;
 
+    // Settings ALManagerNode pushes in before (re)opening the device - see
+    // reinitialize(). Empty device_name means "default device" (matches
+    // initialize()'s original alcOpenDevice(nullptr) behaviour);
+    // max_auxiliary_sends of 0 means "leave it to the driver default" (no
+    // ALC_MAX_AUXILIARY_SENDS attribute is passed to alcCreateContext).
+    //
+    // std::string, not godot::String: ALManager's the process-wide global
+    // (see register_types.cpp's `static ALManager al_manager`), so this
+    // member's default constructor runs at CRT static-init time, before
+    // GDExtensionBinding has bound Godot's API (the string/ctor/dtor
+    // function pointers godot::String's own constructor calls through
+    // aren't populated yet then) - a godot::String member here crashed the
+    // DLL's init routine (Win32 error 1114) before any of our own code,
+    // even DllMain, ever ran.
+    std::string device_name;
+    int max_auxiliary_sends = 0;
+
     bool load_library();
     bool resolve_functions();
     bool resolve_efx_functions();
+    bool open_device_and_context();
     void unload_library();
+    void close_device();
 
 public:
     static ALManager *get_singleton();
@@ -97,6 +119,33 @@ public:
     // the default playback device, and creates+activates an OpenAL context.
     // Returns false (with a Godot error already logged) on any failure.
     bool initialize();
+
+    // Tears down the current device/context (if any) and reopens them using
+    // device_name/max_auxiliary_sends, leaving the resolved function
+    // pointers and loaded library alone. Called by VAOpenALSettings::_ready
+    // when its exported device/reverb-send settings differ from the
+    // defaults initialize() already applied at module load - see
+    // register_types.cpp. Every existing AL object (sources, buffers,
+    // filters, effects) is invalidated by this - safe only because it's
+    // expected to run once, early, before any VASource/VAEmitter has
+    // created OpenAL objects against the old device.
+    bool reinitialize(const String &new_device_name, int new_max_auxiliary_sends);
+
+    // Thin forward to alListenerf(AL_GAIN, ...) - the process-wide master
+    // volume multiplier applied on top of every source's own gain. Safe to
+    // call at any time after initialize() (no context recreation needed).
+    void set_master_volume(float value)
+    {
+        alListenerf_(AL_GAIN, value);
+    }
+
+    // Lists every playback device name the current driver reports via the
+    // ALC_ENUMERATE_ALL_EXT extension (falls back to the basic
+    // ALC_ENUMERATION_EXT list if that's unavailable) - exposed as
+    // VAOpenALSettings::get_available_devices for discovering valid
+    // device_name values. Can be called before initialize() - opens no
+    // device itself, just queries alcGetString(nullptr, ...).
+    PackedStringArray get_available_devices();
 
     // Destroys the context and closes the device, if open. Safe to call more
     // than once and safe to call even if initialize() was never called or
