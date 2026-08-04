@@ -490,30 +490,15 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool recursive)
     if (material != VAMaterialAir)
     {
         if (CSGBox3D *csg_box = Object::cast_to<CSGBox3D>(node))
-        {
             create_primitive(csg_box, material);
-            UtilityFunctions::print("VAWorld: added CSGBox3D primitive for node ", node->get_name());
-        }
         else if (CSGCylinder3D *csg_cylinder = Object::cast_to<CSGCylinder3D>(node))
-        {
             create_primitive(csg_cylinder, material);
-            UtilityFunctions::print("VAWorld: added CSGCylinder3D primitive for node ", node->get_name());
-        }
         else if (CSGSphere3D *csg_sphere = Object::cast_to<CSGSphere3D>(node))
-        {
             create_primitive(csg_sphere, material);
-            UtilityFunctions::print("VAWorld: added CSGSphere3D primitive for node ", node->get_name());
-        }
         else if (CollisionShape3D *collision_shape = Object::cast_to<CollisionShape3D>(node))
-        {
             create_primitive(collision_shape, material);
-            UtilityFunctions::print("VAWorld: added CollisionShape3D primitive for node ", node->get_name());
-        }
         else if (MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(node))
-        {
             create_primitive(mesh_instance, material);
-            UtilityFunctions::print("VAWorld: added MeshInstance3D primitive for node ", node->get_name());
-        }
     }
 
     if (recursive)

@@ -98,6 +98,19 @@ private:
     // ever raytraced as someone else's target need a muffling filter at all.
     ALFilter *filter = nullptr;
 
+    // VAWorldVariables.cs's ambientFilter port, moved from VAWorld onto the
+    // listener it actually describes - refreshed from
+    // vaEmitterGetAmbientFilter(this emitter's handle) each
+    // apply_raytracing_results call (listener only). VASourceAmbient reads
+    // this via VAWorld::get_listener() (gain values only - unlike effect,
+    // this isn't a real OpenAL object, just the two floats
+    // VASourceAmbient.cs's UpdateFilter call needs). ambient_filter_ready
+    // stays false until this emitter has raytraced at least once, matching
+    // the C#'s "ambientFilter == null" gate in VASourceAmbient.cs.
+    float ambient_filter_gain_lf = 1.0f;
+    float ambient_filter_gain_hf = 1.0f;
+    bool ambient_filter_ready = false;
+
     // Resolved fresh every frame in apply_raytracing_results via
     // VAWorld::get_reverb_effect - not owned by VAEmitter.
     ALReverbEffect *effect = nullptr;
@@ -178,6 +191,24 @@ public:
     void add_target(VAEmitter *target);
     bool has_raytraced_target(VAEmitter *target) const;
     VALowPassFilter get_target_filter(VAEmitter *target) const;
+
+    // VASourceAmbient.cs's "vercidiumAudio?.ambientFilter == null" gate port -
+    // false until this emitter has raytraced at least once. Only meaningful
+    // on the listener (see apply_raytracing_results).
+    bool is_ambient_filter_ready() const
+    {
+        return ambient_filter_ready;
+    }
+
+    float get_ambient_filter_gain_lf() const
+    {
+        return ambient_filter_gain_lf;
+    }
+
+    float get_ambient_filter_gain_hf() const
+    {
+        return ambient_filter_gain_hf;
+    }
 
     ALFilter *get_filter() const
     {

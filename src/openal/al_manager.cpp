@@ -233,10 +233,6 @@ bool ALManager::open_device_and_context()
         return false;
     }
 
-    UtilityFunctions::print(
-        "[vaudio-godot-native-openal] OpenAL device created: ", alcGetString_(device, ALC_DEVICE_SPECIFIER),
-        " (", alGetString_(AL_VERSION), ")");
-
     // AL_INVERSE_DISTANCE_CLAMPED is already OpenAL's spec-default distance
     // model, but set it explicitly rather than relying on that - it's the
     // physically-correct real-world falloff curve (gain ~ referenceDistance /

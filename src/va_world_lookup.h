@@ -45,27 +45,11 @@ inline VAWorld *find_va_world_recursive(Node *node)
 
 inline VAWorld *find_va_world(Node *node)
 {
-    UtilityFunctions::print("[vaudio-godot-native-openal] find_va_world: searching for VAWorld. Caller: ", node->get_name());
-
     Node *root = node->get_tree()->get_root();
     if (!root)
-    {
-        UtilityFunctions::print("[vaudio-godot-native-openal] find_va_world: get_root() returned null. Caller: ", node->get_name());
         return nullptr;
-    }
 
-    VAWorld *world = find_va_world_recursive(root);
-
-    if (world)
-    {
-        UtilityFunctions::print("[vaudio-godot-native-openal] find_va_world: found VAWorld '", world->get_name(), "'. Caller: ", node->get_name());
-    }
-    else
-    {
-        UtilityFunctions::print("[vaudio-godot-native-openal] find_va_world: no VAWorld found under root '", root->get_name(), "'. Caller: ", node->get_name());
-    }
-
-    return world;
+    return find_va_world_recursive(root);
 }
 
 } // namespace va_godot

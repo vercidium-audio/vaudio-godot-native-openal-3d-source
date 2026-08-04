@@ -104,12 +104,6 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_grouped_eax_gain_hf", "index"), &VAWorld::get_grouped_eax_gain_hf);
     ClassDB::bind_method(D_METHOD("get_grouped_eax_decay_time", "index"), &VAWorld::get_grouped_eax_decay_time);
 
-    // Read-only ambient filter stats, same no-ADD_PROPERTY rationale as the
-    // timing stats above.
-    ClassDB::bind_method(D_METHOD("get_has_ambient_filter"), &VAWorld::get_has_ambient_filter);
-    ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_lf"), &VAWorld::get_ambient_filter_gain_lf);
-    ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_hf"), &VAWorld::get_ambient_filter_gain_hf);
-
     // Exports world settings/materials/primitives/emitters to a binary file
     // (vaWorldExport) - callable from GDScript, e.g. wired to a UI button.
     ClassDB::bind_method(D_METHOD("export_to_file", "file_path"), &VAWorld::export_to_file);
@@ -254,9 +248,7 @@ void VAWorld::_process(double delta)
 
     if (world)
     {
-        UtilityFunctions::print("[vaudio-godot-native-openal] VAWorld: calling vaWorldUpdate");
         VAResult result = vaWorldUpdate(world);
-        UtilityFunctions::print("[vaudio-godot-native-openal] VAWorld: vaWorldUpdate returned (VAResult=", (int)result, ")");
     }
 }
 
@@ -285,10 +277,6 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
 {
     vaWorldAddEmitter(world, emitter->get_handle());
 
-    UtilityFunctions::print(
-        "[vaudio-godot-native-openal] VAEmitter added to world. Node: ", emitter->get_name(),
-        " is_main_listener=", is_main_listener);
-
     if (is_main_listener)
     {
         if (!listener)
@@ -297,8 +285,7 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         }
         else
         {
-            UtilityFunctions::push_warning(
-                "[vaudio-godot-native-openal] Only one VAEmitter can be the main listener. Node: ", emitter->get_name());
+            UtilityFunctions::push_warning("[vaudio-godot-native-openal] Only one VAEmitter can be the main listener. Node: ", emitter->get_name());
         }
 
         return;
@@ -306,8 +293,9 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
 
     if (!listener)
     {
-        UtilityFunctions::push_warning(
-            "[vaudio-godot-native-openal] VAEmitter nodes cannot be added before the main listener. Node: ", emitter->get_name());
+        // TODO - yuck! In Unreal you can add anything in any order, and actors will initialise each other if they aren't ready yet
+        UtilityFunctions::push_warning("[vaudio-godot-native-openal] VAEmitter nodes cannot be added before the main listener. Node: ", emitter->get_name());
+
         return;
     }
 
@@ -365,18 +353,6 @@ void VAWorld::on_reverb_updated()
     if (!listener || !listener->get_handle())
     {
         return;
-    }
-
-    // VAWorldReverb.cs's OnReverbUpdated ambientFilter update - refreshed
-    // alongside the EAX reverb params below since both fire from the same
-    // callback.
-    VALowPassFilter *ambient_filter = vaEmitterGetAmbientFilter(listener->get_handle());
-
-    if (ambient_filter)
-    {
-        ambient_filter_gain_lf = ambient_filter->gainLF;
-        ambient_filter_gain_hf = ambient_filter->gainHF;
-        has_ambient_filter = true;
     }
 
     VAEAXReverb *eax = vaEmitterGetEAX(listener->get_handle());

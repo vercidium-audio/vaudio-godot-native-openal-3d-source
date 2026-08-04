@@ -6,6 +6,7 @@
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include "va_emitter.h"
 #include "va_world.h"
 #include "va_world_lookup.h"
 
@@ -86,19 +87,13 @@ bool VASourceAmbient::play()
 {
     // Matches VASourceAmbient.cs's Play(): don't start until the listener has
     // produced an ambient filter result at least once.
-    if (!va_world || !va_world->get_has_ambient_filter())
+    va_godot::VAEmitter *listener = va_world ? va_world->get_listener() : nullptr;
+    if (!listener || !listener->is_ambient_filter_ready())
     {
         return false;
     }
 
     played = ALSourceNode3D::play();
-
-    // Permanent print (same rationale as VASource's own playback print -
-    // cheap and keeps proving the listener-ambient-filter-triggers-playback
-    // path works), not a one-off debugging leftover.
-    UtilityFunctions::print(
-        "[vaudio-godot-native-openal] VASourceAmbient '", get_name(), "' started playback: ",
-        played ? "OK" : "FAILED");
 
     return played;
 }
@@ -112,7 +107,8 @@ void VASourceAmbient::_process(double delta)
         return;
     }
 
-    if (!va_world || !va_world->get_has_ambient_filter())
+    va_godot::VAEmitter *listener = va_world ? va_world->get_listener() : nullptr;
+    if (!listener || !listener->is_ambient_filter_ready())
     {
         return;
     }
@@ -122,7 +118,7 @@ void VASourceAmbient::_process(double delta)
     // ambient sources don't send into the room reverb, only the direct path
     // is muffled by the ambient gain.
     effect = nullptr;
-    update_filter(va_world->get_ambient_filter_gain_lf(), va_world->get_ambient_filter_gain_hf());
+    update_filter(listener->get_ambient_filter_gain_lf(), listener->get_ambient_filter_gain_hf());
 
     if (!played)
     {

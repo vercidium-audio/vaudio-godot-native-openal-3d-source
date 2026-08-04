@@ -27,6 +27,12 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_within_world_bounds"), &VAEmitter::get_within_world_bounds);
     ClassDB::bind_method(D_METHOD("is_raytraced"), &VAEmitter::is_raytraced);
 
+    // Read-only ambient filter stats (listener only) - same no-ADD_PROPERTY
+    // rationale as the SDK forwards above.
+    ClassDB::bind_method(D_METHOD("is_ambient_filter_ready"), &VAEmitter::is_ambient_filter_ready);
+    ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_lf"), &VAEmitter::get_ambient_filter_gain_lf);
+    ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_hf"), &VAEmitter::get_ambient_filter_gain_hf);
+
     // Direct port of vaudio-godot-openal's VAEmitterProperties.cs groups
     // (Reverb/Muffling/Ambience/Visualisation/Advanced). Debug Rendering
     // colors are not ported - no backing SDK API in this C SDK version (see
@@ -187,11 +193,8 @@ void VAEmitter::set_is_main_listener(bool value)
 
 void VAEmitter::_enter_tree()
 {
-    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::_enter_tree. Node: ", get_name());
-
     if (Engine::get_singleton()->is_editor_hint())
     {
-        UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::_enter_tree: editor hint, skipping. Node: ", get_name());
         return;
     }
 
@@ -204,7 +207,6 @@ void VAEmitter::_enter_tree()
         // the tree before being parented under the level. Stay dormant and
         // retry on every future node addition instead of erroring out
         // permanently - see retry_find_va_world.
-        UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::_enter_tree: no VAWorld yet, waiting for node_added. Node: ", get_name());
         waiting_for_world = true;
         get_tree()->connect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
         return;
@@ -237,8 +239,6 @@ void VAEmitter::_exit_tree()
 // level), disconnects and initialises normally via create_emitter().
 void VAEmitter::retry_find_va_world(Node *node)
 {
-    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::retry_find_va_world: node_added fired for '", node->get_name(), "'. Waiting node: ", get_name());
-
     va_world = find_va_world(this);
 
     if (!va_world)
@@ -254,8 +254,6 @@ void VAEmitter::retry_find_va_world(Node *node)
 
 void VAEmitter::create_emitter()
 {
-    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::create_emitter: creating handle. Node: ", get_name(), " is_main_listener=", is_main_listener);
-
     emitter = vaEmitterCreate();
     vaEmitterSetUserData(emitter, this);
     vaEmitterSetName(emitter, String(get_name()).utf8().get_data());
@@ -400,6 +398,21 @@ void VAEmitter::apply_raytracing_results()
     if (!listener)
     {
         return;
+    }
+
+    if (this == listener)
+    {
+        // VAWorldReverb.cs's OnReverbUpdated ambientFilter update, moved from
+        // VAWorld::on_reverb_updated onto the listener it actually describes -
+        // only the listener's own ambient filter is meaningful.
+        VALowPassFilter *ambient_filter = vaEmitterGetAmbientFilter(emitter);
+
+        if (ambient_filter)
+        {
+            ambient_filter_gain_lf = ambient_filter->gainLF;
+            ambient_filter_gain_hf = ambient_filter->gainHF;
+            ambient_filter_ready = true;
+        }
     }
 
     if (this != listener && listener->has_raytraced_target(this))
@@ -761,20 +774,10 @@ int VAEmitter::get_ambient_permeation_ray_count() const
 
 void VAEmitter::set_ambient_permeation_ray_count(int value)
 {
-    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: enter. Node: ", get_name(), " value=", value, " emitter=", (int64_t)(intptr_t)emitter);
-
     ambient_permeation_ray_count = MAX(0, value);
 
-    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: clamped value=", ambient_permeation_ray_count);
-
     if (emitter)
-    {
-        UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: calling vaEmitterSetAmbientPermeationRayCount");
         vaEmitterSetAmbientPermeationRayCount(emitter, ambient_permeation_ray_count);
-        UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: returned from vaEmitterSetAmbientPermeationRayCount");
-    }
-
-    UtilityFunctions::print("[vaudio-godot-native-openal] VAEmitter::set_ambient_permeation_ray_count: exit");
 }
 
 int VAEmitter::get_ambient_permeation_bounce_count() const

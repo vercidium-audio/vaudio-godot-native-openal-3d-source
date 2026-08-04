@@ -292,13 +292,6 @@ bool VASource::play()
 
     played = ALSourceNode3D::play();
 
-    // Permanent print (same rationale as VAWorld's other sanity-check prints
-    // - cheap and keeps proving the raytracing-triggers-playback path
-    // works), not a one-off debugging leftover.
-    UtilityFunctions::print(
-        "[vaudio-godot-native-openal] VASource '", get_name(), "' started playback: ",
-        played ? "OK" : "FAILED");
-
     return played;
 }
 

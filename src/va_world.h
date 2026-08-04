@@ -76,18 +76,6 @@ private:
     static void on_reverb_updated_trampoline(::VAWorld *world);
     void on_reverb_updated();
 
-    // VAWorldVariables.cs's ambientFilter port - the listener's ambient
-    // (non-directional) muffling gain, refreshed from
-    // vaEmitterGetAmbientFilter(listener's handle) each on_reverb_updated
-    // call. VASourceAmbient reads this directly (gain values only - unlike
-    // listener_reverb_effect, this isn't a real OpenAL object, just the two
-    // floats VASourceAmbient.cs's UpdateFilter call needs). has_ambient_filter
-    // stays false until the listener has raytraced at least once, matching
-    // the C#'s "ambientFilter == null" gate in VASourceAmbient.cs.
-    float ambient_filter_gain_lf = 1.0f;
-    float ambient_filter_gain_hf = 1.0f;
-    bool has_ambient_filter = false;
-
     // Emitters whose VAEmitter::on_emitter_removed already ran but whose
     // ::VAEmitter* handle hasn't been vaEmitterDestroy'd yet - see
     // VAEmitter::on_emitter_removed's doc comment for why destruction can't
@@ -193,23 +181,6 @@ public:
     // listener slot if the index is out of range for the current pool size,
     // matching the C#'s bounds check.
     ALReverbEffect *get_reverb_effect(::VAEmitter *emitter);
-
-    // VASourceAmbient.cs's "vercidiumAudio?.ambientFilter == null" gate port -
-    // false until the listener has raytraced at least once.
-    bool get_has_ambient_filter() const
-    {
-        return has_ambient_filter;
-    }
-
-    float get_ambient_filter_gain_lf() const
-    {
-        return ambient_filter_gain_lf;
-    }
-
-    float get_ambient_filter_gain_hf() const
-    {
-        return ambient_filter_gain_hf;
-    }
 
     // GroupedEAX stats - thin forwards to vaWorldGetGroupedEAXCount and
     // vaWorldGetGroupedEAX(world)[index]'s gainLF/gainHF/decayTime, read live
