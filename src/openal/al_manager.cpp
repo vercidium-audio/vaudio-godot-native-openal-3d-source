@@ -2,6 +2,8 @@
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include "../va_engine_util.h"
+
 #include <cstring>
 #include <string>
 
@@ -61,7 +63,7 @@ bool ALManager::load_library()
 
     if (!library)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] Failed to load soft_oal.dll from ", String(full_path.c_str()));
+        VA_ERROR("Failed to load soft_oal.dll from ", String(full_path.c_str()));
         return false;
     }
 
@@ -75,7 +77,7 @@ static bool resolve(HMODULE library, const char *name, T &out_fn)
 
     if (!out_fn)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] soft_oal.dll is missing expected export: ", name);
+        VA_ERROR("soft_oal.dll is missing expected export: ", name);
         return false;
     }
 
@@ -92,7 +94,7 @@ static bool resolve_ext(alGetProcAddressFn alGetProcAddress, const char *name, T
 
     if (!out_fn)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] OpenAL Soft is missing expected EFX entry point: ", name);
+        VA_ERROR("OpenAL Soft is missing expected EFX entry point: ", name);
         return false;
     }
 
@@ -150,7 +152,7 @@ bool ALManager::resolve_efx_functions()
 {
     if (alcIsExtensionPresent_(device, ALC_EXT_EFX_NAME) == ALC_FALSE)
     {
-        UtilityFunctions::push_warning("[vaudio-godot-native-openal] ALC_EXT_EFX not present on this device - lowpass filter support disabled");
+        VA_WARN("ALC_EXT_EFX not present on this device - lowpass filter support disabled");
         return false;
     }
 
@@ -198,7 +200,7 @@ bool ALManager::open_device_and_context()
 
     if (!device)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alcOpenDevice failed for device '", String::utf8(device_name.c_str()), "'");
+        VA_ERROR("alcOpenDevice failed for device '", String::utf8(device_name.c_str()), "'");
         return false;
     }
 
@@ -217,7 +219,7 @@ bool ALManager::open_device_and_context()
 
     if (!context)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alcCreateContext failed, ALC error ", (int)alcGetError_(device));
+        VA_ERROR("alcCreateContext failed, ALC error ", (int)alcGetError_(device));
         alcCloseDevice_(device);
         device = nullptr;
         return false;
@@ -225,7 +227,7 @@ bool ALManager::open_device_and_context()
 
     if (alcMakeContextCurrent_(context) == ALC_FALSE)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alcMakeContextCurrent failed, ALC error ", (int)alcGetError_(device));
+        VA_ERROR("alcMakeContextCurrent failed, ALC error ", (int)alcGetError_(device));
         alcDestroyContext_(context);
         context = nullptr;
         alcCloseDevice_(device);

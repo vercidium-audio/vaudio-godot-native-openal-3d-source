@@ -1,6 +1,5 @@
 #include "va_emitter.h"
 
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -9,6 +8,7 @@
 #include "openal/al_filter.h"
 #include "openal/al_reverb.h"
 #include "va_conversions.h"
+#include "va_engine_util.h"
 #include "va_world.h"
 #include "va_world_lookup.h"
 
@@ -170,9 +170,7 @@ void VAEmitter::_bind_methods()
 
 VAEmitter::VAEmitter()
 {
-    // Matches VAEmitterProperties.cs's `Random.Shared.Next(int.MaxValue)`
-    // field initializer - a random per-instance default so multiple emitters
-    // don't produce identical scattering patterns unless explicitly set.
+    // Random scattering seed for every emitter
     scattering_seed = (int)(UtilityFunctions::randi() & 0x7fffffff);
 }
 
@@ -193,7 +191,7 @@ void VAEmitter::set_is_main_listener(bool value)
 
 void VAEmitter::_enter_tree()
 {
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         return;
     }
@@ -202,11 +200,7 @@ void VAEmitter::_enter_tree()
 
     if (!va_world)
     {
-        // No VAWorld anywhere in the tree yet - likely this node's scene
-        // (e.g. a car with a pre-configured VAListener) was instanced/entered
-        // the tree before being parented under the level. Stay dormant and
-        // retry on every future node addition instead of erroring out
-        // permanently - see retry_find_va_world.
+        // No VAWorld anywhere in the tree yet - likely this node's scene (e.g. a car with a pre-configured VAListener) was instanced/entered the tree before being parented under the level. Stay dormant and retry on every future node addition instead of erroring out permanently - see retry_find_va_world.
         waiting_for_world = true;
         get_tree()->connect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
         return;
@@ -219,6 +213,7 @@ void VAEmitter::_exit_tree()
 {
     if (waiting_for_world)
     {
+        // Disconnect the "node_added" callback
         if (get_tree() && get_tree()->is_connected("node_added", callable_mp(this, &VAEmitter::retry_find_va_world)))
         {
             get_tree()->disconnect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
@@ -226,14 +221,10 @@ void VAEmitter::_exit_tree()
 
         waiting_for_world = false;
 
-        // Never found a VAWorld anywhere in the tree for this node's entire
-        // time in it - it's leaving without ever having created its emitter
-        // handle, so nothing in this plugin ever produced sound for it.
-        UtilityFunctions::push_warning(
-            "[vaudio-godot-native-openal] '", get_name(),
-            "' left the tree without ever finding a VAWorld - "
-            "no emitter was created for it. Make sure this node's scene "
-            "was added under a VAWorld while it was in the tree.");
+        // Warning if this emitter was never added to a world
+        VA_WARN(
+            "'", get_name(),
+            "' left the tree without ever finding a VAWorld - no emitter was created for it. Make sure this node's scene was added under a VAWorld while it was in the tree.");
     }
 
     if (emitter)
@@ -287,8 +278,8 @@ void VAEmitter::create_emitter()
         // fails, sound just plays unmuffled through walls.
         if (occlusion_ray_count == 0 && permeation_ray_count == 0)
         {
-            UtilityFunctions::push_warning(
-                "[vaudio-godot-native-openal] Main listener '", get_name(),
+            VA_WARN(
+                "Main listener '", get_name(),
                 "' has occlusion_ray_count and permeation_ray_count both set to 0 - "
                 "sources will never be muffled. Set one or both to enable muffling.");
         }
@@ -353,8 +344,8 @@ void VAEmitter::remove_emitter()
     // emitter that casts reverb rays. Not an error.
     if (result != VA_SUCCESS && result != VA_PENDING_REMOVAL)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAEmitter::remove_emitter failed for '", get_name(),
+        VA_ERROR(
+            "VAEmitter::remove_emitter failed for '", get_name(),
             "' (VAResult=", VAResultToString(result), ")");
     }
 }
@@ -388,21 +379,21 @@ void VAEmitter::add_target(VAEmitter *target)
             break;
 
         case VA_NOT_ADDED_TO_WORLD:
-            UtilityFunctions::push_error(
-                "[vaudio-godot-native-openal] VAEmitter::add_target failed for '", get_name(),
+            VA_ERROR(
+                "VAEmitter::add_target failed for '", get_name(),
                 "' -> '", target->get_name(), "': target has not been added to the same VAWorld as this emitter.");
             break;
 
         case VA_FEATURE_DISABLED:
-            UtilityFunctions::push_error(
-                "[vaudio-godot-native-openal] VAEmitter::add_target failed for '", get_name(),
+            VA_ERROR(
+                "VAEmitter::add_target failed for '", get_name(),
                 "' -> '", target->get_name(), "': this emitter casts neither occlusion nor permeation rays, "
                 "so it cannot have targets. Set occlusion_ray_count or permeation_ray_count above 0 first.");
             break;
 
         default:
-            UtilityFunctions::push_error(
-                "[vaudio-godot-native-openal] VAEmitter::add_target failed for '", get_name(),
+            VA_ERROR(
+                "VAEmitter::add_target failed for '", get_name(),
                 "' -> '", target->get_name(), "' (VAResult=", VAResultToString(result), ")");
             break;
     }

@@ -1,5 +1,6 @@
 #include "al_buffer.h"
 
+#include "../va_engine_util.h"
 #include "al_manager.h"
 
 #include <godot_cpp/classes/audio_server.hpp>
@@ -42,13 +43,13 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
 
     if (!manager || !manager->is_initialized())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] ALBuffer::load called before the OpenAL device is initialized");
+        VA_ERROR("ALBuffer::load called before the OpenAL device is initialized");
         return false;
     }
 
     if (p_stream.is_null())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] ALBuffer::load called with a null AudioStream");
+        VA_ERROR("ALBuffer::load called with a null AudioStream");
         return false;
     }
 
@@ -63,7 +64,7 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
 
     if (playback.is_null())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] AudioStream failed to instantiate a playback (unsupported/corrupt file?)");
+        VA_ERROR("AudioStream failed to instantiate a playback (unsupported/corrupt file?)");
         return false;
     }
 
@@ -115,7 +116,7 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
 
     if (pcm_data.empty())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] AudioStream decoded to zero frames");
+        VA_ERROR("AudioStream decoded to zero frames");
         return false;
     }
 
@@ -124,7 +125,7 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
 
     if (new_handle == 0)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alGenBuffers failed, AL error ", (int)manager->al_get_error()());
+        VA_ERROR("alGenBuffers failed, AL error ", (int)manager->al_get_error()());
         return false;
     }
 
@@ -142,7 +143,7 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
 
     if (error != AL_NO_ERROR)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alBufferData failed, AL error ", (int)error);
+        VA_ERROR("alBufferData failed, AL error ", (int)error);
         ALuint handles[1] = {new_handle};
         manager->al_delete_buffers()(1, handles);
         return false;

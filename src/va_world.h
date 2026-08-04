@@ -16,6 +16,7 @@ extern "C"
 
 #include "openal/al_reverb.h"
 #include "va_conversions.h"
+#include "va_engine_util.h"
 #include "va_primitive_ref.h"
 
 #include <memory>
@@ -216,8 +217,8 @@ public:
             {
                 // Should never trigger: the only failure mode is world being
                 // NULL, already ruled out by the check above.
-                UtilityFunctions::push_error(
-                    "[vaudio-godot-native-openal] VAWorld::set_pending_shutdown failed (VAResult=", VAResultToString(result), ")");
+                VA_ERROR(
+                    "VAWorld::set_pending_shutdown failed (VAResult=", VAResultToString(result), ")");
             }
         }
     }
@@ -239,8 +240,8 @@ public:
             {
                 // Should never trigger: the only failure mode is world being
                 // NULL, already ruled out by the check above.
-                UtilityFunctions::push_error(
-                    "[vaudio-godot-native-openal] VAWorld::set_rendering_enabled failed (VAResult=", VAResultToString(result), ")");
+                VA_ERROR(
+                    "VAWorld::set_rendering_enabled failed (VAResult=", VAResultToString(result), ")");
             }
         }
     }

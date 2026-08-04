@@ -134,7 +134,7 @@ inline std::vector<VAVector> ConvertMeshToVAudio(const Ref<Mesh> &mesh, VAVector
 
         Variant normals_variant = arrays[Mesh::ARRAY_NORMAL];
         PackedVector3Array normals;
-        
+
         if (normals_variant.get_type() != Variant::NIL)
         {
             normals = normals_variant;
@@ -144,14 +144,15 @@ inline std::vector<VAVector> ConvertMeshToVAudio(const Ref<Mesh> &mesh, VAVector
         if (indices_variant.get_type() == Variant::NIL)
         {
             // No index array - vertices are already in triangle order.
+            // TODO is `+ 2` needed below?
             for (int i = 0; i + 2 < surface_vertices.size(); i += 3)
-            {
                 add_triangle(normals, i, surface_vertices[i], surface_vertices[i + 1], surface_vertices[i + 2]);
-            }
         }
         else
         {
             PackedInt32Array indices = indices_variant;
+            
+            // TODO is `+ 2` needed below?
             for (int i = 0; i + 2 < indices.size(); i += 3)
             {
                 int index0 = indices[i];

@@ -1,12 +1,12 @@
 #include "va_source.h"
 
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "va_emitter.h"
+#include "va_engine_util.h"
 #include "va_world.h"
 #include "va_world_lookup.h"
 
@@ -160,7 +160,7 @@ float VASource::get_muffling_gain_hf() const
 
 void VASource::_enter_tree()
 {
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         return;
     }
@@ -193,8 +193,8 @@ void VASource::_exit_tree()
 
         // Never found a VAWorld anywhere in the tree for this node's entire
         // time in it - see VAEmitter::_exit_tree's identical warning.
-        UtilityFunctions::push_warning(
-            "[vaudio-godot-native-openal] '", get_name(),
+        VA_WARN(
+            "'", get_name(),
             "' left the tree without ever finding a VAWorld - "
             "no emitter was created for it. Make sure this node's scene "
             "was added under a VAWorld while it was in the tree.");

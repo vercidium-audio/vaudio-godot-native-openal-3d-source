@@ -1,4 +1,5 @@
 #include "va_conversions.h"
+#include "va_engine_util.h"
 #include "va_world.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -28,8 +29,8 @@ void VAWorld::set_position(Vector3 value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_position failed (value contains NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_position failed (value contains NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -46,8 +47,8 @@ void VAWorld::set_size(Vector3 value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_size failed (value contains NaN/Infinity, or a component is negative) (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_size failed (value contains NaN/Infinity, or a component is negative) (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -64,8 +65,8 @@ void VAWorld::set_epsilon(float value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_epsilon failed (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_epsilon failed (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -82,8 +83,8 @@ void VAWorld::set_world_is_indoors(bool value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_world_is_indoors failed (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_world_is_indoors failed (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -102,8 +103,8 @@ void VAWorld::set_maximum_grouped_eax_count(int value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_maximum_grouped_eax_count failed for value ", maximum_grouped_eax_count,
+        VA_ERROR(
+            "VAWorld::set_maximum_grouped_eax_count failed for value ", maximum_grouped_eax_count,
             " (must be >= 1) (VAResult=", VAResultToString(result), ")");
     }
 }
@@ -121,8 +122,8 @@ void VAWorld::set_meters_per_unit(float value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_meters_per_unit failed (value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_meters_per_unit failed (value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -139,8 +140,8 @@ void VAWorld::set_speed_of_sound(float value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_speed_of_sound failed (inverse speed is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_speed_of_sound failed (inverse speed is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -157,8 +158,8 @@ void VAWorld::set_humidity(float value)
 
     if (result != VA_SUCCESS && result != VA_UNCHANGED)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_humidity failed for value ", value,
+        VA_ERROR(
+            "VAWorld::set_humidity failed for value ", value,
             " (must be between 0 and 1) (VAResult=", VAResultToString(result), ")");
     }
 }
@@ -176,8 +177,8 @@ void VAWorld::set_temperature(float value)
 
     if (result != VA_SUCCESS && result != VA_UNCHANGED)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_temperature failed for value ", value,
+        VA_ERROR(
+            "VAWorld::set_temperature failed for value ", value,
             " (must be > -273.15) (VAResult=", VAResultToString(result), ")");
     }
 }
@@ -195,8 +196,8 @@ void VAWorld::set_pressure(float value)
 
     if (result != VA_SUCCESS && result != VA_UNCHANGED)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_pressure failed for value ", value,
+        VA_ERROR(
+            "VAWorld::set_pressure failed for value ", value,
             " (must be > 0) (VAResult=", VAResultToString(result), ")");
     }
 }
@@ -214,8 +215,8 @@ void VAWorld::set_reference_frequency_lf(float value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_reference_frequency_lf failed (value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_reference_frequency_lf failed (value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -232,8 +233,8 @@ void VAWorld::set_reference_frequency_hf(float value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_reference_frequency_hf failed (value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_reference_frequency_hf failed (value is NaN/Infinity) (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -250,8 +251,8 @@ void VAWorld::set_emitters_outside_the_world_are_muffled(bool value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_emitters_outside_the_world_are_muffled failed (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_emitters_outside_the_world_are_muffled failed (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -268,8 +269,8 @@ void VAWorld::set_maximum_concurrency_level(int value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_maximum_concurrency_level failed (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::set_maximum_concurrency_level failed (VAResult=", VAResultToString(result), ")");
     }
 }
 
@@ -288,8 +289,8 @@ void VAWorld::set_work_item_count(int value)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::set_work_item_count failed for value ", work_item_count,
+        VA_ERROR(
+            "VAWorld::set_work_item_count failed for value ", work_item_count,
             " (must be >= 1) (VAResult=", VAResultToString(result), ")");
     }
 }
@@ -340,8 +341,8 @@ bool VAWorld::export_to_file(const String &file_path)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::export_to_file failed for '", file_path, "' (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::export_to_file failed for '", file_path, "' (VAResult=", VAResultToString(result), ")");
         return false;
     }
 

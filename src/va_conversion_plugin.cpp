@@ -10,6 +10,7 @@
 
 #include "al_source_node.h"
 #include "va_emitter.h"
+#include "va_engine_util.h"
 #include "va_source.h"
 #include "va_source_leech.h"
 #include "va_source_relative.h"
@@ -103,7 +104,7 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
     Node *parent = old_node->get_parent();
     if (!parent)
     {
-        UtilityFunctions::push_warning("[vaudio-godot-native-openal] Cannot convert the scene root node.");
+        VA_WARN("Cannot convert the scene root node.");
         return;
     }
 

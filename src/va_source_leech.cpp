@@ -1,10 +1,10 @@
 #include "va_source_leech.h"
 
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "va_emitter.h"
+#include "va_engine_util.h"
 #include "va_world.h"
 #include "va_world_lookup.h"
 
@@ -50,7 +50,7 @@ float VASourceLeech::get_muffling_gain_hf() const
 
 void VASourceLeech::_enter_tree()
 {
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         return;
     }
@@ -59,8 +59,8 @@ void VASourceLeech::_enter_tree()
 
     if (!emitter)
     {
-        UtilityFunctions::push_warning(
-            "[vaudio-godot-native-openal] '", get_name(),
+        VA_WARN(
+            "'", get_name(),
             "' is a VASourceLeech but its parent is not a VAEmitter - "
             "it will never play. VASourceLeech must be a direct child of a "
             "VAEmitter (or VAListener) node whose own raytracing results it "

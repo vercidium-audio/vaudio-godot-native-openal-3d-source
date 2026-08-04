@@ -9,14 +9,7 @@ extern "C"
 
 using namespace godot;
 
-// Overrides the acoustic properties of one of the SDK's 23 built-in materials
-// (see VAMaterialType in vaudio.h) - picked from a dropdown rather than typed
-// as free text/a numeric id. Unlike VACustomMaterial, the target material already
-// exists in every ::VAWorld (vaWorldCreate pre-creates ids 0-22), so this
-// node only ever calls the vaWorldSetMaterialXxx setters, never
-// vaWorldCreateMaterial - and there's no id-collision case to guard against,
-// since two VADefaultMaterial nodes picking the same entry is just "last one
-// wins" on the same built-in, not an error.
+// Node that overrides the properties of one of the SDK's 23 built-in materials
 class VADefaultMaterial : public Node
 {
     GDCLASS(VADefaultMaterial, Node);
@@ -33,19 +26,13 @@ private:
     float plane_transmission_lf = 0.1f;
     float plane_transmission_hf = 0.25f;
 
-    // Set once _enter_tree has pushed the initial values to the SDK - property
-    // setters below push live updates to the SDK only once this is true,
-    // matching VACustomMaterial's pattern.
+    // true once the material has been configured at runtime by _enter_tree()
     bool registered = false;
 
-    // Cached handle of the owning VAWorld, set in _enter_tree once registered
-    // so property setters don't need to re-resolve the VAWorld node every call.
+    // Cached handle of the owning VAWorld
     ::VAWorld *va_world_handle = nullptr;
 
-    // Overwrites the 7 editable properties with the SDK's built-in defaults
-    // for material_type, and pushes them to the live world if registered.
-    // Called whenever material_type changes so the inspector reflects the
-    // newly-selected material instead of stale values from the previous one.
+    // Reverts all properties back to the SDK's built-in defaults
     void reset_properties_to_material_defaults();
 
 protected:

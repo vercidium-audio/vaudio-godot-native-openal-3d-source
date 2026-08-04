@@ -1,10 +1,10 @@
 #include "al_source_node.h"
 
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "openal/al_source.h"
+#include "va_engine_util.h"
 
 void ALSourceNode::_bind_methods()
 {
@@ -43,7 +43,7 @@ ALSourceNode::~ALSourceNode()
 
 void ALSourceNode::_ready()
 {
-    if (autoplay && !Engine::get_singleton()->is_editor_hint())
+    if (autoplay && !IS_EDITOR_HINT())
     {
         play();
     }
@@ -67,7 +67,7 @@ void ALSourceNode::ensure_stream_decoded()
     }
     else
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] ", get_name(), ": failed to decode the stream");
+        VA_ERROR(get_name(), ": failed to decode the stream");
     }
 }
 

@@ -1,5 +1,6 @@
 #include "al_reverb.h"
 
+#include "../va_engine_util.h"
 #include "al_manager.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -17,7 +18,7 @@ bool ALReverbEffect::create()
 
     if (!manager || !manager->is_initialized())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] ALReverbEffect::create called before the OpenAL device is initialized");
+        VA_ERROR("ALReverbEffect::create called before the OpenAL device is initialized");
         return false;
     }
 
@@ -33,7 +34,7 @@ bool ALReverbEffect::create()
 
     if (new_effect == 0)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alGenEffects failed, AL error ", (int)manager->al_get_error()());
+        VA_ERROR("alGenEffects failed, AL error ", (int)manager->al_get_error()());
         return false;
     }
 
@@ -42,7 +43,7 @@ bool ALReverbEffect::create()
 
     if (new_slot == 0)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alGenAuxiliaryEffectSlots failed, AL error ", (int)manager->al_get_error()());
+        VA_ERROR("alGenAuxiliaryEffectSlots failed, AL error ", (int)manager->al_get_error()());
         ALuint effects[1] = {new_effect};
         manager->al_delete_effects()(1, effects);
         return false;

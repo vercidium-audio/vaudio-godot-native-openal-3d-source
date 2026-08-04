@@ -1,18 +1,16 @@
 #include "va_default_material.h"
 
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 #include "va_conversions.h"
+#include "va_engine_util.h"
 #include "va_world.h"
 #include "va_world_lookup.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
 // Dropdown order must match VAMaterialType's declaration order in vaudio.h
-// (VAMaterialAir = 0, ...) - the enum property value is used directly as the
-// materialId passed to vaWorldSetMaterialXxx below.
 static const char *DEFAULT_MATERIAL_NAME_HINT =
     "Air,Brick,Cloth,Concrete,Concrete Polished,Dirt,Glass,Grass,Gravel,"
     "Gyprock,Ice,Leaf,Marble,Metal,Mud,Rock,Sand,Snow,Tile,Tree,Water,"
@@ -20,9 +18,7 @@ static const char *DEFAULT_MATERIAL_NAME_HINT =
 
 namespace
 {
-    // Human-readable name for a VAMaterialType, for error/warning logging - derived from
-    // DEFAULT_MATERIAL_NAME_HINT so the two stay in sync. Falls back to the raw integer for
-    // anything out of range (e.g. a future SDK version adding new materials).
+    // Convert VAMaterialType to their string name for error/warning logging
     String VAMaterialTypeToString(VAMaterialType material_type)
     {
         static const PackedStringArray names = String(DEFAULT_MATERIAL_NAME_HINT).split(",");
@@ -50,9 +46,9 @@ namespace
     const MaterialDefaults &get_material_defaults(VAMaterialType material_type)
     {
         static MaterialDefaults defaults[VAMaterialTypeCount];
-        static bool loaded = false;
+        static bool cached = false;
 
-        if (!loaded)
+        if (!cached)
         {
             ::VAWorld *world = vaWorldCreate();
 
@@ -70,10 +66,10 @@ namespace
             VAResult destroy_result = vaWorldDestroy(world);
             if (destroy_result != VA_SUCCESS)
             {
-                UtilityFunctions::push_error("[vaudio-godot-native-openal] get_material_defaults: vaWorldDestroy failed on scratch world (VAResult=", VAResultToString(destroy_result), ")");
+                VA_ERROR("get_material_defaults: vaWorldDestroy failed on scratch world (VAResult=", VAResultToString(destroy_result), ")");
             }
 
-            loaded = true;
+            cached = true;
         }
 
         return defaults[material_type];
@@ -87,8 +83,8 @@ namespace
             return;
         }
 
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VADefaultMaterial::set_", property_name,
+        VA_ERROR(
+            "VADefaultMaterial::set_", property_name,
             " failed for material_type=", VAMaterialTypeToString(material_type), " (VAResult=", VAResultToString(result), ")");
     }
 }
@@ -138,7 +134,7 @@ VADefaultMaterial::~VADefaultMaterial()
 
 void VADefaultMaterial::_enter_tree()
 {
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         return;
     }

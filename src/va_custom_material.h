@@ -12,28 +12,12 @@ using namespace godot;
 namespace va_godot
 {
 
-// Port of vaudio-godot-openal's VAMaterial.cs. No transform needed - matched
-// by name against the "vercidium_audio_material" metadata string, not by
-// scene position - so this is a Node, not a Node3D (matches the C# base
-// class, which the original stub here got wrong).
-//
-// Name collision note: same as VAWorld/VAEmitter, the vaudio C SDK's opaque
-// handle type is called "VAMaterial", in the global namespace. This Godot
-// node class lives in namespace va_godot instead - see the collision note
-// on VAWorld (va_world.h) for why a namespace was used instead of a renamed
-// class. It's also named VACustomMaterial (not VAMaterial) to avoid reading
-// as a collision with the SDK's ::VAMaterial handle type even though the
-// namespace already disambiguates it.
 class VACustomMaterial : public Node
 {
     GDCLASS(VACustomMaterial, Node);
 
 private:
-    // Auto-assigned by VAWorld::register_custom_material (lowest unclaimed id
-    // >= 1000) - not user-facing, matching vaudio-unreal's
-    // UVAudioCustomMaterialAsset::GetMaterialId allocation. Geometry looks
-    // materials up by material_name, never by this id (see
-    // VAWorld::get_material), so there's nothing for the user to type.
+    // Auto-assigned by VAWorld::register_custom_material, not user-facing
     int material_type = 0;
     String material_name = "CustomMaterial";
 
@@ -45,13 +29,10 @@ private:
     float plane_transmission_lf = 0.1f;
     float plane_transmission_hf = 0.25f;
 
-    // Set once the material has been created in the owning VAWorld's ::VAWorld
-    // handle (see _enter_tree) - property setters below push live updates to
-    // the SDK only once this is true.
+    // true once the material has been created at runtime by _enter_tree()
     bool registered = false;
 
-    // Cached handle of the owning VAWorld, set in _enter_tree once registered
-    // so property setters don't need to re-resolve the VAWorld node every call.
+    // Cached handle of the owning VAWorld
     ::VAWorld *va_world_handle = nullptr;
 
 protected:
@@ -65,9 +46,6 @@ public:
 
     int get_material_type() const;
 
-    // Called once by VAWorld::register_custom_material to assign the
-    // auto-allocated id. Not bound as a Godot property - see material_type's
-    // doc comment above.
     void set_material_type(int value);
 
     String get_material_name() const;

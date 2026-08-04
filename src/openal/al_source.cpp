@@ -1,5 +1,6 @@
 #include "al_source.h"
 
+#include "../va_engine_util.h"
 #include "al_manager.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -17,7 +18,7 @@ bool ALSource::create()
 
     if (!manager || !manager->is_initialized())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] ALSource::create called before the OpenAL device is initialized");
+        VA_ERROR("ALSource::create called before the OpenAL device is initialized");
         return false;
     }
 
@@ -26,7 +27,7 @@ bool ALSource::create()
 
     if (new_handle == 0)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alGenSources failed, AL error ", (int)manager->al_get_error()());
+        VA_ERROR("alGenSources failed, AL error ", (int)manager->al_get_error()());
         return false;
     }
 

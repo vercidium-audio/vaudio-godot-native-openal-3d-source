@@ -1,6 +1,5 @@
 #include "va_world.h"
 
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/window.hpp>
@@ -12,6 +11,7 @@
 #include "va_conversions.h"
 #include "va_emitter.h"
 #include "va_custom_material.h"
+#include "va_engine_util.h"
 
 #include <algorithm>
 
@@ -119,7 +119,7 @@ VAWorld::VAWorld()
     // the is_editor_hint() guard already in _ready()/_exit_tree() below.
     // world stays nullptr; every other method already null-checks it (see
     // ~VAWorld, _process, and the set_* property forwards in va_world.h).
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         return;
     }
@@ -130,24 +130,24 @@ VAWorld::VAWorld()
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::VAWorld failed to set coordinate system: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::VAWorld failed to set coordinate system: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
     }
 
     result = vaWorldSetUserData(world, this);
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::VAWorld failed to set user data: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::VAWorld failed to set user data: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
     }
 
     result = vaWorldSetOnReverbUpdatedCallback(world, &VAWorld::on_reverb_updated_trampoline);
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::VAWorld failed to set the reverb-updated callback: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
+        VA_ERROR(
+            "VAWorld::VAWorld failed to set the reverb-updated callback: vaWorldCreate returned NULL (VAResult=", VAResultToString(result), ")");
     }
 
     // Push every VAWorldProperties.cs-ported field's default onto the
@@ -205,8 +205,8 @@ VAWorld::~VAWorld()
                 // Should never trigger: vaWorldWait above already drained any
                 // in-flight raytracing cycle, so this emitter can't still be
                 // in use.
-                UtilityFunctions::push_error(
-                    "[vaudio-godot-native-openal] VAWorld::~VAWorld failed to destroy a pending emitter (VAResult=", VAResultToString(result), ")");
+                VA_ERROR(
+                    "VAWorld::~VAWorld failed to destroy a pending emitter (VAResult=", VAResultToString(result), ")");
             }
         }
         pending_emitter_destroys.clear();
@@ -215,8 +215,8 @@ VAWorld::~VAWorld()
 
         if (result != VA_SUCCESS)
         {
-            UtilityFunctions::push_error(
-                "[vaudio-godot-native-openal] VAWorld::~VAWorld failed to destroy the world (VAResult=", VAResultToString(result), ")");
+            VA_ERROR(
+                "VAWorld::~VAWorld failed to destroy the world (VAResult=", VAResultToString(result), ")");
         }
 
         world = nullptr;
@@ -225,7 +225,7 @@ VAWorld::~VAWorld()
 
 void VAWorld::_ready()
 {
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         // world stays null in the editor (see the constructor), so
         // init_scene's primitive-building walk can't run here - but still
@@ -254,7 +254,7 @@ void VAWorld::_ready()
 // native_godot_plan.md's "Add live scene-tree tracking" checklist item.
 void VAWorld::_exit_tree()
 {
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         return;
     }
@@ -306,8 +306,8 @@ void VAWorld::_process(double delta)
 
         if (result != VA_SUCCESS && result != VA_STILL_RUNNING)
         {
-            UtilityFunctions::push_error(
-                "[vaudio-godot-native-openal] VAWorld::_process failed to update the world (VAResult=", VAResultToString(result), ")");
+            VA_ERROR(
+                "VAWorld::_process failed to update the world (VAResult=", VAResultToString(result), ")");
         }
     }
 }
@@ -348,14 +348,14 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
             break;
 
         case VA_WORLD_CONFLICT:
-            UtilityFunctions::push_error(
-                "[vaudio-godot-native-openal] VAWorld::register_emitter failed for '", emitter->get_name(),
+            VA_ERROR(
+                "VAWorld::register_emitter failed for '", emitter->get_name(),
                 "': emitter is already added to a different VAWorld.");
             break;
 
         default:
-            UtilityFunctions::push_error(
-                "[vaudio-godot-native-openal] VAWorld::register_emitter failed for '", emitter->get_name(),
+            VA_ERROR(
+                "VAWorld::register_emitter failed for '", emitter->get_name(),
                 "' (VAResult=", VAResultToString(result), ")");
             break;
     }
@@ -368,7 +368,7 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         }
         else
         {
-            UtilityFunctions::push_warning("[vaudio-godot-native-openal] Only one VAEmitter can be the main listener. Node: ", emitter->get_name());
+            VA_WARN("Only one VAEmitter can be the main listener. Node: ", emitter->get_name());
         }
 
         return;
@@ -377,7 +377,7 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
     if (!listener)
     {
         // TODO - yuck! In Unreal you can add anything in any order, and actors will initialise each other if they aren't ready yet
-        UtilityFunctions::push_warning("[vaudio-godot-native-openal] VAEmitter nodes cannot be added before the main listener. Node: ", emitter->get_name());
+        VA_WARN("VAEmitter nodes cannot be added before the main listener. Node: ", emitter->get_name());
 
         return;
     }
@@ -506,8 +506,8 @@ ALReverbEffect *VAWorld::get_reverb_effect(::VAEmitter *emitter)
         {
             if (grouped_eax_index >= (int)grouped_reverb_effects.size())
             {
-                UtilityFunctions::push_warning(
-                    "[vaudio-godot-native-openal] Emitter has a grouped EAX index of ", grouped_eax_index,
+                VA_WARN(
+                    "Emitter has a grouped EAX index of ", grouped_eax_index,
                     " but only ", (int)grouped_reverb_effects.size(), " EAX presets are available.");
                 return &listener_reverb_effect;
             }
