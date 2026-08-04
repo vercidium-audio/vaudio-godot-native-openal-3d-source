@@ -77,20 +77,6 @@ void VASourceAmbient::retry_find_va_world(Node *node)
     waiting_for_world = false;
 }
 
-void VASourceAmbient::_ready()
-{
-    if (Engine::get_singleton()->is_editor_hint())
-    {
-        return;
-    }
-
-    // Matches VASourceRelative::_ready(): ambient sources aren't raytraced
-    // relative to any specific source location (they just replay the
-    // listener's ambient muffling gain), so max_distance/reference_distance
-    // attenuation would be misleading - force relative/non-spatialised.
-    set_relative(true);
-}
-
 bool VASourceAmbient::play()
 {
     // Matches VASourceAmbient.cs's Play(): don't start until the listener has
@@ -101,15 +87,13 @@ bool VASourceAmbient::play()
         return false;
     }
 
-    played = ALSourceNode3D::play();
+    played = ALSourceNodeRelative::play();
 
     return played;
 }
 
 void VASourceAmbient::_process(double delta)
 {
-    ALSourceNode3D::_process(delta);
-
     if (Engine::get_singleton()->is_editor_hint())
     {
         return;

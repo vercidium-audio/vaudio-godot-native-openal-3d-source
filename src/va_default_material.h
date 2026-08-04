@@ -22,9 +22,9 @@ class VADefaultMaterial : public Node
     GDCLASS(VADefaultMaterial, Node);
 
 private:
-    VAMaterialType material_name = VAMaterialMetal;
+    VAMaterialType material_type = VAMaterialMetal;
 
-    // Matches VAMaterialMetal, the default material_name above.
+    // Matches VAMaterialMetal, the default material_type above.
     float absorption_lf = 0.05f;
     float absorption_hf = 0.02f;
     float scattering = 0.01f;
@@ -43,8 +43,8 @@ private:
     ::VAWorld *va_world_handle = nullptr;
 
     // Overwrites the 7 editable properties with the SDK's built-in defaults
-    // for material_name, and pushes them to the live world if registered.
-    // Called whenever material_name changes so the inspector reflects the
+    // for material_type, and pushes them to the live world if registered.
+    // Called whenever material_type changes so the inspector reflects the
     // newly-selected material instead of stale values from the previous one.
     void reset_properties_to_material_defaults();
 
@@ -57,8 +57,8 @@ public:
 
     void _enter_tree() override;
 
-    int get_material_name() const;
-    void set_material_name(int value);
+    int get_material_type() const;
+    void set_material_type(int value);
 
     float get_absorption_lf() const;
     void set_absorption_lf(float value);

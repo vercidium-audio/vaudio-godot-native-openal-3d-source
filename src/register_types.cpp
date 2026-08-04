@@ -2,13 +2,17 @@
 
 #include <gdextension_interface.h>
 
+#include <godot_cpp/classes/editor_plugin_registration.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 
+#include "al_source_node.h"
 #include "al_source_node3d.h"
+#include "al_source_node_relative.h"
 #include "openal/al_manager.h"
 #include "transform_watcher.h"
+#include "va_conversion_plugin.h"
 #include "va_default_material.h"
 #include "va_emitter.h"
 #include "va_listener.h"
@@ -29,15 +33,31 @@ static ALManager al_manager;
 
 void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_level)
 {
+    if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR)
+    {
+        // Scene tree right-click "Convert to VASource"/"Convert to
+        // VASourceRelative" items - editor-only, so registered at the
+        // EDITOR level rather than alongside the SCENE-level classes below.
+        ClassDB::register_class<va_godot::ConversionContextMenuPlugin>();
+        ClassDB::register_class<va_godot::VAConversionPlugin>();
+        EditorPlugins::add_by_type<va_godot::VAConversionPlugin>();
+        return;
+    }
+
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE)
     {
         return;
     }
 
-    // ALSourceNode3D must be registered before VASource/VASourceRelative/
-    // VASourceAmbient - it's their base class, and ClassDB::register_class
-    // requires parent classes to already be registered.
+    // ALSourceNode (and its ALSourceNode3D/ALSourceNodeRelative subclasses)
+    // must be registered before VASource/VASourceRelative/VASourceAmbient -
+    // they're their base classes, and ClassDB::register_class requires parent
+    // classes to already be registered. ALSourceNode itself is never
+    // instantiated directly (configure_source is pure virtual), so it's
+    // registered as abstract.
+    ClassDB::register_abstract_class<ALSourceNode>();
     ClassDB::register_class<ALSourceNode3D>();
+    ClassDB::register_class<ALSourceNodeRelative>();
 
     ClassDB::register_class<va_godot::VAWorld>();
     ClassDB::register_class<va_godot::VAEmitter>();
@@ -61,6 +81,12 @@ void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_le
 
 void uninitialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_level)
 {
+    if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR)
+    {
+        EditorPlugins::remove_by_type<va_godot::VAConversionPlugin>();
+        return;
+    }
+
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE)
     {
         return;

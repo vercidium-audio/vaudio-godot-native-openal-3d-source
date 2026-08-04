@@ -1,6 +1,6 @@
 #pragma once
 
-#include "al_source_node3d.h"
+#include "al_source_node_relative.h"
 
 using namespace godot;
 
@@ -15,10 +15,14 @@ class VAWorld;
 // be muffled by the room the listener is currently in, without being
 // raytraced/positioned relative to any specific source location. Waits for
 // the listener's first ambient filter result before playing, then re-applies
-// the (possibly-changing) ambient gain every frame.
-class VASourceAmbient : public ALSourceNode3D
+// the (possibly-changing) ambient gain every frame. Extends
+// ALSourceNodeRelative (not ALSourceNode3D) so its sources are always
+// AL_SOURCE_RELATIVE with a pinned origin position - see that class's doc
+// comment for why this used to be a `relative` bool on ALSourceNode3D and
+// caused mispositioned/panned audio.
+class VASourceAmbient : public ALSourceNodeRelative
 {
-    GDCLASS(VASourceAmbient, ALSourceNode3D);
+    GDCLASS(VASourceAmbient, ALSourceNodeRelative);
 
 private:
     va_godot::VAWorld *va_world = nullptr;
@@ -39,7 +43,6 @@ public:
 
     void _enter_tree() override;
     void _exit_tree() override;
-    void _ready() override;
     void _process(double delta) override;
 
     // Matches VASourceAmbient.cs's Play() override: refuses to start until

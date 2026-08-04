@@ -611,7 +611,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
         // Use the max world size to ensure the plane covers the raytracing
         // scene, *2 in case the plane is positioned in the corner of the world.
         VAResult width_result = vaPlanePrimitiveSetWidth(p, world_magnitude * 2);
-        if (width_result != VA_SUCCESS)
+        if (width_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
         {
             UtilityFunctions::push_error(
                 "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to set width for '",
@@ -619,7 +619,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
         }
 
         VAResult height_result = vaPlanePrimitiveSetHeight(p, world_magnitude * 2);
-        if (height_result != VA_SUCCESS)
+        if (height_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
         {
             UtilityFunctions::push_error(
                 "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to set height for '",
@@ -628,7 +628,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
 
         VAMatrix mat = ToVAudio(plane_transform);
         VAResult transform_result = vaPlanePrimitiveSetTransform(p, &mat);
-        if (transform_result != VA_SUCCESS)
+        if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
         {
             UtilityFunctions::push_error(
                 "[vaudio-godot-native-openal] VAWorld::create_primitive(CollisionShape3D world boundary) failed to set transform for '",
@@ -705,7 +705,7 @@ void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType mat
 
     // TODO - make this a metadata / inspector flag in Godot.
     VAResult permeation_result = vaMeshPrimitiveSetSupports3DPermeation(prim, true);
-    if (permeation_result != VA_SUCCESS)
+    if (permeation_result != VA_SUCCESS && permeation_result != VA_UNCHANGED)
     {
         UtilityFunctions::push_error(
             "[vaudio-godot-native-openal] VAWorld::create_primitive(MeshInstance3D) failed to set 3D permeation support for '",

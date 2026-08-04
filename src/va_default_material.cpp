@@ -20,6 +20,21 @@ static const char *DEFAULT_MATERIAL_NAME_HINT =
 
 namespace
 {
+    // Human-readable name for a VAMaterialType, for error/warning logging - derived from
+    // DEFAULT_MATERIAL_NAME_HINT so the two stay in sync. Falls back to the raw integer for
+    // anything out of range (e.g. a future SDK version adding new materials).
+    String VAMaterialTypeToString(VAMaterialType material_type)
+    {
+        static const PackedStringArray names = String(DEFAULT_MATERIAL_NAME_HINT).split(",");
+
+        if (material_type < 0 || material_type >= names.size())
+        {
+            return "UNKNOWN(" + String::num_int64(material_type) + ")";
+        }
+
+        return names[material_type];
+    }
+
     struct MaterialDefaults
     {
         float absorption_lf;
@@ -31,12 +46,8 @@ namespace
         float plane_transmission_hf;
     };
 
-    // Queried from the SDK on first use and cached for the lifetime of the
-    // process, so the vaudio-side defaults never need to be hand-copied here
-    // (see material_settings.c in the vaudio SDK repo, which this avoids
-    // duplicating). A throwaway ::VAWorld is the only SDK-supported way to
-    // read a built-in material's default properties.
-    const MaterialDefaults &get_material_defaults(VAMaterialType material_name)
+    // Cache default material values
+    const MaterialDefaults &get_material_defaults(VAMaterialType material_type)
     {
         static MaterialDefaults defaults[VAMaterialTypeCount];
         static bool loaded = false;
@@ -56,38 +67,20 @@ namespace
                 defaults[i].plane_transmission_hf = vaWorldGetMaterialPlaneTransmissionHF(world, i);
             }
 
-            // world was just created above and is never shared, so the only
-            // documented failure (VA_INVALID_POINTER for a null world) should
-            // never trigger - logged defensively in case that assumption ever
-            // breaks.
-            VAResult wait_result = vaWorldWait(world);
-            if (wait_result != VA_SUCCESS)
-            {
-                UtilityFunctions::push_error(
-                    "[vaudio-godot-native-openal] get_material_defaults: vaWorldWait failed on scratch world (VAResult=", VAResultToString(wait_result), ")");
-            }
-
             VAResult destroy_result = vaWorldDestroy(world);
             if (destroy_result != VA_SUCCESS)
             {
-                UtilityFunctions::push_error(
-                    "[vaudio-godot-native-openal] get_material_defaults: vaWorldDestroy failed on scratch world (VAResult=", VAResultToString(destroy_result), ")");
+                UtilityFunctions::push_error("[vaudio-godot-native-openal] get_material_defaults: vaWorldDestroy failed on scratch world (VAResult=", VAResultToString(destroy_result), ")");
             }
 
             loaded = true;
         }
 
-        return defaults[material_name];
+        return defaults[material_type];
     }
 
-    // Shared by every vaWorldSetMaterialXxx call below - they all document the
-    // same result vocabulary (VA_INVALID_POINTER/VA_MATERIAL_DOES_NOT_EXIST
-    // can't happen here: world is always valid and material_name is one of
-    // the 23 built-in ids, which always exist. VA_INVALID_VALUE/
-    // VA_OUT_OF_RANGE are real, since the value comes from the editor's
-    // property panel or reset_properties_to_material_defaults. VA_UNCHANGED
-    // is a no-op, not an error).
-    void log_if_material_setter_failed(VAResult result, const char *property_name, VAMaterialType material_name)
+    // Log VA_INVALID_VALUE/VA_OUT_OF_RANGE errors
+    void log_if_material_setter_failed(VAResult result, const char *property_name, VAMaterialType material_type)
     {
         if (result == VA_SUCCESS || result == VA_UNCHANGED)
         {
@@ -96,15 +89,15 @@ namespace
 
         UtilityFunctions::push_error(
             "[vaudio-godot-native-openal] VADefaultMaterial::set_", property_name,
-            " failed for material_name=", (int)material_name, " (VAResult=", VAResultToString(result), ")");
+            " failed for material_type=", VAMaterialTypeToString(material_type), " (VAResult=", VAResultToString(result), ")");
     }
 }
 
 void VADefaultMaterial::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("get_material_name"), &VADefaultMaterial::get_material_name);
-    ClassDB::bind_method(D_METHOD("set_material_name", "value"), &VADefaultMaterial::set_material_name);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "material_name", PROPERTY_HINT_ENUM, DEFAULT_MATERIAL_NAME_HINT), "set_material_name", "get_material_name");
+    ClassDB::bind_method(D_METHOD("get_material_type"), &VADefaultMaterial::get_material_type);
+    ClassDB::bind_method(D_METHOD("set_material_type", "value"), &VADefaultMaterial::set_material_type);
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "material_type", PROPERTY_HINT_ENUM, DEFAULT_MATERIAL_NAME_HINT), "set_material_type", "get_material_type");
 
     ClassDB::bind_method(D_METHOD("get_absorption_lf"), &VADefaultMaterial::get_absorption_lf);
     ClassDB::bind_method(D_METHOD("set_absorption_lf", "value"), &VADefaultMaterial::set_absorption_lf);
@@ -156,37 +149,36 @@ void VADefaultMaterial::_enter_tree()
         return;
     }
 
-    // Built-in materials (ids 0-22) already exist in every ::VAWorld - only
-    // the properties are overridden here, unlike VACustomMaterial which has to
-    // vaWorldCreateMaterial its custom id first.
+    // Built-in materials already exist in every ::VAWorld, so just override the properties
     ::VAWorld *world = va_world->get_handle();
-    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(world, material_name, absorption_lf), "absorption_lf", material_name);
-    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(world, material_name, absorption_hf), "absorption_hf", material_name);
-    log_if_material_setter_failed(vaWorldSetMaterialScattering(world, material_name, scattering), "scattering", material_name);
-    log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(world, material_name, transmission_lf), "transmission_lf", material_name);
-    log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_name, transmission_hf), "transmission_hf", material_name);
-    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(world, material_name, plane_transmission_lf), "plane_transmission_lf", material_name);
-    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(world, material_name, plane_transmission_hf), "plane_transmission_hf", material_name);
+
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(world, material_type, absorption_lf), "absorption_lf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(world, material_type, absorption_hf), "absorption_hf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialScattering(world, material_type, scattering), "scattering", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(world, material_type, transmission_lf), "transmission_lf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf), "transmission_hf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(world, material_type, plane_transmission_lf), "plane_transmission_lf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(world, material_type, plane_transmission_hf), "plane_transmission_hf", material_type);
 
     va_world_handle = world;
     registered = true;
 }
 
-int VADefaultMaterial::get_material_name() const
+int VADefaultMaterial::get_material_type() const
 {
-    return material_name;
+    return material_type;
 }
 
-void VADefaultMaterial::set_material_name(int value)
+void VADefaultMaterial::set_material_type(int value)
 {
-    material_name = (VAMaterialType)value;
+    material_type = (VAMaterialType)value;
 
     reset_properties_to_material_defaults();
 }
 
 void VADefaultMaterial::reset_properties_to_material_defaults()
 {
-    const MaterialDefaults &defaults = get_material_defaults(material_name);
+    const MaterialDefaults &defaults = get_material_defaults(material_type);
 
     absorption_lf = defaults.absorption_lf;
     absorption_hf = defaults.absorption_hf;
@@ -198,13 +190,13 @@ void VADefaultMaterial::reset_properties_to_material_defaults()
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_name, absorption_lf), "absorption_lf", material_name);
-        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_name, absorption_hf), "absorption_hf", material_name);
-        log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_name, scattering), "scattering", material_name);
-        log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_name, transmission_lf), "transmission_lf", material_name);
-        log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_name, transmission_hf), "transmission_hf", material_name);
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_name, plane_transmission_lf), "plane_transmission_lf", material_name);
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_name, plane_transmission_hf), "plane_transmission_hf", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, absorption_lf), "absorption_lf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, absorption_hf), "absorption_hf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, scattering), "scattering", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, transmission_lf), "transmission_lf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, transmission_hf), "transmission_hf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, plane_transmission_lf), "plane_transmission_lf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, plane_transmission_hf), "plane_transmission_hf", material_type);
     }
 
     notify_property_list_changed();
@@ -221,7 +213,7 @@ void VADefaultMaterial::set_absorption_lf(float value)
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_name, value), "absorption_lf", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, value), "absorption_lf", material_type);
     }
 }
 
@@ -236,7 +228,7 @@ void VADefaultMaterial::set_absorption_hf(float value)
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_name, value), "absorption_hf", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, value), "absorption_hf", material_type);
     }
 }
 
@@ -251,7 +243,7 @@ void VADefaultMaterial::set_scattering(float value)
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_name, value), "scattering", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, value), "scattering", material_type);
     }
 }
 
@@ -266,7 +258,7 @@ void VADefaultMaterial::set_transmission_lf(float value)
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_name, value), "transmission_lf", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, value), "transmission_lf", material_type);
     }
 }
 
@@ -281,7 +273,7 @@ void VADefaultMaterial::set_transmission_hf(float value)
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_name, value), "transmission_hf", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, value), "transmission_hf", material_type);
     }
 }
 
@@ -296,7 +288,7 @@ void VADefaultMaterial::set_plane_transmission_lf(float value)
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_name, value), "plane_transmission_lf", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, value), "plane_transmission_lf", material_type);
     }
 }
 
@@ -311,6 +303,6 @@ void VADefaultMaterial::set_plane_transmission_hf(float value)
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_name, value), "plane_transmission_hf", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, value), "plane_transmission_hf", material_type);
     }
 }

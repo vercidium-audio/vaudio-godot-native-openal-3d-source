@@ -77,16 +77,6 @@ void VASourceRelative::retry_find_va_world(Node *node)
     waiting_for_world = false;
 }
 
-void VASourceRelative::_ready()
-{
-    if (Engine::get_singleton()->is_editor_hint())
-    {
-        return;
-    }
-
-    set_relative(true);
-}
-
 bool VASourceRelative::play()
 {
     if (Engine::get_singleton()->is_editor_hint())
@@ -107,5 +97,5 @@ bool VASourceRelative::play()
 
     update_filter(1.0f, 1.0f);
 
-    return ALSourceNode3D::play();
+    return ALSourceNodeRelative::play();
 }
