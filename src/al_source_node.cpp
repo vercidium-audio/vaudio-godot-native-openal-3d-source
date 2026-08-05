@@ -126,13 +126,15 @@ void ALSourceNode::poll_decode_task()
 
 bool ALSourceNode::start_playing()
 {
-    // TODO - what's this about? Could buffer_handle be null? Why?
+    // buffer_handle stays 0 if the stream failed to decode/upload (see
+    // poll_decode_task()) or if play() is called with no stream set.
     if (buffer_handle == 0)
         return false;
 
     auto source = std::make_unique<ALSource>();
 
-    // TODO - log warning that max number of sounds has been reached
+    // ALSource::create() already logs the reason for failure (e.g. the
+    // OpenAL source limit has been reached).
     if (!source->create())
         return false;
 

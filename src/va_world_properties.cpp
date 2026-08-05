@@ -68,7 +68,7 @@ void VAWorld::set_world_is_indoors(bool value)
 
 void VAWorld::set_maximum_grouped_eax_count(int value)
 {
-    // TODO - can we prevent the caller/editor from passing 0 or below? Like a hint range in the editor field?
+    // Editor field has a range hint of 1+, but callers can still pass 0 or below via code.
     // SDK requires >= 1 (VA_OUT_OF_RANGE otherwise); only the negative side is clamped here,
     // so a caller passing 0 will still be rejected by the SDK and reported below.
     maximum_grouped_eax_count = std::max(0, value);
@@ -84,7 +84,7 @@ void VAWorld::set_maximum_grouped_eax_count(int value)
 
 void VAWorld::set_meters_per_unit(float value)
 {
-    // Why are these clamps here?
+    // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     meters_per_unit = std::max(0.0001f, value);
 
     if (!world)
@@ -100,7 +100,7 @@ void VAWorld::set_meters_per_unit(float value)
 
 void VAWorld::set_speed_of_sound(float value)
 {
-    // Why are these clamps here?
+    // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     speed_of_sound = std::max(0.0001f, value);
 
     if (!world)
@@ -199,7 +199,7 @@ void VAWorld::set_maximum_concurrency_level(int value)
 
 void VAWorld::set_work_item_count(int value)
 {
-    // TODO - can we set the range in the editor, to prevent <= 0 values here?
+    // Editor field has a range hint of 1+, but callers can still pass 0 or below via code.
     work_item_count = std::max(0, value);
 
     if (!world)
@@ -216,14 +216,14 @@ double VAWorld::get_main_thread_time() const
     return vaWorldGetMainThreadTime(world);
 }
 
-double VAWorld::get_raytracing_time() const
-{
-    return vaWorldGetRaytracingTime(world);
-}
-
 double VAWorld::get_preparation_time() const
 {
     return vaWorldGetPreparationTime(world);
+}
+
+double VAWorld::get_raytracing_time() const
+{
+    return vaWorldGetRaytracingTime(world);
 }
 
 double VAWorld::get_analysis_time() const

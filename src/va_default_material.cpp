@@ -24,9 +24,7 @@ namespace
         static const PackedStringArray names = String(DEFAULT_MATERIAL_NAME_HINT).split(",");
 
         if (material_type < 0 || material_type >= names.size())
-        {
             return "UNKNOWN(" + String::num_int64(material_type) + ")";
-        }
 
         return names[material_type];
     }
@@ -64,10 +62,9 @@ namespace
             }
 
             VAResult destroy_result = vaWorldDestroy(world);
+            
             if (destroy_result != VA_SUCCESS)
-            {
-                VA_ERROR("get_material_defaults: vaWorldDestroy failed on scratch world (VAResult=", VAResultToString(destroy_result), ")");
-            }
+                VA_ERROR_RESULT(destroy_result, "Failed to destroy scratch world when extracting default materials");
 
             cached = true;
         }
@@ -79,13 +76,10 @@ namespace
     void log_if_material_setter_failed(VAResult result, const char *property_name, VAMaterialType material_type)
     {
         if (result == VA_SUCCESS || result == VA_UNCHANGED)
-        {
             return;
-        }
 
-        VA_ERROR(
-            "VADefaultMaterial::set_", property_name,
-            " failed for material_type=", VAMaterialTypeToString(material_type), " (VAResult=", VAResultToString(result), ")");
+
+        VA_ERROR_RESULT(result, "Failed to set ", property_name, " on default material ", VAMaterialTypeToString(material_type));
     }
 }
 

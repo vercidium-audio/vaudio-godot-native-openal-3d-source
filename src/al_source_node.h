@@ -145,16 +145,6 @@ public:
         return autoplay;
     }
 
-    // TODO - do this
-    // Sets which OpenAL buffer new sources play - see buffer_handle above.
-    // No sound-name/resource-loading registry exists yet (deferred, unlike
-    // ALSource3D.cs's SoundName + ALManager.TryCreateSource); callers must
-    // upload their own ALBuffer and pass its handle directly for now.
-    void set_buffer_handle(ALuint value)
-    {
-        buffer_handle = value;
-    }
-
     // Inspector-facing stream. Decoding is deferred to the first play() (see ensure_stream_decoded).
     Ref<AudioStream> get_stream() const
     {

@@ -44,7 +44,7 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_maximum_grouped_eax_count", "value"), &VAWorld::set_maximum_grouped_eax_count);
 
     ADD_GROUP("Reverb", "");
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "maximum_grouped_eax_count"), "set_maximum_grouped_eax_count", "get_maximum_grouped_eax_count");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "maximum_grouped_eax_count", PROPERTY_HINT_RANGE, "1,32,1,or_greater"), "set_maximum_grouped_eax_count", "get_maximum_grouped_eax_count");
 
     ClassDB::bind_method(D_METHOD("get_meters_per_unit"), &VAWorld::get_meters_per_unit);
     ClassDB::bind_method(D_METHOD("set_meters_per_unit", "value"), &VAWorld::set_meters_per_unit);

@@ -21,17 +21,12 @@ namespace va_godot
 
 namespace
 {
-    void log_if_material_setter_failed(VAResult result, const char *property_name, int material_type)
+    void log_if_material_setter_failed(VAResult result, const char *property_name, const String &material_name)
     {
         if (result == VA_SUCCESS || result == VA_UNCHANGED)
-        {
             return;
-        }
 
-        // TODO - don't log material_type as its an internal field. Log the material name string
-        VA_ERROR(
-            "VACustomMaterial: failed to set property ", property_name,
-            " for material_type ", material_type, " (VAResult=", VAResultToString(result), ")");
+        VA_ERROR_RESULT(result, "Failed to set ", property_name, " on custom material ", material_name);
     }
 }
 
@@ -101,21 +96,17 @@ void VACustomMaterial::_enter_tree()
 
     if (create_result != VA_SUCCESS)
     {
-        // TODO - don't log material_type as its an internal field. Log the material name string
-        VA_ERROR(
-            "VACustomMaterial::_enter_tree: vaWorldCreateMaterial failed for material_type=",
-            material_type, " (VAResult=", VAResultToString(create_result), ")");
-            
+        VA_ERROR_RESULT(create_result, "Failed to create material ", material_name);
         return;
     }
 
-    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(world, material_type, absorption_lf), "absorption_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(world, material_type, absorption_hf), "absorption_hf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialScattering(world, material_type, scattering), "scattering", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(world, material_type, transmission_lf), "transmission_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf), "transmission_hf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(world, material_type, plane_transmission_lf), "plane_transmission_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(world, material_type, plane_transmission_hf), "plane_transmission_hf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(world, material_type, absorption_lf), "absorption_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(world, material_type, absorption_hf), "absorption_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialScattering(world, material_type, scattering), "scattering", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(world, material_type, transmission_lf), "transmission_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf), "transmission_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(world, material_type, plane_transmission_lf), "plane_transmission_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(world, material_type, plane_transmission_hf), "plane_transmission_hf", material_name);
 
     va_world_handle = world;
     registered = true;
@@ -157,7 +148,7 @@ void VACustomMaterial::set_absorption_lf(float value)
     absorption_lf = value;
 
     if (registered)
-        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, value), "absorption_lf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, value), "absorption_lf", material_name);
 }
 
 float VACustomMaterial::get_absorption_hf() const
@@ -170,7 +161,7 @@ void VACustomMaterial::set_absorption_hf(float value)
     absorption_hf = value;
 
     if (registered)
-        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, value), "absorption_hf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, value), "absorption_hf", material_name);
 }
 
 float VACustomMaterial::get_scattering() const
@@ -183,7 +174,7 @@ void VACustomMaterial::set_scattering(float value)
     scattering = value;
 
     if (registered)
-        log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, value), "scattering", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, value), "scattering", material_name);
 }
 
 float VACustomMaterial::get_transmission_lf() const
@@ -196,7 +187,7 @@ void VACustomMaterial::set_transmission_lf(float value)
     transmission_lf = value;
 
     if (registered)
-        log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, value), "transmission_lf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, value), "transmission_lf", material_name);
 }
 
 float VACustomMaterial::get_transmission_hf() const
@@ -209,7 +200,7 @@ void VACustomMaterial::set_transmission_hf(float value)
     transmission_hf = value;
 
     if (registered)
-        log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, value), "transmission_hf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, value), "transmission_hf", material_name);
 }
 
 float VACustomMaterial::get_plane_transmission_lf() const
@@ -222,7 +213,7 @@ void VACustomMaterial::set_plane_transmission_lf(float value)
     plane_transmission_lf = value;
 
     if (registered)
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, value), "plane_transmission_lf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, value), "plane_transmission_lf", material_name);
 }
 
 float VACustomMaterial::get_plane_transmission_hf() const
@@ -235,7 +226,7 @@ void VACustomMaterial::set_plane_transmission_hf(float value)
     plane_transmission_hf = value;
 
     if (registered)
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, value), "plane_transmission_hf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, value), "plane_transmission_hf", material_name);
 }
 
 } // namespace va_godot
