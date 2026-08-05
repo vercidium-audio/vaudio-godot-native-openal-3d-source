@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/csg_sphere3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -70,7 +71,7 @@ private:
     std::vector<::VAEmitter *> pending_emitter_destroys;
 
     bool pending_shutdown = false;
-    bool rendering_enabled = true;
+    bool rendering_enabled = false;
 
     void init_scene();
     void on_node_added(Node *node);
@@ -171,6 +172,22 @@ public:
     void set_rendering_enabled(bool value)
     {
         rendering_enabled = value;
+
+        // The debug render window creates its own independent native OpenGL (WGL) context,
+        // separate from the engine's own. When the project's renderer is also gl_compatibility
+        // (real WGL on Windows, not ANGLE), both contexts run on the main thread under Godot's
+        // default Single-Safe threading model and can corrupt each other's GL state - this has
+        // been observed to crash the engine deterministically within seconds. Refuse to enable
+        // the debug window in that configuration until the root cause is fixed upstream.
+        if (value && RenderingServer::get_singleton()->get_current_rendering_method() == "gl_compatibility")
+        {
+            UtilityFunctions::push_warning("VAWorld: rendering_enabled was not applied because the "
+                "project's renderer is gl_compatibility - the vaudio debug render window uses its own "
+                "native OpenGL context, which is known to crash the engine when the project also uses "
+                "gl_compatibility. Switch to Forward+ or Mobile to use the debug render window.");
+            rendering_enabled = false;
+            return;
+        }
 
         if (world)
             vaWorldSetRenderingEnabled(world, value);
