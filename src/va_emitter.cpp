@@ -258,6 +258,10 @@ void VAEmitter::_exit_tree()
         // No-op unless this emitter was still waiting in va_world's pending_targets for a listener to appear
         va_world->unregister_pending_target(this);
 
+        // No-op unless this emitter is va_world's current listener - avoids leaving a dangling
+        // pointer if this node is freed before VAWorld (e.g. scene unload order isn't guaranteed)
+        va_world->unregister_listener(this);
+
         remove_emitter();
     }
 }

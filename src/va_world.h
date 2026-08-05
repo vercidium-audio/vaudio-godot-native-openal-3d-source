@@ -65,6 +65,11 @@ private:
     // Warn the user once if we don't have a listener
     bool warned_missing_listener = false;
 
+    // Set at the start of _exit_tree - suppresses the missing-listener warning for the
+    // in-flight reverb-updated callback that can still fire once during teardown, after the
+    // listener node has unregistered but before this VAWorld node itself is destroyed
+    bool is_shutting_down = false;
+
     // Emitters whose VAEmitter::on_emitter_removed already ran but whose ::VAEmitter* handle hasn't been vaEmitterDestroy'd yet
     //  See VAEmitter::on_emitter_removed's doc comment for why destruction can't happen synchronously inside the OnRemoved callback.
     //  Drained in ~VAWorld, after vaWorldWait() has returned.
@@ -119,6 +124,10 @@ public:
 
     // Removes this emitter from pending_targets if it's still waiting there for a listener to appear
     void unregister_pending_target(va_godot::VAEmitter *emitter);
+
+    // Called from VAEmitter::_exit_tree when the current listener leaves the tree, so this
+    // world doesn't keep a dangling pointer to a VAEmitter node that's about to be freed
+    void unregister_listener(va_godot::VAEmitter *emitter);
 
     // Export all world settings, materials, primitives, and emitters to a binary file
     // file_path is a native OS path (not a res:// URI) - callers should resolve any Godot path via ProjectSettings::globalize_path first.

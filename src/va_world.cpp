@@ -209,6 +209,8 @@ void VAWorld::_exit_tree()
     if (IS_EDITOR_HINT())
         return;
 
+    is_shutting_down = true;
+
     if (get_tree())
     {
         // Disconnect callbacks
@@ -326,6 +328,17 @@ void VAWorld::unregister_pending_target(va_godot::VAEmitter *emitter)
     pending_targets.erase(std::remove(pending_targets.begin(), pending_targets.end(), emitter), pending_targets.end());
 }
 
+void VAWorld::unregister_listener(va_godot::VAEmitter *emitter)
+{
+    if (listener == emitter)
+    {
+        listener = nullptr;
+
+        // This node may come back (e.g. scene reload), so let a future missing-listener state warn again
+        warned_missing_listener = false;
+    }
+}
+
 void VAWorld::on_reverb_updated_trampoline(::VAWorld *world)
 {
     VAWorld *self = static_cast<VAWorld *>(vaWorldGetUserData(world));
@@ -368,7 +381,9 @@ void VAWorld::on_reverb_updated()
 {
     if (!listener || !listener->get_handle())
     {
-        if (!warned_missing_listener)
+        // Don't warn during teardown - a reverb update can still be in flight after the
+        // listener node has unregistered but before this VAWorld node is destroyed
+        if (!warned_missing_listener && !is_shutting_down)
         {
             VA_WARN_NAMED("Has no VAListener node, so reverb cannot be updated. Add a VAListener node to this scene.");
             warned_missing_listener = true;
