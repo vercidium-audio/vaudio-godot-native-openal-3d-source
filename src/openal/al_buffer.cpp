@@ -1,5 +1,6 @@
 #include "al_buffer.h"
 
+#include "../va_engine_util.h"
 #include "al_manager.h"
 
 #include <godot_cpp/classes/audio_server.hpp>
@@ -38,32 +39,25 @@ ALBuffer::~ALBuffer()
 
 bool ALBuffer::load(const Ref<AudioStream> &p_stream)
 {
-    ALManager *manager = ALManager::get_singleton();
+    return decode(p_stream) && upload();
+}
 
-    if (!manager || !manager->is_initialized())
-    {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] ALBuffer::load called before the OpenAL device is initialized");
-        return false;
-    }
+bool ALBuffer::decode(const Ref<AudioStream> &p_stream)
+{
+    pending_pcm_data.clear();
+    pending_frames_pulled = 0;
 
     if (p_stream.is_null())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] ALBuffer::load called with a null AudioStream");
+        VA_ERROR("ALBuffer::decode called with a null AudioStream");
         return false;
-    }
-
-    if (handle != 0)
-    {
-        ALuint old_handles[1] = {handle};
-        manager->al_delete_buffers()(1, old_handles);
-        handle = 0;
     }
 
     Ref<AudioStreamPlayback> playback = p_stream->instantiate_playback();
 
     if (playback.is_null())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] AudioStream failed to instantiate a playback (unsupported/corrupt file?)");
+        VA_ERROR("AudioStream failed to instantiate a playback (unsupported/corrupt file?)");
         return false;
     }
 
@@ -80,8 +74,7 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
 
     playback->start();
 
-    std::vector<int16_t> pcm_data;
-    pcm_data.reserve((size_t)std::min<int64_t>(expected_frames, (int64_t)mix_rate * 60) * 2);
+    pending_pcm_data.reserve((size_t)std::min<int64_t>(expected_frames, (int64_t)mix_rate * 60) * 2);
 
     int64_t frames_pulled = 0;
 
@@ -97,8 +90,8 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
         for (int64_t i = 0; i < chunk.size(); i++)
         {
             Vector2 frame = chunk[i];
-            pcm_data.push_back(float_to_pcm16(frame.x));
-            pcm_data.push_back(float_to_pcm16(frame.y));
+            pending_pcm_data.push_back(float_to_pcm16(frame.x));
+            pending_pcm_data.push_back(float_to_pcm16(frame.y));
         }
 
         frames_pulled += chunk.size();
@@ -113,10 +106,38 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
 
     playback->stop();
 
-    if (pcm_data.empty())
+    if (pending_pcm_data.empty())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] AudioStream decoded to zero frames");
+        VA_ERROR("AudioStream decoded to zero frames");
         return false;
+    }
+
+    pending_frames_pulled = frames_pulled;
+    sample_rate = (int)mix_rate;
+    return true;
+}
+
+bool ALBuffer::upload()
+{
+    if (pending_pcm_data.empty())
+    {
+        VA_ERROR("ALBuffer::upload called with no decoded PCM data - decode() must be called first");
+        return false;
+    }
+
+    ALManager *manager = ALManager::get_singleton();
+
+    if (!manager || !manager->is_initialized())
+    {
+        VA_ERROR("ALBuffer::upload called before the OpenAL device is initialized");
+        return false;
+    }
+
+    if (handle != 0)
+    {
+        ALuint old_handles[1] = {handle};
+        manager->al_delete_buffers()(1, old_handles);
+        handle = 0;
     }
 
     ALuint new_handle = 0;
@@ -124,7 +145,7 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
 
     if (new_handle == 0)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alGenBuffers failed, AL error ", (int)manager->al_get_error()());
+        VA_ERROR("alGenBuffers failed, AL error ", (int)manager->al_get_error()());
         return false;
     }
 
@@ -134,23 +155,29 @@ bool ALBuffer::load(const Ref<AudioStream> &p_stream)
     manager->al_buffer_data()(
         new_handle,
         AL_FORMAT_STEREO16,
-        pcm_data.data(),
-        (ALsizei)(pcm_data.size() * sizeof(int16_t)),
-        (ALsizei)mix_rate);
+        pending_pcm_data.data(),
+        (ALsizei)(pending_pcm_data.size() * sizeof(int16_t)),
+        (ALsizei)sample_rate);
 
     ALenum error = manager->al_get_error()();
 
     if (error != AL_NO_ERROR)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alBufferData failed, AL error ", (int)error);
+        VA_ERROR("Failed to upload decoded audio to OpenAL: ", ALErrorToString(error),
+            " (", (int)pending_frames_pulled, " frames at ", sample_rate, " Hz)");
         ALuint handles[1] = {new_handle};
         manager->al_delete_buffers()(1, handles);
         return false;
     }
 
     handle = new_handle;
-    sample_rate = (int)mix_rate;
-    duration_seconds = (double)frames_pulled / mix_rate;
+    duration_seconds = (double)pending_frames_pulled / sample_rate;
+
+    // Free the PCM copy now that it's been handed to OpenAL (which keeps its
+    // own copy) - no need to hold onto it, and it'd otherwise stick around
+    // for this ALBuffer's whole lifetime.
+    pending_pcm_data.clear();
+    pending_pcm_data.shrink_to_fit();
 
     return true;
 }

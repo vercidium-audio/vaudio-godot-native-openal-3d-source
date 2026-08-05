@@ -10,44 +10,48 @@ extern "C"
 
 using namespace godot;
 
-// Node that overrides the properties of one of the SDK's 23 built-in materials
-class VADefaultMaterial : public Node
+namespace va_godot
 {
-    GDCLASS(VADefaultMaterial, Node);
+
+class VACustomMaterial : public Node
+{
+    GDCLASS(VACustomMaterial, Node);
 
 private:
-    VAMaterialType material_type = VAMaterialMetal;
+    // Auto-assigned by VAWorld::register_custom_material, not user-facing
+    int material_type = 0;
+    String material_name = "CustomMaterial";
 
-    // Matches VAMaterialMetal, the default material_type above.
-    float absorption_lf = 0.05f;
-    float absorption_hf = 0.02f;
-    float scattering = 0.01f;
-    float transmission_lf = 0.1f;
-    float transmission_hf = 0.05f;
+    float absorption_lf = 0.02f;
+    float absorption_hf = 0.1f;
+    float scattering = 0.1f;
+    float transmission_lf = 10.0f;
+    float transmission_hf = 5.0f;
     float plane_transmission_lf = 0.1f;
     float plane_transmission_hf = 0.25f;
     Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
 
-    // true once the material has been configured at runtime by _enter_tree()
+    // true once the material has been created at runtime by _enter_tree()
     bool registered = false;
 
     // Cached handle of the owning VAWorld
     ::VAWorld *va_world_handle = nullptr;
 
-    // Reverts all properties back to the SDK's built-in defaults
-    void reset_properties_to_material_defaults();
-
 protected:
     static void _bind_methods();
 
 public:
-    VADefaultMaterial();
-    ~VADefaultMaterial();
+    VACustomMaterial();
+    ~VACustomMaterial();
 
     void _enter_tree() override;
 
     int get_material_type() const;
+
     void set_material_type(int value);
+
+    String get_material_name() const;
+    void set_material_name(const String &value);
 
     float get_absorption_lf() const;
     void set_absorption_lf(float value);
@@ -73,3 +77,5 @@ public:
     Color get_color() const;
     void set_color(const Color &value);
 };
+
+} // namespace va_godot

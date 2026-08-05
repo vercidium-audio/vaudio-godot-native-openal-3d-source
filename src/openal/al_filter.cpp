@@ -1,5 +1,6 @@
 #include "al_filter.h"
 
+#include "../va_engine_util.h"
 #include "al_manager.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -18,7 +19,7 @@ bool ALFilter::create(float initial_gain, float initial_gain_hf)
 
     if (!manager || !manager->is_initialized())
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] ALFilter::create called before the OpenAL device is initialized");
+        VA_ERROR("ALFilter::create called before the OpenAL device is initialized");
         return false;
     }
 
@@ -34,7 +35,7 @@ bool ALFilter::create(float initial_gain, float initial_gain_hf)
 
     if (new_handle == 0)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] alGenFilters failed, AL error ", (int)manager->al_get_error()());
+        VA_ERROR("alGenFilters failed, AL error ", (int)manager->al_get_error()());
         return false;
     }
 

@@ -1,4 +1,5 @@
 #include "va_conversions.h"
+#include "va_engine_util.h"
 #include "va_world.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -18,91 +19,196 @@ namespace va_godot
 void VAWorld::set_position(Vector3 value)
 {
     position = value;
-    vaWorldSetPosition(world, ToVAudio(value));
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetPosition(world, ToVAudio(value));
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world position (may be NaN/Infinity)");
 }
 
 void VAWorld::set_size(Vector3 value)
 {
     size = value;
-    vaWorldSetSize(world, ToVAudio(value));
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetSize(world, ToVAudio(value));
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world size (may be negative or NaN/Infinity)");
 }
 
 void VAWorld::set_epsilon(float value)
 {
     epsilon = value;
-    vaWorldSetEpsilon(world, value);
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetEpsilon(world, value);
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world epsilon (may be NaN/Infinity)");
 }
 
 void VAWorld::set_world_is_indoors(bool value)
 {
     world_is_indoors = value;
+
+    if (!world)
+        return;
+
+    // No need to check result - world is defined
     vaWorldSetWorldIsIndoors(world, value);
 }
 
 void VAWorld::set_maximum_grouped_eax_count(int value)
 {
+    // Editor field has a range hint of 1+, but callers can still pass 0 or below via code.
+    // SDK requires >= 1 (VA_OUT_OF_RANGE otherwise); only the negative side is clamped here,
+    // so a caller passing 0 will still be rejected by the SDK and reported below.
     maximum_grouped_eax_count = std::max(0, value);
-    vaWorldSetMaximumGroupedEAXCount(world, maximum_grouped_eax_count);
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetMaximumGroupedEAXCount(world, maximum_grouped_eax_count);
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world maximum grouped EAX count (may be < 1)");
 }
 
 void VAWorld::set_meters_per_unit(float value)
 {
+    // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     meters_per_unit = std::max(0.0001f, value);
-    vaWorldSetMetersPerUnit(world, meters_per_unit);
+
+    if (!world)
+    {
+        return;
+    }
+
+    VAResult result = vaWorldSetMetersPerUnit(world, meters_per_unit);
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world meters per unit (may be <= 0, NaN or Infinity)");
 }
 
 void VAWorld::set_speed_of_sound(float value)
 {
+    // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     speed_of_sound = std::max(0.0001f, value);
-    vaWorldSetInverseSpeedOfSound(world, 1.0f / speed_of_sound);
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetInverseSpeedOfSound(world, 1.0f / speed_of_sound);
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world speed of sound (may be <= 0, NaN or Infinity)");
 }
 
 void VAWorld::set_humidity(float value)
 {
     humidity = value;
-    vaWorldSetAirAbsorptionHumidity(world, value);
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetAirAbsorptionHumidity(world, value);
+
+    if (result != VA_SUCCESS && result != VA_UNCHANGED)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world humidity (may be < 0, > 1, NaN or Infinity)");
 }
 
 void VAWorld::set_temperature(float value)
 {
     temperature = value;
-    vaWorldSetAirAbsorptionTemperature(world, value);
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetAirAbsorptionTemperature(world, value);
+
+    if (result != VA_SUCCESS && result != VA_UNCHANGED)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world temperature (may be <= -273.15, NaN or Infinity)");
 }
 
 void VAWorld::set_pressure(float value)
 {
     pressure = value;
-    vaWorldSetAirAbsorptionPressure(world, value);
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetAirAbsorptionPressure(world, value);
+
+    if (result != VA_SUCCESS && result != VA_UNCHANGED)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world pressure (may be <= 0, NaN or Infinity)");
 }
 
 void VAWorld::set_reference_frequency_lf(float value)
 {
-    reference_frequency_lf = std::max(0.0001f, value);
-    vaWorldSetReferenceFrequencyLF(world, reference_frequency_lf);
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetReferenceFrequencyLF(world, reference_frequency_lf);
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world LF reference frequency (may be <= 0, NaN or Infinity)");
 }
 
 void VAWorld::set_reference_frequency_hf(float value)
 {
-    reference_frequency_hf = std::max(0.0001f, value);
-    vaWorldSetReferenceFrequencyHF(world, reference_frequency_hf);
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetReferenceFrequencyHF(world, reference_frequency_hf);
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world HF reference frequency (may be <= 0, NaN or Infinity)");
 }
 
 void VAWorld::set_emitters_outside_the_world_are_muffled(bool value)
 {
     emitters_outside_the_world_are_muffled = value;
+
+    if (!world)
+        return;
+
+    // No need to check result
     vaWorldSetEmittersOutsideTheWorldAreMuffled(world, value);
 }
 
 void VAWorld::set_maximum_concurrency_level(int value)
 {
     maximum_concurrency_level = std::max(1, value);
-    vaWorldSetMaximumConcurrencyLevel(world, maximum_concurrency_level);
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetMaximumConcurrencyLevel(world, maximum_concurrency_level);
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world maximum concurrency level (may be < 1)");
 }
 
 void VAWorld::set_work_item_count(int value)
 {
+    // Editor field has a range hint of 1+, but callers can still pass 0 or below via code.
     work_item_count = std::max(0, value);
-    vaWorldSetWorkItemCount(world, work_item_count);
+
+    if (!world)
+        return;
+
+    VAResult result = vaWorldSetWorkItemCount(world, work_item_count);
+
+    if (result != VA_SUCCESS)
+        VA_ERROR_NAMED_RESULT(result, "Failed to set world work item count (may be < 1)");
 }
 
 double VAWorld::get_main_thread_time() const
@@ -110,14 +216,14 @@ double VAWorld::get_main_thread_time() const
     return vaWorldGetMainThreadTime(world);
 }
 
-double VAWorld::get_raytracing_time() const
-{
-    return vaWorldGetRaytracingTime(world);
-}
-
 double VAWorld::get_preparation_time() const
 {
     return vaWorldGetPreparationTime(world);
+}
+
+double VAWorld::get_raytracing_time() const
+{
+    return vaWorldGetRaytracingTime(world);
 }
 
 double VAWorld::get_analysis_time() const
@@ -151,8 +257,7 @@ bool VAWorld::export_to_file(const String &file_path)
 
     if (result != VA_SUCCESS)
     {
-        UtilityFunctions::push_error(
-            "[vaudio-godot-native-openal] VAWorld::export_to_file failed for '", file_path, "' (VAResult=", (int)result, ")");
+        VA_ERROR_NAMED_RESULT(result, "Failed to export the world to '", file_path, "'");
         return false;
     }
 

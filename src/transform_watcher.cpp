@@ -11,6 +11,7 @@ void TransformWatcher::set_on_transform_changed(std::function<void()> callback)
 
 void TransformWatcher::_ready()
 {
+    // this is called here (not on the parent node) so only this node receives the notification, avoiding double-processing
     set_notify_transform(true);
 }
 

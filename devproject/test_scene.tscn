@@ -10,7 +10,7 @@
 
 [node name="VAWorld" type="VAWorld" parent="."]
 
-[node name="VAMaterial" type="VAMaterial" parent="VAWorld"]
+[node name="VACustomMaterial" type="VACustomMaterial" parent="VAWorld"]
 material_type = 1000
 material_name = "carpet"
 absorption_lf = 0.4

@@ -6,6 +6,8 @@
 #include <godot_cpp/classes/csg_sphere3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
 extern "C"
@@ -14,6 +16,8 @@ extern "C"
 }
 
 #include "openal/al_reverb.h"
+#include "va_conversions.h"
+#include "va_engine_util.h"
 #include "va_primitive_ref.h"
 
 #include <memory>
@@ -25,20 +29,12 @@ using namespace godot;
 namespace va_godot
 {
 
-class VAMaterial;
+class VACustomMaterial;
 class VAEmitter;
 
-// Minimal VAWorld stub: proves the vaWorldCreate/vaWorldUpdate/vaWorldDestroy
-// round-trip links and runs without crashing inside the Godot editor.
-//
-// Name collision note: the vaudio C SDK's opaque handle type is also called
-// "VAWorld" (see vaudio.h), in the global namespace. This Godot node class
-// lives in namespace va_godot instead of also being declared at global scope
-// (a prefixed rename like GodotVAWorld was considered and rejected - see
-// rename_plan.md - since GDCLASS's stringification would then show
-// "GodotVAWorld" in the editor instead of "VAWorld"). Inside va_godot, the
-// unqualified VAWorld always means this class; ::VAWorld (global namespace)
-// always means the SDK's opaque handle type.
+
+// Name collision: the vaudio C SDK's opaque handle type is also called "VAWorld" (see vaudio.h), in the global namespace.
+// Inside the va_godot namespace, 'VAWorld' always means this class, and '::VAWorld' means the SDK's opaque handle type.
 class VAWorld : public Node
 {
     GDCLASS(VAWorld, Node);
@@ -46,75 +42,52 @@ class VAWorld : public Node
 private:
     ::VAWorld *world = nullptr;
 
-    // VAWorldMaterials.cs's customMaterials dictionary port - keyed by
-    // MaterialType id (>= 1000), populated by VAMaterial::_enter_tree via
-    // register_custom_material.
-    std::unordered_map<int, va_godot::VAMaterial *> custom_materials;
+    // Dictionary of registered custom materials
+    std::unordered_map<int, va_godot::VACustomMaterial *> custom_materials;
 
-    // VAWorld.cs's listener field port - the one VAEmitter with
-    // is_main_listener=true, set by register_emitter. Every other emitter is
-    // automatically added as a target of this one (creation-order-driven,
-    // matching VAWorld.cs's CreateEmitter wiring).
+    // The single main listener for this world
     va_godot::VAEmitter *listener = nullptr;
 
-    // VAWorldVariables.cs's listenerReverbEffect port - the single global EFX
-    // reverb slot, used by emitters/sources that don't affect grouped EAX
-    // (or whose grouped_eax_index is invalid) - see get_reverb_effect.
+    // Contains emitters that invoked register_emitter() before the listener existed.
+    // Drained when the main listener invokes register_emitter().
+    std::vector<va_godot::VAEmitter *> pending_targets;
+
+    // Single AL reverb effect for the listener
     ALReverbEffect listener_reverb_effect;
 
-    // VAWorldVariables.cs's groupedReverbEffects port - one EFX aux slot per
-    // vaWorldGetGroupedEAX() entry, grown lazily in on_reverb_updated to
-    // match vaWorldGetGroupedEAXCount(). Heap-allocated (not a plain
-    // std::vector<ALReverbEffect>) since ALReverbEffect has no copy/move
-    // constructor - its OpenAL handles can't survive a vector reallocation.
+    // List of Grouped EAX reverb effects
     std::vector<std::unique_ptr<ALReverbEffect>> grouped_reverb_effects;
 
-    // VAWorldGodot.cs's OnReverbUpdated trampoline target - resolves back to
-    // "this" via vaWorldGetUserData(world), set in the constructor via
-    // vaWorldSetUserData. Reads vaEmitterGetEAX(listener's handle) and pushes
-    // it into listener_reverb_effect.
+    // Callback from the vaWorld when reverb is updated
     static void on_reverb_updated_trampoline(::VAWorld *world);
     void on_reverb_updated();
 
-    // VAWorldVariables.cs's ambientFilter port - the listener's ambient
-    // (non-directional) muffling gain, refreshed from
-    // vaEmitterGetAmbientFilter(listener's handle) each on_reverb_updated
-    // call. VASourceAmbient reads this directly (gain values only - unlike
-    // listener_reverb_effect, this isn't a real OpenAL object, just the two
-    // floats VASourceAmbient.cs's UpdateFilter call needs). has_ambient_filter
-    // stays false until the listener has raytraced at least once, matching
-    // the C#'s "ambientFilter == null" gate in VASourceAmbient.cs.
-    float ambient_filter_gain_lf = 1.0f;
-    float ambient_filter_gain_hf = 1.0f;
-    bool has_ambient_filter = false;
+    // Warn the user once if we don't have a listener
+    bool warned_missing_listener = false;
 
-    // Emitters whose VAEmitter::on_emitter_removed already ran but whose
-    // ::VAEmitter* handle hasn't been vaEmitterDestroy'd yet - see
-    // VAEmitter::on_emitter_removed's doc comment for why destruction can't
-    // happen synchronously inside the OnRemoved callback. Drained in
-    // ~VAWorld, after vaWorldWait() has returned.
+    // Set at the start of _exit_tree - suppresses the missing-listener warning for the
+    // in-flight reverb-updated callback that can still fire once during teardown, after the
+    // listener node has unregistered but before this VAWorld node itself is destroyed
+    bool is_shutting_down = false;
+
+    // Emitters whose VAEmitter::on_emitter_removed already ran but whose ::VAEmitter* handle hasn't been vaEmitterDestroy'd yet
+    //  See VAEmitter::on_emitter_removed's doc comment for why destruction can't happen synchronously inside the OnRemoved callback.
+    //  Drained in ~VAWorld, after vaWorldWait() has returned.
     std::vector<::VAEmitter *> pending_emitter_destroys;
 
-    // VAWorldProperties.cs's PendingShutdown port - a plain passthrough to
-    // vaWorldSetPendingShutdown. Purely an opt-in caller knob: setting this
-    // ahead of an expected teardown lets vaWorldUpdate stop submitting new
-    // raytracing work over the following frames, so the actual shutdown's
-    // blocking vaWorldWait (still unconditional - see ~VAWorld) has less left
-    // to drain. Matches the C# reference, which also always blocks in
-    // Dispose() regardless of this flag.
     bool pending_shutdown = false;
-
-    bool rendering_enabled = true;
+    bool rendering_enabled = false;
 
     void init_scene();
     void on_node_added(Node *node);
     void on_node_removed(Node *node);
 
-    // VAWorldMaterials.cs port: metadata-key based lookup, matching either a
-    // registered custom VAMaterial node's MaterialName or a built-in name.
+    // Reports unknown material metadata strings when in the editor, not used at runtime
+    void validate_materials_in_editor(Node *node);
+
+    // Get the type of a custom or default material
     VAMaterialType get_material(Node *node);
 
-    // VAWorldPrimitives.cs port.
     void add_primitive(Node *node, VAMaterialType material, bool recursive);
     void remove_primitive(Node *node, bool recursive);
 
@@ -144,25 +117,21 @@ public:
         return world;
     }
 
-    // Called from VAMaterial::_enter_tree. Returns false (and logs a
-    // conflicting-id error) if another VAMaterial already claimed this
-    // MaterialType id - matches VAWorldMaterials.cs's duplicate check.
-    bool register_custom_material(va_godot::VAMaterial *material);
+    // Returns false if another VACustomMaterial already claimed the same ID
+    bool register_custom_material(va_godot::VACustomMaterial *material);
 
-    // Called from VAEmitter::_enter_tree (VAWorld.cs's CreateEmitter
-    // listener-wiring port): if is_main_listener and no listener is set yet,
-    // this becomes the listener; otherwise (once a listener exists) this
-    // emitter is added as a target of the listener via vaEmitterAddTarget.
-    // Also calls vaWorldAddEmitter. Logs a warning (doesn't reassign/throw)
-    // if a second is_main_listener emitter shows up, or if a non-listener
-    // emitter appears before any listener exists - matches VAWorld.cs.
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
 
-    // Exports all world settings, materials, primitives, and emitters to a
-    // binary file via the SDK's vaWorldExport, for later use with
-    // vaWorldImport. file_path is a native OS path (not a res:// URI) -
-    // callers should resolve any Godot path via ProjectSettings::
-    // globalize_path first. Returns false (and logs an error) on failure.
+    // Removes this emitter from pending_targets if it's still waiting there for a listener to appear
+    void unregister_pending_target(va_godot::VAEmitter *emitter);
+
+    // Called from VAEmitter::_exit_tree when the current listener leaves the tree, so this
+    // world doesn't keep a dangling pointer to a VAEmitter node that's about to be freed
+    void unregister_listener(va_godot::VAEmitter *emitter);
+
+    // Export all world settings, materials, primitives, and emitters to a binary file
+    // file_path is a native OS path (not a res:// URI) - callers should resolve any Godot path via ProjectSettings::globalize_path first.
+    // Returns false (and logs an error) on failure.
     bool export_to_file(const String &file_path);
 
     va_godot::VAEmitter *get_listener() const
@@ -184,37 +153,8 @@ public:
         pending_emitter_destroys.push_back(emitter);
     }
 
-    // VAWorldReverb.cs's GetReverbEffect(vaudio.Emitter)/GetReverbEffect(VAEmitter)
-    // port: emitters/sources that affect grouped EAX and have a valid
-    // grouped-EAX index (i.e. they cast reverb rays - see
-    // vaEmitterGetGroupedEAXIndex) resolve to their own grouped reverb slot;
-    // everything else (including the listener itself) falls back to the
-    // single global listener slot. Logs a warning and falls back to the
-    // listener slot if the index is out of range for the current pool size,
-    // matching the C#'s bounds check.
     ALReverbEffect *get_reverb_effect(::VAEmitter *emitter);
 
-    // VASourceAmbient.cs's "vercidiumAudio?.ambientFilter == null" gate port -
-    // false until the listener has raytraced at least once.
-    bool get_has_ambient_filter() const
-    {
-        return has_ambient_filter;
-    }
-
-    float get_ambient_filter_gain_lf() const
-    {
-        return ambient_filter_gain_lf;
-    }
-
-    float get_ambient_filter_gain_hf() const
-    {
-        return ambient_filter_gain_hf;
-    }
-
-    // GroupedEAX stats - thin forwards to vaWorldGetGroupedEAXCount and
-    // vaWorldGetGroupedEAX(world)[index]'s gainLF/gainHF/decayTime, read live
-    // from the SDK (it already owns this array; no local caching needed).
-    // index must be in [0, get_grouped_eax_count()).
     int get_grouped_eax_count() const;
     float get_grouped_eax_gain_lf(int index) const;
     float get_grouped_eax_gain_hf(int index) const;
@@ -230,9 +170,7 @@ public:
         pending_shutdown = value;
 
         if (world)
-        {
             vaWorldSetPendingShutdown(world, value);
-        }
     }
 
     bool get_rendering_enabled() const
@@ -244,18 +182,26 @@ public:
     {
         rendering_enabled = value;
 
-        if (world)
+        // The debug render window creates its own independent native OpenGL (WGL) context,
+        // separate from the engine's own. When the project's renderer is also gl_compatibility
+        // (real WGL on Windows, not ANGLE), both contexts run on the main thread under Godot's
+        // default Single-Safe threading model and can corrupt each other's GL state - this has
+        // been observed to crash the engine deterministically within seconds. Refuse to enable
+        // the debug window in that configuration until the root cause is fixed upstream.
+        if (value && RenderingServer::get_singleton()->get_current_rendering_method() == "gl_compatibility")
         {
-            vaWorldSetRenderingEnabled(world, value);
+            UtilityFunctions::push_warning("VAWorld: rendering_enabled was not applied because the "
+                "project's renderer is gl_compatibility - the vaudio debug render window uses its own "
+                "native OpenGL context, which is known to crash the engine when the project also uses "
+                "gl_compatibility. Switch to Forward+ or Mobile to use the debug render window.");
+            rendering_enabled = false;
+            return;
         }
+
+        if (world)
+            vaWorldSetRenderingEnabled(world, value);
     }
 
-    // VAWorldProperties.cs port - remaining exported properties beyond
-    // pending_shutdown. Each setter mirrors the C#'s pattern of clamping/
-    // validating locally, caching the value, then forwarding to the native
-    // handle if it already exists (it always does here - see the
-    // constructor - but the null check is kept for symmetry with
-    // set_pending_shutdown above).
     Vector3 get_position() const
     {
         return position;
@@ -346,19 +292,16 @@ public:
     }
     void set_work_item_count(int value);
 
-    // Thin forwards to vaWorldGet{MainThread,Raytracing,Preparation,Analysis}Time
-    // - average milliseconds per frame in each stage, read-only stats with no
-    // local cache (always queried live from the SDK handle).
     double get_main_thread_time() const;
-    double get_raytracing_time() const;
     double get_preparation_time() const;
+    double get_raytracing_time() const;
     double get_analysis_time() const;
 
 private:
     Vector3 position = Vector3(-100, 0, -100);
     Vector3 size = Vector3(200, 100, 200);
     float epsilon = 0.01f;
-    bool world_is_indoors = true;
+    bool world_is_indoors = false;
     int maximum_grouped_eax_count = 3;
     float meters_per_unit = 1.0f;
     float speed_of_sound = 343.0f;
@@ -368,7 +311,7 @@ private:
     float reference_frequency_lf = 300.0f;
     float reference_frequency_hf = 4000.0f;
     bool emitters_outside_the_world_are_muffled = true;
-    int maximum_concurrency_level = 4;
+    int maximum_concurrency_level = 4; // overwritten in VAWorld::VAWorld() with processor count - 1
     int work_item_count = 128;
 };
 

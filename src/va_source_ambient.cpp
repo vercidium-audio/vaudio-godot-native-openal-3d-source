@@ -1,34 +1,14 @@
 #include "va_source_ambient.h"
 
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include "va_emitter.h"
+#include "va_engine_util.h"
 #include "va_world.h"
-
-// Finds the (singleton) VAWorld under the current scene root's children -
-// same helper as VAMaterial/VAEmitter/VASource/VASourceRelative's
-// find_va_world.
-static va_godot::VAWorld *find_va_world(Node *node)
-{
-    Node *scene_root = node->get_tree()->get_current_scene();
-    if (!scene_root)
-    {
-        return nullptr;
-    }
-
-    TypedArray<Node> children = scene_root->get_children();
-    for (int i = 0; i < children.size(); i++)
-    {
-        if (va_godot::VAWorld *world = Object::cast_to<va_godot::VAWorld>(children[i]))
-        {
-            return world;
-        }
-    }
-
-    return nullptr;
-}
+#include "va_world_lookup.h"
 
 void VASourceAmbient::_bind_methods()
 {
@@ -44,45 +24,85 @@ VASourceAmbient::~VASourceAmbient()
 
 void VASourceAmbient::_enter_tree()
 {
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         return;
     }
 
-    va_world = find_va_world(this);
+    va_world = va_godot::find_va_world(this);
+
+    if (!va_world)
+    {
+        // No VAWorld anywhere in the tree yet - stay dormant and retry on
+        // every future node addition instead of never recovering - see
+        // VAEmitter::_enter_tree's identical pattern for the rationale.
+        waiting_for_world = true;
+        get_tree()->connect("node_added", callable_mp(this, &VASourceAmbient::retry_find_va_world));
+    }
+}
+
+void VASourceAmbient::_exit_tree()
+{
+    if (waiting_for_world)
+    {
+        if (get_tree() && get_tree()->is_connected("node_added", callable_mp(this, &VASourceAmbient::retry_find_va_world)))
+        {
+            get_tree()->disconnect("node_added", callable_mp(this, &VASourceAmbient::retry_find_va_world));
+        }
+
+        waiting_for_world = false;
+
+        // Never found a VAWorld anywhere in the tree for this node's entire
+        // time in it - see VAEmitter::_exit_tree's identical warning.
+        VA_WARN(
+            "'", get_name(),
+            "' left the tree without ever finding a VAWorld - "
+            "no emitter was created for it. Make sure this node's scene "
+            "was added under a VAWorld while it was in the tree.");
+    }
+}
+
+// Re-attempts find_va_world each time a node is added anywhere in the tree -
+// see VAEmitter::retry_find_va_world's identical pattern.
+void VASourceAmbient::retry_find_va_world(Node *node)
+{
+    va_world = va_godot::find_va_world(this);
+
+    if (!va_world)
+    {
+        return;
+    }
+
+    get_tree()->disconnect("node_added", callable_mp(this, &VASourceAmbient::retry_find_va_world));
+    waiting_for_world = false;
 }
 
 bool VASourceAmbient::play()
 {
     // Matches VASourceAmbient.cs's Play(): don't start until the listener has
     // produced an ambient filter result at least once.
-    if (!va_world || !va_world->get_has_ambient_filter())
+    va_godot::VAEmitter *listener = va_world ? va_world->get_listener() : nullptr;
+    if (!listener || !listener->is_ambient_filter_ready())
     {
         return false;
     }
 
-    played = ALSourceNode3D::play();
-
-    // Permanent print (same rationale as VASource's own playback print -
-    // cheap and keeps proving the listener-ambient-filter-triggers-playback
-    // path works), not a one-off debugging leftover.
-    UtilityFunctions::print(
-        "[vaudio-godot-native-openal] VASourceAmbient '", get_name(), "' started playback: ",
-        played ? "OK" : "FAILED");
+    played = ALSourceNodeRelative::play();
 
     return played;
 }
 
 void VASourceAmbient::_process(double delta)
 {
-    ALSourceNode3D::_process(delta);
+    ALSourceNodeRelative::_process(delta);
 
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         return;
     }
 
-    if (!va_world || !va_world->get_has_ambient_filter())
+    va_godot::VAEmitter *listener = va_world ? va_world->get_listener() : nullptr;
+    if (!listener || !listener->is_ambient_filter_ready())
     {
         return;
     }
@@ -92,7 +112,7 @@ void VASourceAmbient::_process(double delta)
     // ambient sources don't send into the room reverb, only the direct path
     // is muffled by the ambient gain.
     effect = nullptr;
-    update_filter(va_world->get_ambient_filter_gain_lf(), va_world->get_ambient_filter_gain_hf());
+    update_filter(listener->get_ambient_filter_gain_lf(), listener->get_ambient_filter_gain_hf());
 
     if (!played)
     {

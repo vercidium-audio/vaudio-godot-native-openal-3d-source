@@ -1,41 +1,19 @@
 #include "va_emitter.h"
 
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "openal/al_filter.h"
 #include "openal/al_reverb.h"
 #include "va_conversions.h"
+#include "va_engine_util.h"
 #include "va_world.h"
+#include "va_world_lookup.h"
 
 namespace va_godot
 {
-
-// Finds the (singleton) VAWorld under the current scene root's children -
-// same helper as VAMaterial's find_va_world (NodeExtensions.cs's
-// GetVAWorldParent port). Duplicated locally rather than shared since it's a
-// two-line static helper and each caller only needs it during _enter_tree.
-static VAWorld *find_va_world(Node *node)
-{
-    Node *scene_root = node->get_tree()->get_current_scene();
-    if (!scene_root)
-    {
-        return nullptr;
-    }
-
-    TypedArray<Node> children = scene_root->get_children();
-    for (int i = 0; i < children.size(); i++)
-    {
-        if (VAWorld *world = Object::cast_to<VAWorld>(children[i]))
-        {
-            return world;
-        }
-    }
-
-    return nullptr;
-}
 
 void VAEmitter::_bind_methods()
 {
@@ -47,6 +25,13 @@ void VAEmitter::_bind_methods()
     // GDScript like methods, e.g. emitter.get_va_position()).
     ClassDB::bind_method(D_METHOD("get_va_position"), &VAEmitter::get_va_position);
     ClassDB::bind_method(D_METHOD("get_within_world_bounds"), &VAEmitter::get_within_world_bounds);
+    ClassDB::bind_method(D_METHOD("is_raytraced"), &VAEmitter::is_raytraced);
+
+    // Read-only ambient filter stats (listener only) - same no-ADD_PROPERTY
+    // rationale as the SDK forwards above.
+    ClassDB::bind_method(D_METHOD("is_ambient_filter_ready"), &VAEmitter::is_ambient_filter_ready);
+    ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_lf"), &VAEmitter::get_ambient_filter_gain_lf);
+    ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_hf"), &VAEmitter::get_ambient_filter_gain_hf);
 
     // Direct port of vaudio-godot-openal's VAEmitterProperties.cs groups
     // (Reverb/Muffling/Ambience/Visualisation/Advanced). Debug Rendering
@@ -181,13 +166,37 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_clamp_position"), &VAEmitter::get_clamp_position);
     ClassDB::bind_method(D_METHOD("set_clamp_position", "value"), &VAEmitter::set_clamp_position);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "clamp_position"), "set_clamp_position", "get_clamp_position");
+
+    ADD_GROUP("Debug Rendering", "");
+
+    ClassDB::bind_method(D_METHOD("get_random_trail_color"), &VAEmitter::get_random_trail_color);
+    ClassDB::bind_method(D_METHOD("set_random_trail_color", "value"), &VAEmitter::set_random_trail_color);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "random_trail_color"), "set_random_trail_color", "get_random_trail_color");
+
+    ClassDB::bind_method(D_METHOD("get_trail_color"), &VAEmitter::get_trail_color);
+    ClassDB::bind_method(D_METHOD("set_trail_color", "value"), &VAEmitter::set_trail_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "trail_color"), "set_trail_color", "get_trail_color");
+
+    ClassDB::bind_method(D_METHOD("get_reverb_color"), &VAEmitter::get_reverb_color);
+    ClassDB::bind_method(D_METHOD("set_reverb_color", "value"), &VAEmitter::set_reverb_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "reverb_color"), "set_reverb_color", "get_reverb_color");
+
+    ClassDB::bind_method(D_METHOD("get_occlusion_color"), &VAEmitter::get_occlusion_color);
+    ClassDB::bind_method(D_METHOD("set_occlusion_color", "value"), &VAEmitter::set_occlusion_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "occlusion_color"), "set_occlusion_color", "get_occlusion_color");
+
+    ClassDB::bind_method(D_METHOD("get_permeation_color"), &VAEmitter::get_permeation_color);
+    ClassDB::bind_method(D_METHOD("set_permeation_color", "value"), &VAEmitter::set_permeation_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "permeation_color"), "set_permeation_color", "get_permeation_color");
+
+    ClassDB::bind_method(D_METHOD("get_ambient_permeation_color"), &VAEmitter::get_ambient_permeation_color);
+    ClassDB::bind_method(D_METHOD("set_ambient_permeation_color", "value"), &VAEmitter::set_ambient_permeation_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "ambient_permeation_color"), "set_ambient_permeation_color", "get_ambient_permeation_color");
 }
 
 VAEmitter::VAEmitter()
 {
-    // Matches VAEmitterProperties.cs's `Random.Shared.Next(int.MaxValue)`
-    // field initializer - a random per-instance default so multiple emitters
-    // don't produce identical scattering patterns unless explicitly set.
+    // Random scattering seed for every emitter
     scattering_seed = (int)(UtilityFunctions::randi() & 0x7fffffff);
 }
 
@@ -208,7 +217,7 @@ void VAEmitter::set_is_main_listener(bool value)
 
 void VAEmitter::_enter_tree()
 {
-    if (Engine::get_singleton()->is_editor_hint())
+    if (IS_EDITOR_HINT())
     {
         return;
     }
@@ -217,7 +226,9 @@ void VAEmitter::_enter_tree()
 
     if (!va_world)
     {
-        UtilityFunctions::push_error("[vaudio-godot-native-openal] VAEmitter has no sibling VAWorld node. Node: ", get_name());
+        // No VAWorld anywhere in the tree yet - likely this node's scene (e.g. a car with a pre-configured VAListener) was instanced/entered the tree before being parented under the level. Stay dormant and retry on every future node addition instead of erroring out permanently - see retry_find_va_world.
+        waiting_for_world = true;
+        get_tree()->connect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
         return;
     }
 
@@ -226,16 +237,59 @@ void VAEmitter::_enter_tree()
 
 void VAEmitter::_exit_tree()
 {
+    if (waiting_for_world)
+    {
+        // Disconnect the "node_added" callback
+        if (get_tree() && get_tree()->is_connected("node_added", callable_mp(this, &VAEmitter::retry_find_va_world)))
+        {
+            get_tree()->disconnect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
+        }
+
+        waiting_for_world = false;
+
+        // Warning if this emitter was never added to a world
+        VA_WARN(
+            "'", get_name(),
+            "' left the tree without ever finding a VAWorld - no emitter was created for it. Make sure this node's scene was added under a VAWorld while it was in the tree.");
+    }
+
     if (emitter)
     {
+        // No-op unless this emitter was still waiting in va_world's pending_targets for a listener to appear
+        va_world->unregister_pending_target(this);
+
+        // No-op unless this emitter is va_world's current listener - avoids leaving a dangling
+        // pointer if this node is freed before VAWorld (e.g. scene unload order isn't guaranteed)
+        va_world->unregister_listener(this);
+
         remove_emitter();
     }
+}
+
+// Re-attempts find_va_world each time a node is added anywhere in the tree
+// (connected from _enter_tree while waiting_for_world) - once a VAWorld
+// becomes reachable (e.g. this emitter's scene is finally parented under the
+// level), disconnects and initialises normally via create_emitter().
+void VAEmitter::retry_find_va_world(Node *node)
+{
+    va_world = find_va_world(this);
+
+    if (!va_world)
+    {
+        return;
+    }
+
+    get_tree()->disconnect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
+    waiting_for_world = false;
+
+    create_emitter();
 }
 
 void VAEmitter::create_emitter()
 {
     emitter = vaEmitterCreate();
     vaEmitterSetUserData(emitter, this);
+    vaEmitterSetName(emitter, String(get_name()).utf8().get_data());
     vaEmitterSetPosition(emitter, ToVAudio(get_global_position()));
 
     vaEmitterSetOnRaytracingCompleteCallback(emitter, &VAEmitter::on_raytracing_complete_trampoline);
@@ -257,8 +311,8 @@ void VAEmitter::create_emitter()
         // fails, sound just plays unmuffled through walls.
         if (occlusion_ray_count == 0 && permeation_ray_count == 0)
         {
-            UtilityFunctions::push_warning(
-                "[vaudio-godot-native-openal] Main listener '", get_name(),
+            VA_WARN(
+                "Main listener '", get_name(),
                 "' has occlusion_ray_count and permeation_ray_count both set to 0 - "
                 "sources will never be muffled. Set one or both to enable muffling.");
         }
@@ -305,6 +359,13 @@ void VAEmitter::apply_properties_to_handle()
     vaEmitterSetRefreshDistanceThreshold(emitter, refresh_distance_threshold);
     vaEmitterSetScatteringSeed(emitter, scattering_seed);
     vaEmitterSetClampPosition(emitter, clamp_position);
+
+    vaEmitterSetRandomTrailColor(emitter, random_trail_color);
+    vaEmitterSetTrailColor(emitter, ToVAudio(trail_color));
+    vaEmitterSetReverbColor(emitter, ToVAudio(reverb_color));
+    vaEmitterSetOcclusionColor(emitter, ToVAudio(occlusion_color));
+    vaEmitterSetPermeationColor(emitter, ToVAudio(permeation_color));
+    vaEmitterSetAmbientPermeationColor(emitter, ToVAudio(ambient_permeation_color));
 }
 
 void VAEmitter::remove_emitter()
@@ -316,7 +377,17 @@ void VAEmitter::remove_emitter()
     // comment). Matches VAEmitter.cs's RemoveEmitter, which deliberately
     // doesn't null `emitter` here either, for the same reason - the SDK
     // doesn't destroy the handle synchronously.
-    vaWorldRemoveEmitter(va_world->get_handle(), emitter);
+    VAResult result = vaWorldRemoveEmitter(va_world->get_handle(), emitter);
+
+    // VA_PENDING_REMOVAL just means the reverb tail hasn't finished yet -
+    // OnRemoved will still fire once it has, which is the normal case for any
+    // emitter that casts reverb rays. Not an error.
+    if (result != VA_SUCCESS && result != VA_PENDING_REMOVAL)
+    {
+        VA_ERROR(
+            "VAEmitter::remove_emitter failed for '", get_name(),
+            "' (VAResult=", VAResultToString(result), ")");
+    }
 }
 
 bool VAEmitter::is_raytraced() const
@@ -337,7 +408,35 @@ bool VAEmitter::get_within_world_bounds() const
 
 void VAEmitter::add_target(VAEmitter *target)
 {
-    vaEmitterAddTarget(emitter, target->get_handle());
+    VAResult result = vaEmitterAddTarget(emitter, target->get_handle());
+
+    switch (result)
+    {
+        case VA_SUCCESS:
+        case VA_ALREADY_EXISTS:
+            // Matches VAEmitter.cs's AddTarget, which treats re-adding an
+            // existing target as a no-op rather than an error.
+            break;
+
+        case VA_NOT_ADDED_TO_WORLD:
+            VA_ERROR(
+                "VAEmitter::add_target failed for '", get_name(),
+                "' -> '", target->get_name(), "': target has not been added to the same VAWorld as this emitter.");
+            break;
+
+        case VA_FEATURE_DISABLED:
+            VA_ERROR(
+                "VAEmitter::add_target failed for '", get_name(),
+                "' -> '", target->get_name(), "': this emitter casts neither occlusion nor permeation rays, "
+                "so it cannot have targets. Set occlusion_ray_count or permeation_ray_count above 0 first.");
+            break;
+
+        default:
+            VA_ERROR(
+                "VAEmitter::add_target failed for '", get_name(),
+                "' -> '", target->get_name(), "' (VAResult=", VAResultToString(result), ")");
+            break;
+    }
 }
 
 bool VAEmitter::has_raytraced_target(VAEmitter *target) const
@@ -377,6 +476,21 @@ void VAEmitter::apply_raytracing_results()
     if (!listener)
     {
         return;
+    }
+
+    if (this == listener)
+    {
+        // VAWorldReverb.cs's OnReverbUpdated ambientFilter update, moved from
+        // VAWorld::on_reverb_updated onto the listener it actually describes -
+        // only the listener's own ambient filter is meaningful.
+        VALowPassFilter *ambient_filter = vaEmitterGetAmbientFilter(emitter);
+
+        if (ambient_filter)
+        {
+            ambient_filter_gain_lf = ambient_filter->gainLF;
+            ambient_filter_gain_hf = ambient_filter->gainHF;
+            ambient_filter_ready = true;
+        }
     }
 
     if (this != listener && listener->has_raytraced_target(this))
@@ -741,9 +855,7 @@ void VAEmitter::set_ambient_permeation_ray_count(int value)
     ambient_permeation_ray_count = MAX(0, value);
 
     if (emitter)
-    {
         vaEmitterSetAmbientPermeationRayCount(emitter, ambient_permeation_ray_count);
-    }
 }
 
 int VAEmitter::get_ambient_permeation_bounce_count() const
@@ -893,6 +1005,96 @@ void VAEmitter::set_clamp_position(bool value)
     if (emitter)
     {
         vaEmitterSetClampPosition(emitter, clamp_position);
+    }
+}
+
+bool VAEmitter::get_random_trail_color() const
+{
+    return random_trail_color;
+}
+
+void VAEmitter::set_random_trail_color(bool value)
+{
+    random_trail_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetRandomTrailColor(emitter, random_trail_color);
+    }
+}
+
+Color VAEmitter::get_trail_color() const
+{
+    return trail_color;
+}
+
+void VAEmitter::set_trail_color(const Color &value)
+{
+    trail_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetTrailColor(emitter, ToVAudio(trail_color));
+    }
+}
+
+Color VAEmitter::get_reverb_color() const
+{
+    return reverb_color;
+}
+
+void VAEmitter::set_reverb_color(const Color &value)
+{
+    reverb_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetReverbColor(emitter, ToVAudio(reverb_color));
+    }
+}
+
+Color VAEmitter::get_occlusion_color() const
+{
+    return occlusion_color;
+}
+
+void VAEmitter::set_occlusion_color(const Color &value)
+{
+    occlusion_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetOcclusionColor(emitter, ToVAudio(occlusion_color));
+    }
+}
+
+Color VAEmitter::get_permeation_color() const
+{
+    return permeation_color;
+}
+
+void VAEmitter::set_permeation_color(const Color &value)
+{
+    permeation_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetPermeationColor(emitter, ToVAudio(permeation_color));
+    }
+}
+
+Color VAEmitter::get_ambient_permeation_color() const
+{
+    return ambient_permeation_color;
+}
+
+void VAEmitter::set_ambient_permeation_color(const Color &value)
+{
+    ambient_permeation_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetAmbientPermeationColor(emitter, ToVAudio(ambient_permeation_color));
     }
 }
 
