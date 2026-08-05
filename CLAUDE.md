@@ -63,4 +63,6 @@ While working, if you notice unclean logs, fix them:
 
 # References
 
+vaudio.h lives at `thirdparty/vaudio/include/vaudio.h`
+
 See user_context.md for more info (may not exist, this file is git-ignored)

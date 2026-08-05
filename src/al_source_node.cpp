@@ -8,9 +8,9 @@
 
 void ALSourceNode::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("get_stream"), &ALSourceNode::get_stream);
-    ClassDB::bind_method(D_METHOD("set_stream", "value"), &ALSourceNode::set_stream);
-    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "stream", PROPERTY_HINT_RESOURCE_TYPE, "AudioStream"), "set_stream", "get_stream");
+    ClassDB::bind_method(D_METHOD("get_streams"), &ALSourceNode::get_streams);
+    ClassDB::bind_method(D_METHOD("set_streams", "value"), &ALSourceNode::set_streams);
+    ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "streams", PROPERTY_HINT_TYPE_STRING, String::num(Variant::OBJECT) + "/" + String::num(PROPERTY_HINT_RESOURCE_TYPE) + ":AudioStream"), "set_streams", "get_streams");
 
     ClassDB::bind_method(D_METHOD("get_gain"), &ALSourceNode::get_gain);
     ClassDB::bind_method(D_METHOD("set_gain", "value"), &ALSourceNode::set_gain);
@@ -19,6 +19,18 @@ void ALSourceNode::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_pitch"), &ALSourceNode::get_pitch);
     ClassDB::bind_method(D_METHOD("set_pitch", "value"), &ALSourceNode::set_pitch);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pitch", PROPERTY_HINT_RANGE, "0.01,4.0,0.01"), "set_pitch", "get_pitch");
+
+    ClassDB::bind_method(D_METHOD("get_pitch_randomness"), &ALSourceNode::get_pitch_randomness);
+    ClassDB::bind_method(D_METHOD("set_pitch_randomness", "value"), &ALSourceNode::set_pitch_randomness);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pitch_randomness", PROPERTY_HINT_RANGE, "1.0,4.0,0.01"), "set_pitch_randomness", "get_pitch_randomness");
+
+    ClassDB::bind_method(D_METHOD("get_volume_randomness_db"), &ALSourceNode::get_volume_randomness_db);
+    ClassDB::bind_method(D_METHOD("set_volume_randomness_db", "value"), &ALSourceNode::set_volume_randomness_db);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "volume_randomness_db", PROPERTY_HINT_RANGE, "0.0,24.0,0.1"), "set_volume_randomness_db", "get_volume_randomness_db");
+
+    ClassDB::bind_method(D_METHOD("get_playback_no_repeat"), &ALSourceNode::get_playback_no_repeat);
+    ClassDB::bind_method(D_METHOD("set_playback_no_repeat", "value"), &ALSourceNode::set_playback_no_repeat);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "playback_no_repeat"), "set_playback_no_repeat", "get_playback_no_repeat");
 
     ClassDB::bind_method(D_METHOD("get_looping"), &ALSourceNode::get_looping);
     ClassDB::bind_method(D_METHOD("set_looping", "value"), &ALSourceNode::set_looping);
@@ -39,9 +51,9 @@ ALSourceNode::ALSourceNode()
 
 ALSourceNode::~ALSourceNode()
 {
-    // A decode task holds a raw pointer to decoded_buffer via userdata (see
+    // A decode task holds a raw pointer to decoding_buffer via userdata (see
     // ensure_stream_decode_started()) - must not let it run after this node
-    // (and decoded_buffer with it) is destroyed.
+    // (and decoding_buffer with it) is destroyed.
     if (decode_task_id != WorkerThreadPool::INVALID_TASK_ID)
         WorkerThreadPool::get_singleton()->wait_for_task_completion(decode_task_id);
 }
@@ -62,32 +74,93 @@ void ALSourceNode::_process(double delta)
 void ALSourceNode::decode_stream_task(void *userdata)
 {
     ALSourceNode *node = static_cast<ALSourceNode *>(userdata);
-    node->decode_succeeded = node->decoded_buffer.decode(node->decoding_stream);
+    node->decode_succeeded = node->decoding_buffer.decode(node->decoding_stream);
 }
 
 bool ALSourceNode::ensure_stream_decode_started()
 {
-    // AudioStreamRandomizer picks a sub-stream inside instantiate_playback(),
-    // so it must be re-decoded on every play() to get a fresh random pick -
-    // caching it like a regular stream would freeze on whichever sub-stream
-    // was picked first.
-    bool is_randomizer = Object::cast_to<AudioStreamRandomizer>(stream.ptr()) != nullptr;
-
-    if (!is_randomizer && stream == decoded_stream)
-        return true;
-
-    if (stream.is_null())
+    if (streams.is_empty())
     {
-        decoded_stream = stream;
+        decoded_buffers.clear();
+        decoded_streams.clear();
+        pending_streams.clear();
         return false;
     }
 
-    // A decode for this exact stream is already in flight - let it finish
-    // rather than starting a second, redundant one.
+    // Drop any cached decode whose stream is no longer in `streams` (e.g. an
+    // entry was removed or reassigned).
+    for (size_t i = 0; i < decoded_streams.size();)
+    {
+        bool still_wanted = false;
+
+        for (int j = 0; j < streams.size(); j++)
+        {
+            if (Ref<AudioStream>(streams[j]) == decoded_streams[i])
+            {
+                still_wanted = true;
+                break;
+            }
+        }
+
+        if (still_wanted)
+        {
+            i++;
+        }
+        else
+        {
+            decoded_streams.erase(decoded_streams.begin() + i);
+            decoded_buffers.erase(decoded_buffers.begin() + i);
+        }
+    }
+
+    // Queue a decode for every stream that isn't already decoded, in flight,
+    // or already queued.
+    for (int i = 0; i < streams.size(); i++)
+    {
+        Ref<AudioStream> wanted = streams[i];
+
+        if (wanted.is_null())
+            continue;
+
+        bool already_decoded = false;
+
+        for (const Ref<AudioStream> &decoded : decoded_streams)
+        {
+            if (decoded == wanted)
+            {
+                already_decoded = true;
+                break;
+            }
+        }
+
+        if (already_decoded || wanted == decoding_stream)
+            continue;
+
+        bool already_queued = false;
+
+        for (const Ref<AudioStream> &pending : pending_streams)
+        {
+            if (pending == wanted)
+            {
+                already_queued = true;
+                break;
+            }
+        }
+
+        if (!already_queued)
+            pending_streams.push_back(wanted);
+    }
+
+    if (pending_streams.empty() && decode_task_id == WorkerThreadPool::INVALID_TASK_ID)
+        return true;
+
+    // A decode is already in flight - let it (and the rest of the queue)
+    // finish rather than starting a second, redundant one.
     if (decode_task_id != WorkerThreadPool::INVALID_TASK_ID)
         return true;
 
-    decoding_stream = stream;
+    decoding_stream = pending_streams.front();
+    pending_streams.erase(pending_streams.begin());
     decode_task_id = WorkerThreadPool::get_singleton()->add_native_task(
         &ALSourceNode::decode_stream_task, this, false, "vaudio stream decode");
 
@@ -105,17 +178,37 @@ void ALSourceNode::poll_decode_task()
     WorkerThreadPool::get_singleton()->wait_for_task_completion(decode_task_id);
     decode_task_id = WorkerThreadPool::INVALID_TASK_ID;
 
-    if (decode_succeeded && decoded_buffer.upload())
+    if (decode_succeeded && decoding_buffer.upload())
     {
-        buffer_handle = decoded_buffer.get_handle();
-        decoded_stream = decoding_stream;
+        decoded_streams.push_back(decoding_stream);
+        decoded_buffers.push_back(std::move(decoding_buffer));
+        decoding_buffer = ALBuffer();
     }
     else
     {
-        VA_ERROR_NAMED("failed to decode the stream");
+        String stream_path = decoding_stream.is_valid() ? decoding_stream->get_path() : String();
+
+        if (stream_path.is_empty())
+            stream_path = "<no resource path, likely a stream created at runtime>";
+
+        if (decode_succeeded)
+            VA_ERROR_NAMED("Failed to upload the decoded stream to OpenAL: ", stream_path);
+        else
+            VA_ERROR_NAMED("Failed to decode the stream: ", stream_path);
     }
 
     decoding_stream.unref();
+
+    // More streams still queued (e.g. multiple new entries in `streams`) -
+    // start the next one rather than waiting for another play()/poll cycle.
+    if (!pending_streams.empty())
+    {
+        decoding_stream = pending_streams.front();
+        pending_streams.erase(pending_streams.begin());
+        decode_task_id = WorkerThreadPool::get_singleton()->add_native_task(
+            &ALSourceNode::decode_stream_task, this, false, "vaudio stream decode");
+        return;
+    }
 
     if (play_requested)
     {
@@ -124,10 +217,34 @@ void ALSourceNode::poll_decode_task()
     }
 }
 
+int ALSourceNode::pick_stream_index() const
+{
+    if (decoded_buffers.empty())
+        return -1;
+
+    if (decoded_buffers.size() == 1)
+        return 0;
+
+    int index = (int)UtilityFunctions::randi_range(0, (int64_t)decoded_buffers.size() - 1);
+
+    if (playback_no_repeat && index == last_played_index)
+        index = (index + 1) % (int)decoded_buffers.size();
+
+    return index;
+}
+
 bool ALSourceNode::start_playing()
 {
-    // buffer_handle stays 0 if the stream failed to decode/upload (see
-    // poll_decode_task()) or if play() is called with no stream set.
+    int index = pick_stream_index();
+
+    // No decoded buffer to play (streams failed to decode/upload, see
+    // poll_decode_task(), or nothing was ever assigned).
+    if (index < 0)
+        return false;
+
+    last_played_index = index;
+    buffer_handle = decoded_buffers[index].get_handle();
+
     if (buffer_handle == 0)
         return false;
 
@@ -138,9 +255,15 @@ bool ALSourceNode::start_playing()
     if (!source->create())
         return false;
 
+    // Matches AudioStreamRandomizer's random_pitch/random_volume_offset_db:
+    // pitch_randomness of 1.0 (no variation) and volume_randomness_db of 0.0
+    // (no variation) both collapse randf_range to their single input value.
+    float randomized_pitch = pitch * (float)UtilityFunctions::randf_range(1.0 / pitch_randomness, pitch_randomness);
+    float randomized_gain = gain * (float)UtilityFunctions::db_to_linear(UtilityFunctions::randf_range(-volume_randomness_db, volume_randomness_db));
+
     source->set_buffer(buffer_handle);
-    source->set_gain(gain);
-    source->set_pitch(pitch);
+    source->set_gain(randomized_gain);
+    source->set_pitch(randomized_pitch);
     source->set_looping(looping);
 
     configure_source(*source);
@@ -157,18 +280,16 @@ bool ALSourceNode::start_playing()
 
 bool ALSourceNode::play()
 {
-    bool is_randomizer = Object::cast_to<AudioStreamRandomizer>(stream.ptr()) != nullptr;
-    bool already_decoded = !is_randomizer && stream == decoded_stream && stream.is_valid();
+    bool need_decode = !ensure_stream_decode_started();
 
-    if (!ensure_stream_decode_started())
+    if (need_decode)
         return false;
 
-    if (already_decoded)
+    if (decode_task_id == WorkerThreadPool::INVALID_TASK_ID && pending_streams.empty())
         return start_playing();
 
-    // Stream isn't decoded yet (or is a randomizer re-rolling) - a decode
-    // task is now in flight (or already was); poll_decode_task() will start
-    // playback once it finishes.
+    // A decode is in flight - poll_decode_task() will start playback once
+    // every entry in `streams` has finished decoding.
     play_requested = true;
     return true;
 }

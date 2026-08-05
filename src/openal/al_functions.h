@@ -28,6 +28,21 @@ using alcIsExtensionPresentFn = ALCboolean(ALC_APIENTRY *)(ALCdevice *, const AL
 
 using alGetErrorFn = ALenum(AL_APIENTRY *)(void);
 using alGetStringFn = const ALchar *(AL_APIENTRY *)(ALenum);
+
+// Convert an AL error code to its human-readable name, for logging (e.g. VA_ERROR("alBufferData failed: ", ALErrorToString(error))).
+inline const char *ALErrorToString(ALenum error)
+{
+    switch (error)
+    {
+        case AL_NO_ERROR: return "no error";
+        case AL_INVALID_NAME: return "invalid name (a bad handle/ID was passed to an AL call)";
+        case AL_INVALID_ENUM: return "invalid enum (an unsupported enum value was passed to an AL call)";
+        case AL_INVALID_VALUE: return "invalid value (an out-of-range or illegal value was passed to an AL call)";
+        case AL_INVALID_OPERATION: return "invalid operation (the requested operation isn't valid in the current state)";
+        case AL_OUT_OF_MEMORY: return "out of memory";
+        default: return "unknown AL error";
+    }
+}
 using alDistanceModelFn = void(AL_APIENTRY *)(ALenum);
 using alSpeedOfSoundFn = void(AL_APIENTRY *)(ALfloat);
 using alListenerfFn = void(AL_APIENTRY *)(ALenum, ALfloat);

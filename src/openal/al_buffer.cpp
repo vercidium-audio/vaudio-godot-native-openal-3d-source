@@ -163,7 +163,8 @@ bool ALBuffer::upload()
 
     if (error != AL_NO_ERROR)
     {
-        VA_ERROR("alBufferData failed, AL error ", (int)error);
+        VA_ERROR("Failed to upload decoded audio to OpenAL: ", ALErrorToString(error),
+            " (", (int)pending_frames_pulled, " frames at ", sample_rate, " Hz)");
         ALuint handles[1] = {new_handle};
         manager->al_delete_buffers()(1, handles);
         return false;

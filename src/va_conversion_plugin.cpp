@@ -1,5 +1,6 @@
 #include "va_conversion_plugin.h"
 
+#include <godot_cpp/classes/audio_stream_randomizer.hpp>
 #include <godot_cpp/classes/editor_interface.hpp>
 #include <godot_cpp/classes/editor_selection.hpp>
 #include <godot_cpp/classes/node3d.hpp>
@@ -151,9 +152,46 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
         new_base_node->set("gain", UtilityFunctions::db_to_linear(volume_db));
     }
 
-    copy_property(old_node, new_base_node, "stream", "stream");
     copy_property(old_node, new_base_node, "pitch_scale", "pitch");
     copy_property(old_node, new_base_node, "autoplay", "autoplay");
+
+    // AudioStreamPlayer3D (and old scenes' ALSourceNode `stream`, before it
+    // was replaced by `streams`) has a single `stream` property - ALSourceNode
+    // only has `streams` now, so wrap it as a one-entry array. AudioStreamRandomizer
+    // picks a random sub-stream/pitch/volume at playback time, which
+    // ALSourceNode has no equivalent resource for - instead, expand its
+    // sub-streams into `streams` directly and copy its randomisation settings
+    // into pitch_randomness/volume_randomness_db, so an existing scene using
+    // it keeps the same behaviour (minus re-decoding a fresh pick on every
+    // single play(), which the randomizer approach did and this doesn't).
+    if (has_property(old_node, "stream"))
+    {
+        Ref<AudioStream> old_stream = old_node->get("stream");
+        AudioStreamRandomizer *randomizer = Object::cast_to<AudioStreamRandomizer>(old_stream.ptr());
+
+        if (randomizer)
+        {
+            TypedArray<AudioStream> extracted_streams;
+
+            for (int i = 0; i < randomizer->get_streams_count(); i++)
+            {
+                Ref<AudioStream> sub_stream = randomizer->get_stream(i);
+
+                if (sub_stream.is_valid())
+                    extracted_streams.push_back(sub_stream);
+            }
+
+            new_base_node->set("streams", extracted_streams);
+            new_base_node->set("pitch_randomness", randomizer->get_random_pitch());
+            new_base_node->set("volume_randomness_db", randomizer->get_random_volume_offset_db());
+        }
+        else if (old_stream.is_valid())
+        {
+            TypedArray<AudioStream> single_stream;
+            single_stream.push_back(old_stream);
+            new_base_node->set("streams", single_stream);
+        }
+    }
 
     bool is_spatialised_target = target_class == "VASource" || target_class == "VASourceLeech";
 
@@ -170,6 +208,14 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
         copy_property(old_node, new_base_node, "pitch", "pitch");
         copy_property(old_node, new_base_node, "looping", "looping");
         copy_property(old_node, new_base_node, "autoplay", "autoplay");
+
+        // Only relevant when old_node is itself an ALSourceNode (e.g.
+        // VASource -> VASourceRelative) - has_property() skips these
+        // silently for a plain AudioStreamPlayer3D, which has none of them.
+        copy_property(old_node, new_base_node, "streams", "streams");
+        copy_property(old_node, new_base_node, "pitch_randomness", "pitch_randomness");
+        copy_property(old_node, new_base_node, "volume_randomness_db", "volume_randomness_db");
+        copy_property(old_node, new_base_node, "playback_no_repeat", "playback_no_repeat");
 
         if (is_spatialised_target)
         {

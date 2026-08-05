@@ -5,6 +5,7 @@
 
 #include "al_functions.h"
 
+#include <utility>
 #include <vector>
 
 using namespace godot;
@@ -43,6 +44,31 @@ public:
 
     ALBuffer(const ALBuffer &) = delete;
     ALBuffer &operator=(const ALBuffer &) = delete;
+
+    // Movable so a decoded ALBuffer can be stored directly in a
+    // std::vector<ALBuffer> (see ALSourceNode::decoded_buffers) - moving
+    // leaves the source with handle 0 so its destructor doesn't also delete
+    // the AL buffer the moved-to instance now owns.
+    ALBuffer(ALBuffer &&other) noexcept
+    {
+        *this = std::move(other);
+    }
+
+    ALBuffer &operator=(ALBuffer &&other) noexcept
+    {
+        if (this != &other)
+        {
+            handle = other.handle;
+            sample_rate = other.sample_rate;
+            duration_seconds = other.duration_seconds;
+            pending_pcm_data = std::move(other.pending_pcm_data);
+            pending_frames_pulled = other.pending_frames_pulled;
+
+            other.handle = 0;
+        }
+
+        return *this;
+    }
 
     // Fully decodes p_stream via Godot's AudioStreamPlayback::mix_audio pull
     // API and uploads the result as one OpenAL buffer. Returns false (with a
