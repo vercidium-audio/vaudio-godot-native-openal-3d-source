@@ -1,6 +1,7 @@
 #pragma once
 
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/variant/color.hpp>
 
 extern "C"
 {
@@ -20,11 +21,12 @@ class VAWorld;
 // Port of vaudio-godot-openal's VAEmitter.cs, scoped to structural/lifecycle
 // behaviour (native_godot_plan.md "Implement VASource's per-frame result
 // application"): creation/destruction, listener/target registration, and
-// per-frame LPF muffling + reverb-slot resolution. The ~30 exported tuning
-// knobs the C# reference has (ReverbRayCount, MaxVolume, TrailColor, Type,
-// etc., across Reverb/Muffling/Ambience/Visualisation/Debug/Advanced groups)
-// are deliberately NOT ported here - the SDK's own defaults are used - and
-// are tracked as a separate future checklist item in native_godot_plan.md.
+// per-frame LPF muffling + reverb-slot resolution. The exported tuning knobs
+// the C# reference has (ReverbRayCount, MaxVolume, TrailColor, Type, etc.,
+// across Reverb/Muffling/Ambience/Visualisation/Debug Rendering/Advanced
+// groups) are ported below where the C SDK has a backing vaEmitterSet*/Get*
+// API; any gaps are tracked as a separate future checklist item in
+// native_godot_plan.md.
 //
 // Name collision note: same as VAWorld/VACustomMaterial, the vaudio C SDK's
 // opaque handle type is also called "VAEmitter", in the global namespace.
@@ -48,10 +50,6 @@ private:
     // "store locally, push to the SDK handle if it already exists" pattern -
     // values set before create_emitter() runs (e.g. from a .tscn) are applied
     // once the handle is created; changes after that push straight through.
-    // Debug Rendering colors (TrailColor/ReverbColor/OcclusionColor/
-    // PermeationColor/AmbientPermeationColor) are NOT ported - this C SDK
-    // version has no vaEmitterSet*Color API to back them (same rationale as
-    // VACustomMaterial's DebugColor being skipped).
     int reverb_ray_count = 0;
     int reverb_bounce_count = 0;
     float reverb_energy_cap = 0.2f;
@@ -86,6 +84,16 @@ private:
     float refresh_distance_threshold = 1.0f;
     int scattering_seed = 0;
     bool clamp_position = true;
+
+    // Debug rendering colors (vaEmitterSet/Get*Color) - editor-visible only,
+    // no effect on raytracing. Defaults match emitter.c's vaEmitterCreate
+    // (Color.White/Cyan/Green/Orange/Yellow, each WithAlpha).
+    bool random_trail_color = false;
+    Color trail_color = Color(1.0f, 1.0f, 1.0f, 25.0f / 255.0f);
+    Color reverb_color = Color(27.0f / 255.0f, 247.0f / 255.0f, 255.0f / 255.0f, 51.0f / 255.0f);
+    Color occlusion_color = Color(113.0f / 255.0f, 255.0f / 255.0f, 164.0f / 255.0f, 51.0f / 255.0f);
+    Color permeation_color = Color(255.0f / 255.0f, 127.0f / 255.0f, 42.0f / 255.0f, 51.0f / 255.0f);
+    Color ambient_permeation_color = Color(255.0f / 255.0f, 204.0f / 255.0f, 0.0f / 255.0f, 51.0f / 255.0f);
 
     // Pushes every property above onto the (just-created) SDK handle - called
     // once at the end of create_emitter(). Matches VAEmitter.cs's property
@@ -286,6 +294,19 @@ public:
     void set_scattering_seed(int value);
     bool get_clamp_position() const;
     void set_clamp_position(bool value);
+
+    bool get_random_trail_color() const;
+    void set_random_trail_color(bool value);
+    Color get_trail_color() const;
+    void set_trail_color(const Color &value);
+    Color get_reverb_color() const;
+    void set_reverb_color(const Color &value);
+    Color get_occlusion_color() const;
+    void set_occlusion_color(const Color &value);
+    Color get_permeation_color() const;
+    void set_permeation_color(const Color &value);
+    Color get_ambient_permeation_color() const;
+    void set_ambient_permeation_color(const Color &value);
 };
 
 } // namespace va_godot

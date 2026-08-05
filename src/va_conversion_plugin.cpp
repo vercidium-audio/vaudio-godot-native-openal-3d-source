@@ -74,14 +74,19 @@ void ConversionContextMenuPlugin::_popup_menu(const PackedStringArray &paths)
             return;
 
         bool is_audio_player_3d = node->get_class() == "AudioStreamPlayer3D";
+        bool is_audio_player = node->get_class() == "AudioStreamPlayer";
         bool is_va_source = Object::cast_to<VASource>(node) != nullptr;
         bool is_va_source_relative = Object::cast_to<VASourceRelative>(node) != nullptr;
         bool is_va_source_leech = Object::cast_to<VASourceLeech>(node) != nullptr;
 
-        if (!is_audio_player_3d && !is_va_source && !is_va_source_relative && !is_va_source_leech)
+        if (!is_audio_player_3d && !is_audio_player && !is_va_source && !is_va_source_relative && !is_va_source_leech)
             return;
 
         any_eligible = true;
+
+        // AudioStreamPlayer isn't spatialised, so it can only become a VASourceRelative - never offer VASource/VASourceLeech for it.
+        if (is_audio_player)
+            all_not_va_source = all_not_va_source_leech_and_parent_is_emitter = false;
 
         if (is_va_source)
             all_not_va_source = false;

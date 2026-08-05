@@ -166,6 +166,32 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_clamp_position"), &VAEmitter::get_clamp_position);
     ClassDB::bind_method(D_METHOD("set_clamp_position", "value"), &VAEmitter::set_clamp_position);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "clamp_position"), "set_clamp_position", "get_clamp_position");
+
+    ADD_GROUP("Debug Rendering", "");
+
+    ClassDB::bind_method(D_METHOD("get_random_trail_color"), &VAEmitter::get_random_trail_color);
+    ClassDB::bind_method(D_METHOD("set_random_trail_color", "value"), &VAEmitter::set_random_trail_color);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "random_trail_color"), "set_random_trail_color", "get_random_trail_color");
+
+    ClassDB::bind_method(D_METHOD("get_trail_color"), &VAEmitter::get_trail_color);
+    ClassDB::bind_method(D_METHOD("set_trail_color", "value"), &VAEmitter::set_trail_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "trail_color"), "set_trail_color", "get_trail_color");
+
+    ClassDB::bind_method(D_METHOD("get_reverb_color"), &VAEmitter::get_reverb_color);
+    ClassDB::bind_method(D_METHOD("set_reverb_color", "value"), &VAEmitter::set_reverb_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "reverb_color"), "set_reverb_color", "get_reverb_color");
+
+    ClassDB::bind_method(D_METHOD("get_occlusion_color"), &VAEmitter::get_occlusion_color);
+    ClassDB::bind_method(D_METHOD("set_occlusion_color", "value"), &VAEmitter::set_occlusion_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "occlusion_color"), "set_occlusion_color", "get_occlusion_color");
+
+    ClassDB::bind_method(D_METHOD("get_permeation_color"), &VAEmitter::get_permeation_color);
+    ClassDB::bind_method(D_METHOD("set_permeation_color", "value"), &VAEmitter::set_permeation_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "permeation_color"), "set_permeation_color", "get_permeation_color");
+
+    ClassDB::bind_method(D_METHOD("get_ambient_permeation_color"), &VAEmitter::get_ambient_permeation_color);
+    ClassDB::bind_method(D_METHOD("set_ambient_permeation_color", "value"), &VAEmitter::set_ambient_permeation_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "ambient_permeation_color"), "set_ambient_permeation_color", "get_ambient_permeation_color");
 }
 
 VAEmitter::VAEmitter()
@@ -329,6 +355,13 @@ void VAEmitter::apply_properties_to_handle()
     vaEmitterSetRefreshDistanceThreshold(emitter, refresh_distance_threshold);
     vaEmitterSetScatteringSeed(emitter, scattering_seed);
     vaEmitterSetClampPosition(emitter, clamp_position);
+
+    vaEmitterSetRandomTrailColor(emitter, random_trail_color);
+    vaEmitterSetTrailColor(emitter, ToVAudio(trail_color));
+    vaEmitterSetReverbColor(emitter, ToVAudio(reverb_color));
+    vaEmitterSetOcclusionColor(emitter, ToVAudio(occlusion_color));
+    vaEmitterSetPermeationColor(emitter, ToVAudio(permeation_color));
+    vaEmitterSetAmbientPermeationColor(emitter, ToVAudio(ambient_permeation_color));
 }
 
 void VAEmitter::remove_emitter()
@@ -968,6 +1001,96 @@ void VAEmitter::set_clamp_position(bool value)
     if (emitter)
     {
         vaEmitterSetClampPosition(emitter, clamp_position);
+    }
+}
+
+bool VAEmitter::get_random_trail_color() const
+{
+    return random_trail_color;
+}
+
+void VAEmitter::set_random_trail_color(bool value)
+{
+    random_trail_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetRandomTrailColor(emitter, random_trail_color);
+    }
+}
+
+Color VAEmitter::get_trail_color() const
+{
+    return trail_color;
+}
+
+void VAEmitter::set_trail_color(const Color &value)
+{
+    trail_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetTrailColor(emitter, ToVAudio(trail_color));
+    }
+}
+
+Color VAEmitter::get_reverb_color() const
+{
+    return reverb_color;
+}
+
+void VAEmitter::set_reverb_color(const Color &value)
+{
+    reverb_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetReverbColor(emitter, ToVAudio(reverb_color));
+    }
+}
+
+Color VAEmitter::get_occlusion_color() const
+{
+    return occlusion_color;
+}
+
+void VAEmitter::set_occlusion_color(const Color &value)
+{
+    occlusion_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetOcclusionColor(emitter, ToVAudio(occlusion_color));
+    }
+}
+
+Color VAEmitter::get_permeation_color() const
+{
+    return permeation_color;
+}
+
+void VAEmitter::set_permeation_color(const Color &value)
+{
+    permeation_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetPermeationColor(emitter, ToVAudio(permeation_color));
+    }
+}
+
+Color VAEmitter::get_ambient_permeation_color() const
+{
+    return ambient_permeation_color;
+}
+
+void VAEmitter::set_ambient_permeation_color(const Color &value)
+{
+    ambient_permeation_color = value;
+
+    if (emitter)
+    {
+        vaEmitterSetAmbientPermeationColor(emitter, ToVAudio(ambient_permeation_color));
     }
 }
 
