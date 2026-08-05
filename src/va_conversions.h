@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <godot_cpp/classes/mesh.hpp>
+#include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -22,6 +23,16 @@ inline VAVector ToVAudio(const Vector3 &v)
 inline Vector3 FromVAudio(const VAVector &v)
 {
     return Vector3(v.x, v.y, v.z);
+}
+
+inline VAColor ToVAudio(const Color &c)
+{
+    return VAColor{(unsigned char)(c.r * 255.0f), (unsigned char)(c.g * 255.0f), (unsigned char)(c.b * 255.0f), (unsigned char)(c.a * 255.0f)};
+}
+
+inline Color FromVAudio(const VAColor &c)
+{
+    return Color(c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f);
 }
 
 inline VAMatrix ToVAudio(const Transform3D &transform)

@@ -10,8 +10,8 @@ class ALFilter
 {
 private:
     ALuint handle = 0;
-    float gain = 1.0f;
-    float gain_hf = 1.0f;
+    float gain = 0.0f;
+    float gain_hf = 0.0f;
 
 public:
     ALFilter() = default;

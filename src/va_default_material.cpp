@@ -38,6 +38,7 @@ namespace
         float transmission_hf;
         float plane_transmission_lf;
         float plane_transmission_hf;
+        Color color;
     };
 
     // Cache default material values
@@ -59,6 +60,7 @@ namespace
                 defaults[i].transmission_hf = vaWorldGetMaterialTransmissionHF(world, i);
                 defaults[i].plane_transmission_lf = vaWorldGetMaterialPlaneTransmissionLF(world, i);
                 defaults[i].plane_transmission_hf = vaWorldGetMaterialPlaneTransmissionHF(world, i);
+                defaults[i].color = FromVAudio(vaWorldGetMaterialColor(world, i));
             }
 
             VAResult destroy_result = vaWorldDestroy(world);
@@ -116,6 +118,10 @@ void VADefaultMaterial::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_plane_transmission_hf"), &VADefaultMaterial::get_plane_transmission_hf);
     ClassDB::bind_method(D_METHOD("set_plane_transmission_hf", "value"), &VADefaultMaterial::set_plane_transmission_hf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "plane_transmission_hf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_plane_transmission_hf", "get_plane_transmission_hf");
+
+    ClassDB::bind_method(D_METHOD("get_color"), &VADefaultMaterial::get_color);
+    ClassDB::bind_method(D_METHOD("set_color", "value"), &VADefaultMaterial::set_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "color"), "set_color", "get_color");
 }
 
 VADefaultMaterial::VADefaultMaterial()
@@ -149,6 +155,7 @@ void VADefaultMaterial::_enter_tree()
     log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf), "transmission_hf", material_type);
     log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(world, material_type, plane_transmission_lf), "plane_transmission_lf", material_type);
     log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(world, material_type, plane_transmission_hf), "plane_transmission_hf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialColor(world, material_type, ToVAudio(color)), "color", material_type);
 
     va_world_handle = world;
     registered = true;
@@ -177,6 +184,7 @@ void VADefaultMaterial::reset_properties_to_material_defaults()
     transmission_hf = defaults.transmission_hf;
     plane_transmission_lf = defaults.plane_transmission_lf;
     plane_transmission_hf = defaults.plane_transmission_hf;
+    color = defaults.color;
 
     if (registered)
     {
@@ -187,6 +195,7 @@ void VADefaultMaterial::reset_properties_to_material_defaults()
         log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, transmission_hf), "transmission_hf", material_type);
         log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, plane_transmission_lf), "plane_transmission_lf", material_type);
         log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, plane_transmission_hf), "plane_transmission_hf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(color)), "color", material_type);
     }
 
     notify_property_list_changed();
@@ -294,5 +303,20 @@ void VADefaultMaterial::set_plane_transmission_hf(float value)
     if (registered)
     {
         log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, value), "plane_transmission_hf", material_type);
+    }
+}
+
+Color VADefaultMaterial::get_color() const
+{
+    return color;
+}
+
+void VADefaultMaterial::set_color(const Color &value)
+{
+    color = value;
+
+    if (registered)
+    {
+        log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(value)), "color", material_type);
     }
 }

@@ -9,12 +9,10 @@
 #include "va_world.h"
 #include "va_world_lookup.h"
 
-// TODO - vaWorldSetMaterialColor is now supported
 // Port of vaudio-godot-openal's VACustomMaterial.cs. Only the material-property
-// side is ported here - DebugColor/GetDebugColor/_GetConfigurationWarnings/
-// _ValidateProperty are editor-only visualisation niceties with no SDK-facing
-// behaviour (and vaWorldSetMaterialColor doesn't exist in this C SDK version)
-// so they're intentionally left out.
+// side is ported here - GetDebugColor/_GetConfigurationWarnings/_ValidateProperty
+// are editor-only visualisation niceties with no SDK-facing behaviour, so they're
+// intentionally left out.
 
 namespace va_godot
 {
@@ -65,6 +63,10 @@ void VACustomMaterial::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_plane_transmission_hf"), &VACustomMaterial::get_plane_transmission_hf);
     ClassDB::bind_method(D_METHOD("set_plane_transmission_hf", "value"), &VACustomMaterial::set_plane_transmission_hf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "plane_transmission_hf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_plane_transmission_hf", "get_plane_transmission_hf");
+
+    ClassDB::bind_method(D_METHOD("get_color"), &VACustomMaterial::get_color);
+    ClassDB::bind_method(D_METHOD("set_color", "value"), &VACustomMaterial::set_color);
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "color"), "set_color", "get_color");
 }
 
 VACustomMaterial::VACustomMaterial()
@@ -82,11 +84,13 @@ void VACustomMaterial::_enter_tree()
 
     VAWorld *va_world = find_va_world(this);
 
-    // TODO - why might these return false? Rather than propagating null data throughout, fix these issues at the source. If we must check it here, add a comment why
+    // No VAWorld anywhere in the tree yet - this node's scene may have entered the tree before being
+    // parented under the level. Unlike VAEmitter/VASource, materials don't retry via node_added, since
+    // they're expected to be defined alongside (and after) the level's VAWorld.
     if (!va_world)
         return;
 
-    // TODO - why might these return false? Rather than propagating null data throughout, fix these issues at the source. If we must check it here, add a comment why
+    // Currently always succeeds - reserved for when material registration can fail (e.g. duplicate names)
     if (!va_world->register_custom_material(this))
         return;
 
@@ -107,6 +111,7 @@ void VACustomMaterial::_enter_tree()
     log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf), "transmission_hf", material_name);
     log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(world, material_type, plane_transmission_lf), "plane_transmission_lf", material_name);
     log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(world, material_type, plane_transmission_hf), "plane_transmission_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialColor(world, material_type, ToVAudio(color)), "color", material_name);
 
     va_world_handle = world;
     registered = true;
@@ -227,6 +232,19 @@ void VACustomMaterial::set_plane_transmission_hf(float value)
 
     if (registered)
         log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, value), "plane_transmission_hf", material_name);
+}
+
+Color VACustomMaterial::get_color() const
+{
+    return color;
+}
+
+void VACustomMaterial::set_color(const Color &value)
+{
+    color = value;
+
+    if (registered)
+        log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(value)), "color", material_name);
 }
 
 } // namespace va_godot

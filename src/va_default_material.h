@@ -1,6 +1,7 @@
 #pragma once
 
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/variant/color.hpp>
 
 extern "C"
 {
@@ -25,6 +26,7 @@ private:
     float transmission_hf = 0.05f;
     float plane_transmission_lf = 0.1f;
     float plane_transmission_hf = 0.25f;
+    Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
 
     // true once the material has been configured at runtime by _enter_tree()
     bool registered = false;
@@ -67,4 +69,7 @@ public:
 
     float get_plane_transmission_hf() const;
     void set_plane_transmission_hf(float value);
+
+    Color get_color() const;
+    void set_color(const Color &value);
 };

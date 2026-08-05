@@ -12,32 +12,20 @@ using namespace godot;
 namespace va_godot
 {
 
-// Finds the (singleton) VAWorld anywhere under the SceneTree root - port of
-// NodeExtensions.cs's GetVAWorldParent, widened from a get_current_scene()
-// direct-children-only scan to a recursive search from get_root() so a
-// VAWorld still resolves when the caller isn't a direct sibling of it, and
-// even when the VAWorld's own subtree was added as a sibling of (rather than
-// under) the SceneTree's "current scene" - e.g. a level scene instantiated
-// and add_child()'d directly onto the tree root from a menu script, as
-// truck_town's car_select.gd does via get_parent().add_child(town), never
-// becoming get_current_scene() itself. Shared by VACustomMaterial/
-// VADefaultMaterial/VAEmitter/VASource/VASourceAmbient/VASourceRelative's
-// _enter_tree.
+// Find the VAWorld anywhere under the SceneTree root
 inline VAWorld *find_va_world_recursive(Node *node)
 {
     if (VAWorld *world = Object::cast_to<VAWorld>(node))
-    {
         return world;
-    }
 
     TypedArray<Node> children = node->get_children();
+    
     for (int i = 0; i < children.size(); i++)
     {
         Node *child = Object::cast_to<Node>(children[i]);
+
         if (VAWorld *world = find_va_world_recursive(child))
-        {
             return world;
-        }
     }
 
     return nullptr;
@@ -46,6 +34,7 @@ inline VAWorld *find_va_world_recursive(Node *node)
 inline VAWorld *find_va_world(Node *node)
 {
     Node *root = node->get_tree()->get_root();
+
     if (!root)
         return nullptr;
 

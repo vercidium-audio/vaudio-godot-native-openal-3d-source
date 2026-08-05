@@ -16,8 +16,7 @@ void VASource::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_play_when_raytracing_completes", "value"), &VASource::set_play_when_raytracing_completes);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "play_when_raytracing_completes"), "set_play_when_raytracing_completes", "get_play_when_raytracing_completes");
 
-    // Read-only muffling stats - no ADD_PROPERTY, same rationale as
-    // VAWorld's timing stats (called directly from GDScript like methods).
+    // Read-only muffling stats
     ClassDB::bind_method(D_METHOD("get_muffling_gain_lf"), &VASource::get_muffling_gain_lf);
     ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VASource::get_muffling_gain_hf);
     ClassDB::bind_method(D_METHOD("is_raytraced"), &VASource::is_raytraced);
