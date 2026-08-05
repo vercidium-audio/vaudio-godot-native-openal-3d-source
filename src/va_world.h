@@ -60,6 +60,12 @@ private:
     // matching VAWorld.cs's CreateEmitter wiring).
     va_godot::VAEmitter *listener = nullptr;
 
+    // Emitters that reached register_emitter before the listener existed
+    // (e.g. the scene adds a VAEmitter node above the VAListener node) - held
+    // here instead of being dropped, then added as targets once the listener
+    // registers. Drained by register_emitter itself when is_main_listener.
+    std::vector<va_godot::VAEmitter *> pending_targets;
+
     // VAWorldVariables.cs's listenerReverbEffect port - the single global EFX
     // reverb slot, used by emitters/sources that don't affect grouped EAX
     // (or whose grouped_eax_index is invalid) - see get_reverb_effect.
@@ -78,6 +84,11 @@ private:
     // it into listener_reverb_effect.
     static void on_reverb_updated_trampoline(::VAWorld *world);
     void on_reverb_updated();
+
+    // Set the first time on_reverb_updated runs with no listener registered,
+    // so the missing-VAListener warning only logs once instead of spamming
+    // every reverb update.
+    bool warned_missing_listener = false;
 
     // Emitters whose VAEmitter::on_emitter_removed already ran but whose
     // ::VAEmitter* handle hasn't been vaEmitterDestroy'd yet - see
@@ -154,6 +165,11 @@ public:
     // if a second is_main_listener emitter shows up, or if a non-listener
     // emitter appears before any listener exists - matches VAWorld.cs.
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
+
+    // Called from VAEmitter::_exit_tree. Removes this emitter from
+    // pending_targets if it's still waiting there for a listener to appear -
+    // a no-op otherwise (the common case, once a listener already exists).
+    void unregister_pending_target(va_godot::VAEmitter *emitter);
 
     // Exports all world settings, materials, primitives, and emitters to a
     // binary file via the SDK's vaWorldExport, for later use with

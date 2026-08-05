@@ -191,9 +191,9 @@ void VAWorld::_ready()
     if (IS_EDITOR_HINT())
     {
         // Scan for unknown vercidium_audio_material values, so warnings appear while editing
+        // get_tree() can be null if this node isn't inside the scene tree yet
         Node *root = get_tree() ? get_tree()->get_root() : nullptr;
 
-        // TODO - why could this be null?
         if (root)
             validate_materials_in_editor(root);
 
@@ -219,9 +219,9 @@ void VAWorld::_exit_tree()
             get_tree()->disconnect("node_removed", callable_mp(this, &VAWorld::on_node_removed));
 
         // Unregister all primitives
+        // get_current_scene() can be null if the tree has no scene loaded (e.g. exiting during shutdown)
         Node *scene_root = get_tree()->get_current_scene();
-        
-        // TODO - why could this be null?
+
         if (scene_root)
             remove_primitive(scene_root, true);
     }
@@ -295,7 +295,15 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
     if (is_main_listener)
     {
         if (!listener)
+        {
             listener = emitter;
+
+            // Wire up any emitters that registered before this listener existed, instead of leaving them permanently untargeted
+            for (va_godot::VAEmitter *pending_target : pending_targets)
+                listener->add_target(pending_target);
+
+            pending_targets.clear();
+        }
         else
             VA_WARN_NAMED("This world can only have one VAListener node. Current listener: '", listener->get_name(), "' Second listener: '", emitter->get_name(), "'");
 
@@ -304,13 +312,18 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
 
     if (!listener)
     {
-        // TODO - yuck! In Unreal you can add anything in any order, and actors will initialise each other if they aren't ready yet (as they have direct field references to the world / targets / listener / etc). Is there a workaround for this?
-        VA_WARN("VAEmitter nodes cannot be added before the main listener. Node: ", emitter->get_name());
+        // The scene added this emitter before the main listener node - hold onto it and add it as a target once the listener registers, instead of dropping it
+        pending_targets.push_back(emitter);
 
         return;
     }
 
     listener->add_target(emitter);
+}
+
+void VAWorld::unregister_pending_target(va_godot::VAEmitter *emitter)
+{
+    pending_targets.erase(std::remove(pending_targets.begin(), pending_targets.end(), emitter), pending_targets.end());
 }
 
 void VAWorld::on_reverb_updated_trampoline(::VAWorld *world)
@@ -353,9 +366,16 @@ static VAEAXReverbParams CopyReverbParams(const VAEAXReverb *eax)
 
 void VAWorld::on_reverb_updated()
 {
-    // TODO - is it warned somewhere that we don't have a main listener?
     if (!listener || !listener->get_handle())
+    {
+        if (!warned_missing_listener)
+        {
+            VA_WARN_NAMED("Has no VAListener node, so reverb cannot be updated. Add a VAListener node to this scene.");
+            warned_missing_listener = true;
+        }
+
         return;
+    }
 
     VAEAXReverb *eax = vaEmitterGetEAX(listener->get_handle());
 
@@ -394,14 +414,10 @@ void VAWorld::on_reverb_updated()
 
         if (relative_direction)
         {
-            // Rotate the raytraced world-space direction into the
-            // listener's local space (equivalent to VAWorldReverb.cs's
-            // CalculateListenerRelativePan(pan, listener.Pitch, listener.Yaw))
-            // so OpenAL's reflections/late-reverb pan vectors - which are
-            // listener-relative - point the right way regardless of which
-            // way the listener is facing.
-            Basis listener_basis = listener->get_global_transform().basis;
-            Vector3 pan = listener_basis.xform_inv(FromVAudio(*relative_direction));
+            // Rotate the raytraced world-space direction into the listener's local space (equivalent to VAWorldReverb.cs's CalculateListenerRelativePan(pan, listener.Pitch, listener.Yaw)) so OpenAL's reflections/late-reverb pan vectors - which are listener-relative - point the right way regardless of which way the listener is facing. vaWorldCalculateListenerRelativePan handles the coordinate-system conversion itself (world's CoordinateSystem is set to VACoordinateSystemGodot in the constructor)
+            Vector3 listener_rotation = listener->get_global_rotation();
+            VAVector pan_vector = vaWorldCalculateListenerRelativePan(world, *relative_direction, listener_rotation.x, listener_rotation.y);
+            Vector3 pan = FromVAudio(pan_vector);
 
             params.reflectionsPan[0] = pan.x;
             params.reflectionsPan[1] = pan.y;

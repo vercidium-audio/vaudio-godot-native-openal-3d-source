@@ -229,6 +229,9 @@ void VAEmitter::_exit_tree()
 
     if (emitter)
     {
+        // No-op unless this emitter was still waiting in va_world's pending_targets for a listener to appear
+        va_world->unregister_pending_target(this);
+
         remove_emitter();
     }
 }
