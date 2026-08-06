@@ -13,6 +13,7 @@
 #include "va_emitter.h"
 #include "va_engine_util.h"
 #include "va_source.h"
+#include "va_source_ambient.h"
 #include "va_source_leech.h"
 #include "va_source_relative.h"
 
@@ -66,6 +67,7 @@ void ConversionContextMenuPlugin::_popup_menu(const PackedStringArray &paths)
     bool all_not_va_source = true;
     bool all_not_va_source_relative = true;
     bool all_not_va_source_leech_and_parent_is_emitter = true;
+    bool all_not_va_source_ambient = true;
 
     for (int i = 0; i < paths.size(); i++)
     {
@@ -78,13 +80,14 @@ void ConversionContextMenuPlugin::_popup_menu(const PackedStringArray &paths)
         bool is_va_source = Object::cast_to<VASource>(node) != nullptr;
         bool is_va_source_relative = Object::cast_to<VASourceRelative>(node) != nullptr;
         bool is_va_source_leech = Object::cast_to<VASourceLeech>(node) != nullptr;
+        bool is_va_source_ambient = Object::cast_to<VASourceAmbient>(node) != nullptr;
 
-        if (!is_audio_player_3d && !is_audio_player && !is_va_source && !is_va_source_relative && !is_va_source_leech)
+        if (!is_audio_player_3d && !is_audio_player && !is_va_source && !is_va_source_relative && !is_va_source_leech && !is_va_source_ambient)
             return;
 
         any_eligible = true;
 
-        // AudioStreamPlayer isn't spatialised, so it can only become a VASourceRelative - never offer VASource/VASourceLeech for it.
+        // AudioStreamPlayer isn't spatialised, so it can only become a VASourceRelative/VASourceAmbient - never offer VASource/VASourceLeech for it.
         if (is_audio_player)
             all_not_va_source = all_not_va_source_leech_and_parent_is_emitter = false;
 
@@ -93,6 +96,9 @@ void ConversionContextMenuPlugin::_popup_menu(const PackedStringArray &paths)
 
         if (is_va_source_relative)
             all_not_va_source_relative = false;
+
+        if (is_va_source_ambient)
+            all_not_va_source_ambient = false;
 
         // VASourceLeech must be a direct child of a VAEmitter to function (it
         // leeches that parent's raytracing results instead of casting its own) -
@@ -114,6 +120,9 @@ void ConversionContextMenuPlugin::_popup_menu(const PackedStringArray &paths)
 
     if (all_not_va_source_leech_and_parent_is_emitter)
         add_context_menu_item("Convert to VASourceLeech", callable_mp(this, &ConversionContextMenuPlugin::convert_selected_to).bind("VASourceLeech"));
+
+    if (all_not_va_source_ambient)
+        add_context_menu_item("Convert to VASourceAmbient", callable_mp(this, &ConversionContextMenuPlugin::convert_selected_to).bind("VASourceAmbient"));
 }
 
 void ConversionContextMenuPlugin::convert_selected_to(const TypedArray<Node> &nodes, const String &target_class)
@@ -142,6 +151,8 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
         new_node = memnew(VASourceRelative);
     else if (target_class == "VASourceLeech")
         new_node = memnew(VASourceLeech);
+    else if (target_class == "VASourceAmbient")
+        new_node = memnew(VASourceAmbient);
     else
         return;
 
