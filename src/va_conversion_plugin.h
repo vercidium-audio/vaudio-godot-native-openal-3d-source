@@ -10,7 +10,7 @@ using namespace godot;
 namespace va_godot
 {
 
-// Right-click to convert AudioStreamPlayer3D to VASource / VASourceRelative / VASourceLeech, or AudioStreamPlayer to VASourceRelative
+// Right-click to convert AudioStreamPlayer3D to VASource / VASourceRelative / VASourceLeech / VASourceAmbient, or AudioStreamPlayer to VASourceRelative / VASourceAmbient
 class ConversionContextMenuPlugin : public EditorContextMenuPlugin
 {
     GDCLASS(ConversionContextMenuPlugin, EditorContextMenuPlugin);
