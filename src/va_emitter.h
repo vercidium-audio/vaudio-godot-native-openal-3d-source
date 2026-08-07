@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 
 extern "C"
 {
@@ -196,6 +197,18 @@ public:
     // Thin forward to vaEmitterGetWithinWorldBounds - emitters outside the
     // VAWorld's position/size bounds are not raytraced (see vaudio.h).
     bool get_within_world_bounds() const;
+
+    // Snapshot of this emitter's computed EAX reverb parameters
+    // (vaEmitterGetEAX), for runtime debugging from GDScript (e.g. printing
+    // a VAListener's reverb state on-screen) - matches CopyReverbParams'
+    // field selection in va_world.cpp, plus outsidePercent/returnedPercent
+    // since those directly gate whether reverb should be audible at all.
+    // Returns an empty Dictionary if this emitter has no handle yet or
+    // vaEmitterGetEAX returns null (e.g. before the first raytracing pass).
+    // Skips relativeDirections/relativeGains/relativeEmitters - those are
+    // keyed per target emitter (vaEAXReverbGetRelativeDirection/Gain), not a
+    // single scalar this flat Dictionary shape can represent.
+    Dictionary get_eax_debug_info() const;
 
     // Thin forwards to the SDK, matching VAEmitter.cs's AddTarget/RemoveTarget
     // and HasRaytracedTarget/GetTargetFilter shortcuts.

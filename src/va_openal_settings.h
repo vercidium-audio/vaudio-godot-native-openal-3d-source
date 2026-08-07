@@ -1,8 +1,11 @@
 #pragma once
 
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
+
+#include "openal/al_functions.h"
 
 using namespace godot;
 
@@ -40,8 +43,38 @@ private:
 
     float master_volume = 1.0f;
 
+    // 0 means "leave ALC_FREQUENCY (the mixing sample rate) at the driver
+    // default" - see ALManager::open_device_and_context.
+    int sample_rate = 0;
+
+    // Requests HRTF-based binaural rendering via the ALC_SOFT_HRTF extension
+    // instead of the driver's default panning. The driver can still refuse
+    // (e.g. no HRTF data for the output device).
+    bool hrtf_enabled = false;
+
+    // AL distance model, exposed as a PROPERTY_HINT_ENUM over OpenAL's
+    // handful of AL_*_DISTANCE(_CLAMPED) constants - see get/set_distance_model.
+    int distance_model = AL_INVERSE_DISTANCE_CLAMPED;
+
+    // AL_METERS_PER_UNIT (EFX) listener property - the OpenAL/EFX-side scale
+    // used by air-absorption and reverb decay math. Distinct from
+    // VAWorld::meters_per_unit, which only feeds vaudio's own raytracing/
+    // acoustics model - the two aren't linked and can be set independently.
+    float meters_per_unit = 1.0f;
+
+    // Global AL speed of sound (alSpeedOfSound), used by OpenAL's own Doppler
+    // calculation. Distinct from VAWorld::speed_of_sound, which only feeds
+    // vaudio's raytracing/acoustics model.
+    float speed_of_sound = 343.0f;
+
+    // When true, every source's dry/direct path is silenced (routed through
+    // a gain-0 filter) so only reverb sends are audible - a diagnostic
+    // toggle for tuning reverb in isolation. See ALManager::reverb_only.
+    bool reverb_only = false;
+
 protected:
     static void _bind_methods();
+    void _validate_property(PropertyInfo &property) const;
 
 public:
     void _ready() override;
@@ -55,11 +88,39 @@ public:
     float get_master_volume() const;
     void set_master_volume(float value);
 
+    int get_sample_rate() const;
+    void set_sample_rate(int value);
+
+    bool get_hrtf_enabled() const;
+    void set_hrtf_enabled(bool value);
+
+    int get_distance_model() const;
+    void set_distance_model(int value);
+
+    float get_meters_per_unit() const;
+    void set_meters_per_unit(float value);
+
+    float get_speed_of_sound() const;
+    void set_speed_of_sound(float value);
+
+    bool get_reverb_only() const;
+    void set_reverb_only(bool value);
+
     // Callable from the editor/GDScript (e.g. via the Inspector's method
     // list or a debug script) to discover valid device_name values - not
     // surfaced as a property hint since the driver's device list is only
     // known at runtime, after ALManager has loaded soft_oal.dll.
     PackedStringArray get_available_devices() const;
+
+    // Re-queries the driver's device list and re-validates device_name's
+    // PROPERTY_HINT_ENUM_SUGGESTION so a device plugged in after this node
+    // was selected in the editor shows up without reselecting the node or
+    // restarting the editor. Wired to the "Refresh Devices" button
+    // VAOpenALSettingsInspectorPlugin adds in the Inspector (va_conversion_plugin.cpp) -
+    // Godot only rebuilds a cached property list on specific triggers
+    // (selection, this call, scene reload), never by polling for hardware
+    // changes on its own.
+    void refresh_devices();
 };
 
 } // namespace va_godot

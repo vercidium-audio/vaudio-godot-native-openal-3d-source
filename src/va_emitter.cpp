@@ -26,6 +26,7 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_va_position"), &VAEmitter::get_va_position);
     ClassDB::bind_method(D_METHOD("get_within_world_bounds"), &VAEmitter::get_within_world_bounds);
     ClassDB::bind_method(D_METHOD("is_raytraced"), &VAEmitter::is_raytraced);
+    ClassDB::bind_method(D_METHOD("get_eax_debug_info"), &VAEmitter::get_eax_debug_info);
 
     // Read-only ambient filter stats (listener only) - same no-ADD_PROPERTY
     // rationale as the SDK forwards above.
@@ -418,6 +419,49 @@ Vector3 VAEmitter::get_va_position() const
 bool VAEmitter::get_within_world_bounds() const
 {
     return vaEmitterGetWithinWorldBounds(emitter);
+}
+
+Dictionary VAEmitter::get_eax_debug_info() const
+{
+    Dictionary info;
+
+    if (!emitter)
+        return info;
+
+    VAEAXReverb *eax = vaEmitterGetEAX(emitter);
+
+    if (!eax)
+        return info;
+
+    info["outside_percent"] = eax->outsidePercent;
+    info["returned_percent"] = eax->returnedPercent;
+    info["material_absorption_lf"] = eax->materialAbsorptionLF;
+    info["material_absorption_hf"] = eax->materialAbsorptionHF;
+    info["material_roughness"] = eax->materialRoughness;
+    info["reflections_delay"] = eax->reflectionsDelay;
+    info["density"] = eax->density;
+    info["diffusion"] = eax->diffusion;
+    info["gain_lf"] = eax->gainLF;
+    info["gain_hf"] = eax->gainHF;
+    info["gain"] = eax->gain;
+    info["decay_time"] = eax->decayTime;
+    info["decay_lf_ratio"] = eax->decayLFRatio;
+    info["decay_hf_ratio"] = eax->decayHFRatio;
+    info["reflections_gain"] = eax->reflectionsGain;
+    info["late_reverb_gain"] = eax->lateReverbGain;
+    info["late_reverb_delay"] = eax->lateReverbDelay;
+    info["echo_time"] = eax->echoTime;
+    info["echo_depth"] = eax->echoDepth;
+    info["modulation_time"] = eax->modulationTime;
+    info["modulation_depth"] = eax->modulationDepth;
+    info["air_absorption_gain_hf"] = eax->airAbsorptionGainHF;
+    info["hf_reference"] = eax->hfReference;
+    info["lf_reference"] = eax->lfReference;
+    info["room_rolloff_factor"] = eax->roomRolloffFactor;
+    info["decay_hf_limit"] = (bool)eax->decayHFLimit;
+    info["is_temp_background"] = (bool)eax->isTempBackground;
+
+    return info;
 }
 
 void VAEmitter::add_target(VAEmitter *target)
