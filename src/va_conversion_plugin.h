@@ -6,6 +6,8 @@
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 
+#include "va_world_gizmo.h"
+
 using namespace godot;
 
 namespace va_godot
@@ -52,6 +54,7 @@ class VAConversionPlugin : public EditorPlugin
 private:
     Ref<ConversionContextMenuPlugin> context_menu_plugin;
     Ref<VAOpenALSettingsInspectorPlugin> openal_settings_inspector_plugin;
+    Ref<VAWorldGizmoPlugin> world_gizmo_plugin;
 
 protected:
     static void _bind_methods();

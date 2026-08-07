@@ -25,18 +25,20 @@ static constexpr int FirstCustomMaterialId = 1000;
 
 void VAWorld::_bind_methods()
 {
+    // Rebinds the inherited Node3D "position" property to VAWorld's own get_position/set_position,
+    // so moving this node in the viewport or Inspector also updates vaWorldSetPosition - see
+    // set_position's doc comment in va_world_properties.cpp.
     ClassDB::bind_method(D_METHOD("get_position"), &VAWorld::get_position);
     ClassDB::bind_method(D_METHOD("set_position", "value"), &VAWorld::set_position);
-    ClassDB::bind_method(D_METHOD("get_size"), &VAWorld::get_size);
-    ClassDB::bind_method(D_METHOD("set_size", "value"), &VAWorld::set_size);
+    ClassDB::bind_method(D_METHOD("get_bounds_size"), &VAWorld::get_bounds_size);
+    ClassDB::bind_method(D_METHOD("set_bounds_size", "value"), &VAWorld::set_bounds_size);
     ClassDB::bind_method(D_METHOD("get_epsilon"), &VAWorld::get_epsilon);
     ClassDB::bind_method(D_METHOD("set_epsilon", "value"), &VAWorld::set_epsilon);
     ClassDB::bind_method(D_METHOD("get_world_is_indoors"), &VAWorld::get_world_is_indoors);
     ClassDB::bind_method(D_METHOD("set_world_is_indoors", "value"), &VAWorld::set_world_is_indoors);
 
     ADD_GROUP("World", "");
-    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position"), "set_position", "get_position");
-    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "size"), "set_size", "get_size");
+    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_size"), "set_bounds_size", "get_bounds_size");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "epsilon"), "set_epsilon", "get_epsilon");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "world_is_indoors"), "set_world_is_indoors", "get_world_is_indoors");
 
@@ -115,6 +117,10 @@ void VAWorld::_bind_methods()
 
 VAWorld::VAWorld()
 {
+    // The bounds are an axis-aligned box - scale isn't meaningful (see _validate_property), so
+    // don't let an inherited scale (e.g. from a scaled parent) skew the rendered gizmo box either.
+    set_disable_scale(true);
+
     // The world should only exist at runtime, not in the editor - matches
     // the is_editor_hint() guard already in _ready()/_exit_tree() below.
     // world stays nullptr; every other method already null-checks it (see
@@ -132,8 +138,8 @@ VAWorld::VAWorld()
     vaWorldSetOnReverbUpdatedCallback(world, &VAWorld::on_reverb_updated_trampoline);
 
     // These objects handle error checking for us
-    set_position(position);
-    set_size(size);
+    set_position(get_position());
+    set_bounds_size(bounds_size);
     set_epsilon(epsilon);
     set_world_is_indoors(world_is_indoors);
     set_maximum_grouped_eax_count(maximum_grouped_eax_count);
@@ -183,6 +189,23 @@ VAWorld::~VAWorld()
             VA_ERROR("Failed to destroy the world (VAResult=", VAResultToString(result), ")");
 
         world = nullptr;
+    }
+}
+
+// The bounds are always an axis-aligned box (vaWorldSetPosition/vaWorldSetSize take no
+// rotation/scale), so hide the rest of Node3D's transform and only expose position.
+void VAWorld::_validate_property(PropertyInfo &p_property) const
+{
+    if (p_property.name == StringName("rotation") ||
+        p_property.name == StringName("rotation_degrees") ||
+        p_property.name == StringName("quaternion") ||
+        p_property.name == StringName("basis") ||
+        p_property.name == StringName("scale") ||
+        p_property.name == StringName("transform") ||
+        p_property.name == StringName("rotation_edit_mode") ||
+        p_property.name == StringName("rotation_order"))
+    {
+        p_property.usage = PROPERTY_USAGE_NONE;
     }
 }
 

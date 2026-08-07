@@ -149,6 +149,13 @@ bool ALBuffer::upload()
         return false;
     }
 
+    // Clear any error left over from an unrelated earlier AL call this frame -
+    // alGetError() reports a single sticky flag rather than a queue, so
+    // without this a stale error here would be misattributed to alBufferData
+    // below, logging a false "failed to upload" for a buffer that actually
+    // uploaded fine.
+    manager->al_get_error()();
+
     // mix_audio always returns interleaved stereo frames regardless of the
     // source stream's own channel count (Godot's mixer upmixes mono
     // internally), so AL_FORMAT_STEREO16 is always correct here.

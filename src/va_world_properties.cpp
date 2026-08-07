@@ -16,9 +16,14 @@
 namespace va_godot
 {
 
-void VAWorld::set_position(Vector3 value)
+// Shadows the inherited Node3D::set_position (see _bind_methods) so that moving this node - via
+// the viewport gizmo, the Inspector's Position field, or code - also updates vaWorldSetPosition.
+// The bounds are always axis-aligned starting at this position (see _validate_property, which
+// hides rotation/scale), so the node's position doubles as the AABB's world-space origin.
+void VAWorld::set_position(const Vector3 &value)
 {
-    position = value;
+    Node3D::set_position(value);
+    update_gizmos();
 
     if (!world)
         return;
@@ -29,9 +34,10 @@ void VAWorld::set_position(Vector3 value)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world position (may be NaN/Infinity)");
 }
 
-void VAWorld::set_size(Vector3 value)
+void VAWorld::set_bounds_size(Vector3 value)
 {
-    size = value;
+    bounds_size = value;
+    update_gizmos();
 
     if (!world)
         return;

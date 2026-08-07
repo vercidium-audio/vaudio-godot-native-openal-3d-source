@@ -5,8 +5,9 @@
 #include <godot_cpp/classes/csg_cylinder3d.hpp>
 #include <godot_cpp/classes/csg_sphere3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
-#include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -35,9 +36,13 @@ class VAEmitter;
 
 // Name collision: the vaudio C SDK's opaque handle type is also called "VAWorld" (see vaudio.h), in the global namespace.
 // Inside the va_godot namespace, 'VAWorld' always means this class, and '::VAWorld' means the SDK's opaque handle type.
-class VAWorld : public Node
+//
+// This is a Node3D purely so the editor can draw a gizmo showing the bounds_position/bounds_size
+// AABB (see VAWorldGizmoPlugin) - the node's own transform is otherwise unused by vaudio, which
+// always treats bounds_position/bounds_size as absolute world-space coordinates.
+class VAWorld : public Node3D
 {
-    GDCLASS(VAWorld, Node);
+    GDCLASS(VAWorld, Node3D);
 
 private:
     ::VAWorld *world = nullptr;
@@ -111,6 +116,7 @@ public:
     void _ready() override;
     void _exit_tree() override;
     void _process(double delta) override;
+    void _validate_property(PropertyInfo &p_property) const;
 
     ::VAWorld *get_handle() const
     {
@@ -202,17 +208,19 @@ public:
             vaWorldSetRenderingEnabled(world, value);
     }
 
+    // Overrides/shadows the inherited Node3D::position property so that moving this node also
+    // updates vaWorldSetPosition - see set_position's doc comment in va_world_properties.cpp.
     Vector3 get_position() const
     {
-        return position;
+        return Node3D::get_position();
     }
-    void set_position(Vector3 value);
+    void set_position(const Vector3 &value);
 
-    Vector3 get_size() const
+    Vector3 get_bounds_size() const
     {
-        return size;
+        return bounds_size;
     }
-    void set_size(Vector3 value);
+    void set_bounds_size(Vector3 value);
 
     float get_epsilon() const
     {
@@ -298,8 +306,7 @@ public:
     double get_analysis_time() const;
 
 private:
-    Vector3 position = Vector3(-100, 0, -100);
-    Vector3 size = Vector3(200, 100, 200);
+    Vector3 bounds_size = Vector3(200, 100, 200);
     float epsilon = 0.01f;
     bool world_is_indoors = false;
     int maximum_grouped_eax_count = 3;
