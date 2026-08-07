@@ -79,6 +79,10 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_relative_reverb_outer_threshold", "value"), &VAEmitter::set_relative_reverb_outer_threshold);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "relative_reverb_outer_threshold", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_relative_reverb_outer_threshold", "get_relative_reverb_outer_threshold");
 
+    ClassDB::bind_method(D_METHOD("get_use_listener_reverb"), &VAEmitter::get_use_listener_reverb);
+    ClassDB::bind_method(D_METHOD("set_use_listener_reverb", "value"), &VAEmitter::set_use_listener_reverb);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_listener_reverb"), "set_use_listener_reverb", "get_use_listener_reverb");
+
     ADD_GROUP("Muffling", "");
 
     ClassDB::bind_method(D_METHOD("get_occlusion_ray_count"), &VAEmitter::get_occlusion_ray_count);
@@ -213,6 +217,16 @@ bool VAEmitter::get_is_main_listener() const
 void VAEmitter::set_is_main_listener(bool value)
 {
     is_main_listener = value;
+}
+
+// Hides is_main_listener from the inspector - VAListener is the intended way
+// to designate a world's listener (see va_listener.cpp), so exposing this
+// checkbox here as well would just invite two conflicting ways to do the
+// same thing.
+void VAEmitter::_validate_property(PropertyInfo &p_property) const
+{
+    if (p_property.name == StringName("is_main_listener"))
+        p_property.usage = PROPERTY_USAGE_NONE;
 }
 
 void VAEmitter::_enter_tree()
@@ -708,6 +722,16 @@ void VAEmitter::set_relative_reverb_outer_threshold(float value)
     {
         vaEmitterSetRelativeReverbOuterThreshold(emitter, relative_reverb_outer_threshold);
     }
+}
+
+bool VAEmitter::get_use_listener_reverb() const
+{
+    return use_listener_reverb;
+}
+
+void VAEmitter::set_use_listener_reverb(bool value)
+{
+    use_listener_reverb = value;
 }
 
 int VAEmitter::get_occlusion_ray_count() const

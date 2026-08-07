@@ -1,6 +1,7 @@
 #pragma once
 
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/color.hpp>
 
 extern "C"
@@ -60,6 +61,7 @@ private:
     bool has_relative_reverb = false;
     float relative_reverb_inner_threshold = 0.6f;
     float relative_reverb_outer_threshold = 0.8f;
+    bool use_listener_reverb = true;
 
     int occlusion_ray_count = 0;
     int occlusion_bounce_count = 0;
@@ -171,6 +173,7 @@ public:
     void _enter_tree() override;
     void _exit_tree() override;
     void _process(double delta) override;
+    void _validate_property(PropertyInfo &p_property) const;
 
     bool get_is_main_listener() const;
     void set_is_main_listener(bool value);
@@ -250,6 +253,8 @@ public:
     void set_relative_reverb_inner_threshold(float value);
     float get_relative_reverb_outer_threshold() const;
     void set_relative_reverb_outer_threshold(float value);
+    bool get_use_listener_reverb() const;
+    void set_use_listener_reverb(bool value);
 
     int get_occlusion_ray_count() const;
     void set_occlusion_ray_count(int value);

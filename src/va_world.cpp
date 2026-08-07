@@ -466,6 +466,19 @@ ALReverbEffect *VAWorld::get_reverb_effect(::VAEmitter *emitter)
         }
     }
 
+    // Doesn't cast reverb rays or affect a grouped EAX zone - falls back to the listener's
+    // reverb effect only if this emitter opted into that via use_listener_reverb, otherwise
+    // it gets no reverb send at all (nullptr, see ALSourceNode::apply_filter's effect ?
+    // effect->get_slot_handle() : 0). use_listener_reverb has no SDK-side backing, so it's
+    // read off the va_godot::VAEmitter via the user data vaEmitterCreate stashed on the handle.
+    if (emitter)
+    {
+        VAEmitter *self = static_cast<VAEmitter *>(vaEmitterGetUserData(emitter));
+
+        if (self && !self->get_use_listener_reverb())
+            return nullptr;
+    }
+
     return &listener_reverb_effect;
 }
 
