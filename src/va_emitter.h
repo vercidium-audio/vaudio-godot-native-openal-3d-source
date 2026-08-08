@@ -19,6 +19,7 @@ namespace va_godot
 {
 
 class VAWorld;
+class VAVisualisation;
 
 // Port of vaudio-godot-openal's VAEmitter.cs, scoped to structural/lifecycle
 // behaviour (native_godot_plan.md "Implement VASource's per-frame result
@@ -125,6 +126,9 @@ private:
     // Resolved fresh every frame in apply_raytracing_results via
     // VAWorld::get_reverb_effect - not owned by VAEmitter.
     ALReverbEffect *effect = nullptr;
+
+    // Not owned by VAEmitter - see get_visualisation/set_visualisation.
+    VAVisualisation *visualisation = nullptr;
 
     void create_emitter();
     void remove_emitter();
@@ -242,6 +246,21 @@ public:
     ALReverbEffect *get_effect() const
     {
         return effect;
+    }
+
+    // Set by VAVisualisation::find_emitter when a VAVisualisation child registers itself against
+    // this emitter - lets VAVisualisation::visualisation_callback_trampoline resolve which node
+    // to forward vaEmitterSetVisualisationCallback's data to, without stealing
+    // vaEmitterSetUserData (already pointed at this VAEmitter by create_emitter(), and relied on
+    // by the raytracing-result trampolines above).
+    VAVisualisation *get_visualisation() const
+    {
+        return visualisation;
+    }
+
+    void set_visualisation(VAVisualisation *value)
+    {
+        visualisation = value;
     }
 
     // Exported tuning-knob surface (ADD_PROPERTY'd in _bind_methods) - see

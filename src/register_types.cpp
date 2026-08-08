@@ -23,6 +23,7 @@
 #include "va_source_ambient.h"
 #include "va_source_leech.h"
 #include "va_source_relative.h"
+#include "va_visualisation.h"
 #include "va_world.h"
 #include "va_world_gizmo.h"
 
@@ -64,6 +65,7 @@ void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_le
     ClassDB::register_class<VASourceRelative>();
     ClassDB::register_class<VASourceAmbient>();
     ClassDB::register_class<VASourceLeech>();
+    ClassDB::register_class<va_godot::VAVisualisation>();
 
     // Internal helper classes
     ClassDB::register_class<TransformWatcher>();

@@ -44,7 +44,7 @@ void VAWorld::_bind_methods()
     // Without this, ClassDB still resolves the inherited "position" property to Node3D's own
     // accessors, so VAWorld::set_position (bound above) would never be called through the
     // property system - only direct .set_position() calls would reach vaWorldSetPosition.
-    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position", PROPERTY_HINT_RANGE, "-1000,1000,5,or_less,or_greater"), "set_position", "get_position");
+    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position", PROPERTY_HINT_RANGE, "-1000,1000,1,or_less,or_greater"), "set_position", "get_position");
 
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_size", PROPERTY_HINT_RANGE, "1,1000,1,or_greater"), "set_bounds_size", "get_bounds_size");
     ADD_PROPERTY(PropertyInfo(Variant::COLOR, "bounds_color"), "set_bounds_color", "get_bounds_color");
