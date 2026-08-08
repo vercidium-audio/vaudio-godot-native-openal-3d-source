@@ -16,7 +16,7 @@ void VAWorldGizmoPlugin::_bind_methods()
 
 VAWorldGizmoPlugin::VAWorldGizmoPlugin()
 {
-    create_material("va_world_bounds", Color(1.0f, 0.65f, 0.0f));
+    create_material("va_world_bounds", Color(1.0f, 0.8f, 0.0f), false, true);
 }
 
 bool VAWorldGizmoPlugin::_has_gizmo(Node3D *for_node_3d) const

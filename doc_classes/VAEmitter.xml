@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VAEmitter" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="reverb_ray_count" type="int" setter="set_reverb_ray_count" getter="get_reverb_ray_count">
+			The number of reverb rays to cast.
+		</member>
+		<member name="reverb_bounce_count" type="int" setter="set_reverb_bounce_count" getter="get_reverb_bounce_count">
+			The maximum number of bounces per reverb ray. Reverb rays stop bouncing after reaching the edge of the world when the world's "is indoors" setting is false.
+		</member>
+		<member name="occlusion_ray_count" type="int" setter="set_occlusion_ray_count" getter="get_occlusion_ray_count">
+			The number of occlusion rays to cast.
+		</member>
+		<member name="occlusion_bounce_count" type="int" setter="set_occlusion_bounce_count" getter="get_occlusion_bounce_count">
+			The maximum number of bounces per occlusion ray. Occlusion rays stop bouncing after they discover all targets.
+		</member>
+		<member name="permeation_ray_count" type="int" setter="set_permeation_ray_count" getter="get_permeation_ray_count">
+			The number of permeation rays to cast.
+		</member>
+		<member name="permeation_bounce_count" type="int" setter="set_permeation_bounce_count" getter="get_permeation_bounce_count">
+			The number of bounces per permeation ray.
+		</member>
+		<member name="ambient_occlusion_ray_count" type="int" setter="set_ambient_occlusion_ray_count" getter="get_ambient_occlusion_ray_count">
+			The number of ambient occlusion rays to cast.
+		</member>
+		<member name="ambient_occlusion_bounce_count" type="int" setter="set_ambient_occlusion_bounce_count" getter="get_ambient_occlusion_bounce_count">
+			The maximum number of bounces per ambient occlusion ray. Ambient occlusion rays stop bouncing after reaching the edge of the world.
+		</member>
+		<member name="ambient_permeation_ray_count" type="int" setter="set_ambient_permeation_ray_count" getter="get_ambient_permeation_ray_count">
+			The number of ambient permeation rays to cast.
+		</member>
+		<member name="ambient_permeation_bounce_count" type="int" setter="set_ambient_permeation_bounce_count" getter="get_ambient_permeation_bounce_count">
+			The number of bounces per ambient permeation ray.
+		</member>
+		<member name="visualisation_ray_count" type="int" setter="set_visualisation_ray_count" getter="get_visualisation_ray_count">
+			The number of visualisation rays to cast.
+		</member>
+		<member name="visualisation_bounce_count" type="int" setter="set_visualisation_bounce_count" getter="get_visualisation_bounce_count">
+			The number of bounces per visualisation ray.
+		</member>
+		<member name="refresh_ray_count" type="int" setter="set_refresh_ray_count" getter="get_refresh_ray_count">
+			The number of trails that are rebuilt from scratch each frame, to prevent staleness when the emitter moves. Trails are only rebuilt if the initial bounce position has strayed too far from the new bounce position.
+		</member>
+	</members>
+</class>

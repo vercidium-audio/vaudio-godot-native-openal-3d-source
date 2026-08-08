@@ -38,7 +38,7 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_world_is_indoors", "value"), &VAWorld::set_world_is_indoors);
 
     ADD_GROUP("World", "");
-    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_size"), "set_bounds_size", "get_bounds_size");
+    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_size", PROPERTY_HINT_RANGE, "1,1000,1,or_greater"), "set_bounds_size", "get_bounds_size");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "epsilon"), "set_epsilon", "get_epsilon");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "world_is_indoors"), "set_world_is_indoors", "get_world_is_indoors");
 
