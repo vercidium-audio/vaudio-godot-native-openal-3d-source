@@ -81,7 +81,6 @@ void VAWorldGizmoPlugin::_redraw(const Ref<EditorNode3DGizmo> &gizmo)
     gizmo->add_lines(lines, line_material);
 
     Color face_color = line_color;
-    face_color.a *= 0.15f;
 
     Ref<StandardMaterial3D> face_material;
     face_material.instantiate();

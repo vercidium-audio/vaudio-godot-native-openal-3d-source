@@ -26,7 +26,7 @@
 			The length, in milliseconds, of each entry in the echogram.
 		</member>
 		<member name="affects_grouped_eax" type="bool" setter="set_affects_grouped_eax" getter="get_affects_grouped_eax" default="false">
-			If [code]true[/code], this emitter's EAX is blended into the grouped EAX returned by the world. Should be [code]false[/code] for listener emitters.
+			If [code]true[/code], this emitter's EAX is blended into the world's Grouped EAX. Should be [code]false[/code] for listener emitters.
 		</member>
 		<member name="has_relative_reverb" type="bool" setter="set_has_relative_reverb" getter="get_has_relative_reverb" default="false">
 			If [code]true[/code], this emitter is used as a reference point for calculating relative reverb gain and direction. Should be [code]true[/code] for your main listener emitter.
