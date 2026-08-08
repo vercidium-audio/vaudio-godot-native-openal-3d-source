@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VAWorld" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+		The root node of a raytraced acoustic scene. Add exactly one of these to a level, above any geometry, materials, emitters, and sources that should be part of it. This node's position is the world-space origin of its raytracing bounds; rotation and scale are not used.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="export_to_file">
+			<return type="bool" />
+			<param index="0" name="file_path" type="String" />
+			<description>
+				Exports the world's settings, materials, primitives, and emitters to a binary file at the given native OS path. Returns [code]false[/code] on failure.
+			</description>
+		</method>
+		<method name="get_main_thread_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns how long, in milliseconds, the most recent update spent on the main thread.
+			</description>
+		</method>
+		<method name="get_raytracing_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns how long, in milliseconds, the most recent update spent raytracing.
+			</description>
+		</method>
+		<method name="get_preparation_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns how long, in milliseconds, the most recent update spent preparing for raytracing.
+			</description>
+		</method>
+		<method name="get_analysis_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns how long, in milliseconds, the most recent update spent analysing raytracing results.
+			</description>
+		</method>
+		<method name="get_grouped_eax_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of active grouped EAX reverb zones.
+			</description>
+		</method>
+		<method name="get_grouped_eax_gain_lf" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the low-frequency reverb gain of the grouped EAX zone at [param index].
+			</description>
+		</method>
+		<method name="get_grouped_eax_gain_hf" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the high-frequency reverb gain of the grouped EAX zone at [param index].
+			</description>
+		</method>
+		<method name="get_grouped_eax_decay_time" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the reverb decay time, in seconds, of the grouped EAX zone at [param index].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="position" type="Vector3" setter="set_position" getter="get_position" default="Vector3(0, 0, 0)">
+			The world-space origin of the raytracing bounds. All rays are confined within [member bounds_size] of this position; emitters outside the bounds are not raytraced, and primitives fully outside the bounds don't affect raytracing.
+		</member>
+		<member name="bounds_size" type="Vector3" setter="set_bounds_size" getter="get_bounds_size" default="Vector3(200, 100, 200)">
+			The size of the raytracing bounds, extending from [member position]. All rays are confined within these bounds; emitters outside them are not raytraced, and primitives fully outside them don't affect raytracing.
+		</member>
+		<member name="bounds_color" type="Color" setter="set_bounds_color" getter="get_bounds_color" default="Color(1, 0.65, 0, 1)">
+			The color of the bounds gizmo drawn in the editor viewport. Editor-only visualization; has no effect on raytracing.
+		</member>
+		<member name="epsilon" type="float" setter="set_epsilon" getter="get_epsilon" default="0.01">
+			The epsilon value used for raytracing and primitive intersections.
+		</member>
+		<member name="world_is_indoors" type="bool" setter="set_world_is_indoors" getter="get_world_is_indoors" default="false">
+			Whether the entire world is considered indoors or outdoors. When [code]false[/code], reverb rays stop accumulating energy after hitting the world edge.
+		</member>
+		<member name="maximum_grouped_eax_count" type="int" setter="set_maximum_grouped_eax_count" getter="get_maximum_grouped_eax_count" default="3">
+			The maximum number of grouped EAX reverb properties shared across all emitters that affect grouped EAX. Higher values increase accuracy but are more expensive to run.
+		</member>
+		<member name="meters_per_unit" type="float" setter="set_meters_per_unit" getter="get_meters_per_unit" default="1.0">
+			How many meters one world unit represents. Affects air absorption and reverb. This is separate from [member VAOpenALSettings.meters_per_unit], which only affects OpenAL's own air-absorption and reverb decay math.
+		</member>
+		<member name="speed_of_sound" type="float" setter="set_speed_of_sound" getter="get_speed_of_sound" default="343.0">
+			The speed of sound, in meters per second. Affects air absorption and reverb. This is separate from [member VAOpenALSettings.speed_of_sound], which only affects OpenAL's own Doppler calculation.
+		</member>
+		<member name="humidity" type="float" setter="set_humidity" getter="get_humidity" default="0.1">
+			The air humidity percentage, from 0.0 to 1.0. Affects air absorption.
+		</member>
+		<member name="temperature" type="float" setter="set_temperature" getter="get_temperature" default="26.0">
+			The air temperature, in degrees Celsius. Affects air absorption.
+		</member>
+		<member name="pressure" type="float" setter="set_pressure" getter="get_pressure" default="101325.0">
+			The atmospheric pressure, in Pascals. Affects air absorption.
+		</member>
+		<member name="reference_frequency_lf" type="float" setter="set_reference_frequency_lf" getter="get_reference_frequency_lf" default="300.0">
+			The low-frequency reference, in Hz. Affects air absorption and reverb.
+		</member>
+		<member name="reference_frequency_hf" type="float" setter="set_reference_frequency_hf" getter="get_reference_frequency_hf" default="4000.0">
+			The high-frequency reference, in Hz. Affects air absorption and reverb.
+		</member>
+		<member name="emitters_outside_the_world_are_muffled" type="bool" setter="set_emitters_outside_the_world_are_muffled" getter="get_emitters_outside_the_world_are_muffled" default="true">
+			If [code]true[/code], emitters outside the world bounds have zero occlusion/permeation energy (fully muffled). If [code]false[/code], they have maximum energy (unmuffled).
+		</member>
+		<member name="maximum_concurrency_level" type="int" setter="set_maximum_concurrency_level" getter="get_maximum_concurrency_level">
+			The maximum number of threads that can run in parallel for this world. Defaults to the processor count minus one, leaving a core free for the main/render thread.
+		</member>
+		<member name="work_item_count" type="int" setter="set_work_item_count" getter="get_work_item_count" default="128">
+			The number of work items to distribute raytracing work across. A value higher than your thread count helps evenly distribute work across all threads.
+		</member>
+		<member name="pending_shutdown" type="bool" setter="set_pending_shutdown" getter="get_pending_shutdown" default="false">
+			When set to [code]true[/code], the world stops submitting new raytracing work to background threads, allowing it to shut down cleanly.
+		</member>
+		<member name="rendering_enabled" type="bool" setter="set_rendering_enabled" getter="get_rendering_enabled" default="false">
+			If [code]true[/code], opens a native debug window visualising raytracing (dev build only). Not applied if the project's renderer is gl_compatibility, since the debug window's own native OpenGL context is known to crash the engine in that configuration.
+		</member>
+	</members>
+</class>

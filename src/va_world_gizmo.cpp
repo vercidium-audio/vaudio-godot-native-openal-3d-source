@@ -1,8 +1,11 @@
 #include "va_world_gizmo.h"
 
+#include <godot_cpp/classes/base_material3d.hpp>
 #include <godot_cpp/classes/material.hpp>
+#include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/surface_tool.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
 #include "va_world.h"
@@ -16,7 +19,6 @@ void VAWorldGizmoPlugin::_bind_methods()
 
 VAWorldGizmoPlugin::VAWorldGizmoPlugin()
 {
-    create_material("va_world_bounds", Color(1.0f, 0.8f, 0.0f), false, true);
 }
 
 bool VAWorldGizmoPlugin::_has_gizmo(Node3D *for_node_3d) const
@@ -68,8 +70,60 @@ void VAWorldGizmoPlugin::_redraw(const Ref<EditorNode3DGizmo> &gizmo)
         lines.push_back(corners[edges[i][1]]);
     }
 
-    Ref<Material> material = get_material("va_world_bounds", gizmo);
-    gizmo->add_lines(lines, material);
+    // Built per-instance (rather than via the plugin-wide create_material cache) since each
+    // VAWorld can have its own user-set bounds_color.
+    Color line_color = world->get_bounds_color();
+
+    Ref<StandardMaterial3D> line_material;
+    line_material.instantiate();
+    line_material->set_albedo(line_color);
+    line_material->set_shading_mode(BaseMaterial3D::SHADING_MODE_UNSHADED);
+    gizmo->add_lines(lines, line_material);
+
+    Color face_color = line_color;
+    face_color.a *= 0.15f;
+
+    Ref<StandardMaterial3D> face_material;
+    face_material.instantiate();
+    face_material->set_albedo(face_color);
+    face_material->set_shading_mode(BaseMaterial3D::SHADING_MODE_UNSHADED);
+    face_material->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA);
+    face_material->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
+    gizmo->add_mesh(build_face_mesh(corners), face_material);
+}
+
+Ref<ArrayMesh> VAWorldGizmoPlugin::build_face_mesh(const Vector3 corners[8])
+{
+    int faces[6][4] = {
+        { 0, 1, 2, 3 }, // bottom
+        { 4, 7, 6, 5 }, // top
+        { 0, 4, 5, 1 }, // -z side
+        { 1, 5, 6, 2 }, // +x side
+        { 2, 6, 7, 3 }, // +z side
+        { 3, 7, 4, 0 }, // -x side
+    };
+
+    Ref<SurfaceTool> st;
+    st.instantiate();
+    st->begin(Mesh::PRIMITIVE_TRIANGLES);
+
+    for (int i = 0; i < 6; i++)
+    {
+        Vector3 a = corners[faces[i][0]];
+        Vector3 b = corners[faces[i][1]];
+        Vector3 c = corners[faces[i][2]];
+        Vector3 d = corners[faces[i][3]];
+
+        st->add_vertex(a);
+        st->add_vertex(b);
+        st->add_vertex(c);
+
+        st->add_vertex(a);
+        st->add_vertex(c);
+        st->add_vertex(d);
+    }
+
+    return st->commit();
 }
 
 } // namespace va_godot

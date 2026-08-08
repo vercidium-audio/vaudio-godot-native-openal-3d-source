@@ -8,6 +8,7 @@
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/property_info.hpp>
+#include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -222,6 +223,12 @@ public:
     }
     void set_bounds_size(Vector3 value);
 
+    Color get_bounds_color() const
+    {
+        return bounds_color;
+    }
+    void set_bounds_color(Color value);
+
     float get_epsilon() const
     {
         return epsilon;
@@ -307,6 +314,7 @@ public:
 
 private:
     Vector3 bounds_size = Vector3(200, 100, 200);
+    Color bounds_color = Color(1.0f, 0.65f, 0.0f);
     float epsilon = 0.01f;
     bool world_is_indoors = false;
     int maximum_grouped_eax_count = 3;

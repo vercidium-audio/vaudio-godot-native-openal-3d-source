@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ALSourceNode" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="streams" type="Array" setter="set_streams" getter="get_streams">
+			The pool of sounds to play. If more than one is set, a random entry is picked each time [method play] is called.
+		</member>
+		<member name="gain" type="float" setter="set_gain" getter="get_gain" default="1.0">
+			The volume of the sound, as a linear multiplier. 1.0 is unchanged, 0.0 is silent.
+		</member>
+		<member name="pitch" type="float" setter="set_pitch" getter="get_pitch" default="1.0">
+			The playback speed and pitch of the sound, as a multiplier. 1.0 is unchanged.
+		</member>
+		<member name="pitch_randomness" type="float" setter="set_pitch_randomness" getter="get_pitch_randomness" default="1.0">
+			Random pitch variation applied on top of [member pitch] each time the sound plays, as a ratio. 1.0 means no variation.
+		</member>
+		<member name="volume_randomness_db" type="float" setter="set_volume_randomness_db" getter="get_volume_randomness_db" default="0.0">
+			Random volume variation applied on top of [member gain] each time the sound plays, in decibels. 0.0 means no variation.
+		</member>
+		<member name="playback_no_repeat" type="bool" setter="set_playback_no_repeat" getter="get_playback_no_repeat" default="true">
+			If [code]true[/code] and [member streams] has more than one entry, the same entry is never picked twice in a row.
+		</member>
+		<member name="looping" type="bool" setter="set_looping" getter="get_looping" default="false">
+			If [code]true[/code], the sound restarts automatically when it finishes playing.
+		</member>
+		<member name="autoplay" type="bool" setter="set_autoplay" getter="get_autoplay" default="false">
+			If [code]true[/code], playback starts automatically when the scene loads.
+		</member>
+	</members>
+</class>

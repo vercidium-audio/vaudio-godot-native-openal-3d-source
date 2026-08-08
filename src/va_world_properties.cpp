@@ -48,6 +48,13 @@ void VAWorld::set_bounds_size(Vector3 value)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world size (may be negative or NaN/Infinity)");
 }
 
+// Editor-only visualization setting, not forwarded to the SDK - just recolors the viewport gizmo.
+void VAWorld::set_bounds_color(Color value)
+{
+    bounds_color = value;
+    update_gizmos();
+}
+
 void VAWorld::set_epsilon(float value)
 {
     epsilon = value;

@@ -32,13 +32,22 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_position", "value"), &VAWorld::set_position);
     ClassDB::bind_method(D_METHOD("get_bounds_size"), &VAWorld::get_bounds_size);
     ClassDB::bind_method(D_METHOD("set_bounds_size", "value"), &VAWorld::set_bounds_size);
+    ClassDB::bind_method(D_METHOD("get_bounds_color"), &VAWorld::get_bounds_color);
+    ClassDB::bind_method(D_METHOD("set_bounds_color", "value"), &VAWorld::set_bounds_color);
     ClassDB::bind_method(D_METHOD("get_epsilon"), &VAWorld::get_epsilon);
     ClassDB::bind_method(D_METHOD("set_epsilon", "value"), &VAWorld::set_epsilon);
     ClassDB::bind_method(D_METHOD("get_world_is_indoors"), &VAWorld::get_world_is_indoors);
     ClassDB::bind_method(D_METHOD("set_world_is_indoors", "value"), &VAWorld::set_world_is_indoors);
 
     ADD_GROUP("World", "");
+
+    // Without this, ClassDB still resolves the inherited "position" property to Node3D's own
+    // accessors, so VAWorld::set_position (bound above) would never be called through the
+    // property system - only direct .set_position() calls would reach vaWorldSetPosition.
+    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position", PROPERTY_HINT_RANGE, "-1000,1000,5,or_less,or_greater"), "set_position", "get_position");
+
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_size", PROPERTY_HINT_RANGE, "1,1000,1,or_greater"), "set_bounds_size", "get_bounds_size");
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "bounds_color"), "set_bounds_color", "get_bounds_color");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "epsilon"), "set_epsilon", "get_epsilon");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "world_is_indoors"), "set_world_is_indoors", "get_world_is_indoors");
 

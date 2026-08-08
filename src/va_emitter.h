@@ -54,10 +54,10 @@ private:
     // once the handle is created; changes after that push straight through.
     int reverb_ray_count = 0;
     int reverb_bounce_count = 0;
-    float reverb_energy_cap = 0.2f;
+    float reverb_energy_cap = 0.15f;
     float max_volume = 1.0f;
     int max_echogram_time = 5000;
-    int echogram_granularity = 200;
+    int echogram_granularity = 100;
     bool affects_grouped_eax = false;
     bool has_relative_reverb = false;
     float relative_reverb_inner_threshold = 0.6f;

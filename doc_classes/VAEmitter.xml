@@ -13,11 +13,41 @@
 		<member name="reverb_bounce_count" type="int" setter="set_reverb_bounce_count" getter="get_reverb_bounce_count">
 			The maximum number of bounces per reverb ray. Reverb rays stop bouncing after reaching the edge of the world when the world's "is indoors" setting is false.
 		</member>
+		<member name="reverb_energy_cap" type="float" setter="set_reverb_energy_cap" getter="get_reverb_energy_cap" default="0.2">
+			The percentage of returning energy required for reverb to be at maximum volume.
+		</member>
+		<member name="max_volume" type="float" setter="set_max_volume" getter="get_max_volume" default="1.0">
+			The loudest volume that this emitter's sound will ever be played at.
+		</member>
+		<member name="max_echogram_time" type="int" setter="set_max_echogram_time" getter="get_max_echogram_time" default="5000">
+			How long, in milliseconds, the echogram records data for. Returning reverb rays after this period are ignored.
+		</member>
+		<member name="echogram_granularity" type="int" setter="set_echogram_granularity" getter="get_echogram_granularity" default="200">
+			The length, in milliseconds, of each entry in the echogram.
+		</member>
+		<member name="affects_grouped_eax" type="bool" setter="set_affects_grouped_eax" getter="get_affects_grouped_eax" default="false">
+			If [code]true[/code], this emitter's EAX is blended into the grouped EAX returned by the world. Should be [code]false[/code] for listener emitters.
+		</member>
+		<member name="has_relative_reverb" type="bool" setter="set_has_relative_reverb" getter="get_has_relative_reverb" default="false">
+			If [code]true[/code], this emitter is used as a reference point for calculating relative reverb gain and direction. Should be [code]true[/code] for your main listener emitter.
+		</member>
+		<member name="relative_reverb_inner_threshold" type="float" setter="set_relative_reverb_inner_threshold" getter="get_relative_reverb_inner_threshold" default="0.6">
+			The lower bound of the relative reverb blend range.
+		</member>
+		<member name="relative_reverb_outer_threshold" type="float" setter="set_relative_reverb_outer_threshold" getter="get_relative_reverb_outer_threshold" default="0.8">
+			The upper bound of the relative reverb blend range.
+		</member>
+		<member name="use_listener_reverb" type="bool" setter="set_use_listener_reverb" getter="get_use_listener_reverb" default="true">
+			If [code]true[/code], this emitter's reverb send uses the listener's reverb effect rather than its own.
+		</member>
 		<member name="occlusion_ray_count" type="int" setter="set_occlusion_ray_count" getter="get_occlusion_ray_count">
 			The number of occlusion rays to cast.
 		</member>
 		<member name="occlusion_bounce_count" type="int" setter="set_occlusion_bounce_count" getter="get_occlusion_bounce_count">
 			The maximum number of bounces per occlusion ray. Occlusion rays stop bouncing after they discover all targets.
+		</member>
+		<member name="occlusion_energy_cap" type="float" setter="set_occlusion_energy_cap" getter="get_occlusion_energy_cap" default="0.15">
+			The percentage of occlusion energy required for a target emitter to be at full volume.
 		</member>
 		<member name="permeation_ray_count" type="int" setter="set_permeation_ray_count" getter="get_permeation_ray_count">
 			The number of permeation rays to cast.
@@ -25,11 +55,17 @@
 		<member name="permeation_bounce_count" type="int" setter="set_permeation_bounce_count" getter="get_permeation_bounce_count">
 			The number of bounces per permeation ray.
 		</member>
+		<member name="permeation_energy_cap" type="float" setter="set_permeation_energy_cap" getter="get_permeation_energy_cap" default="0.15">
+			The percentage of permeation energy required for a target emitter to be at full volume.
+		</member>
 		<member name="ambient_occlusion_ray_count" type="int" setter="set_ambient_occlusion_ray_count" getter="get_ambient_occlusion_ray_count">
 			The number of ambient occlusion rays to cast.
 		</member>
 		<member name="ambient_occlusion_bounce_count" type="int" setter="set_ambient_occlusion_bounce_count" getter="get_ambient_occlusion_bounce_count">
 			The maximum number of bounces per ambient occlusion ray. Ambient occlusion rays stop bouncing after reaching the edge of the world.
+		</member>
+		<member name="ambient_occlusion_energy_cap" type="float" setter="set_ambient_occlusion_energy_cap" getter="get_ambient_occlusion_energy_cap" default="0.15">
+			The percentage of ambient occlusion energy required for ambience to be at full volume.
 		</member>
 		<member name="ambient_permeation_ray_count" type="int" setter="set_ambient_permeation_ray_count" getter="get_ambient_permeation_ray_count">
 			The number of ambient permeation rays to cast.
@@ -37,14 +73,50 @@
 		<member name="ambient_permeation_bounce_count" type="int" setter="set_ambient_permeation_bounce_count" getter="get_ambient_permeation_bounce_count">
 			The number of bounces per ambient permeation ray.
 		</member>
+		<member name="ambient_permeation_energy_cap" type="float" setter="set_ambient_permeation_energy_cap" getter="get_ambient_permeation_energy_cap" default="0.15">
+			The percentage of ambient permeation energy required for ambience to be at full volume.
+		</member>
 		<member name="visualisation_ray_count" type="int" setter="set_visualisation_ray_count" getter="get_visualisation_ray_count">
 			The number of visualisation rays to cast.
 		</member>
 		<member name="visualisation_bounce_count" type="int" setter="set_visualisation_bounce_count" getter="get_visualisation_bounce_count">
 			The number of bounces per visualisation ray.
 		</member>
-		<member name="refresh_ray_count" type="int" setter="set_refresh_ray_count" getter="get_refresh_ray_count">
+		<member name="visualisation_update_frequency" type="int" setter="set_visualisation_update_frequency" getter="get_visualisation_update_frequency" default="500">
+			The interval, in milliseconds, between visualisation ray updates.
+		</member>
+		<member name="type" type="int" setter="set_type" getter="get_type" default="0">
+			A user-defined integer tag for categorising emitters.
+		</member>
+		<member name="refresh_ray_count" type="int" setter="set_refresh_ray_count" getter="get_refresh_ray_count" default="16">
 			The number of trails that are rebuilt from scratch each frame, to prevent staleness when the emitter moves. Trails are only rebuilt if the initial bounce position has strayed too far from the new bounce position.
+		</member>
+		<member name="refresh_distance_threshold" type="float" setter="set_refresh_distance_threshold" getter="get_refresh_distance_threshold" default="1.0">
+			The distance threshold for recreating trails, to prevent staleness when the emitter moves. Trails are only rebuilt once the initial bounce position has strayed further than this from the new bounce position.
+		</member>
+		<member name="scattering_seed" type="int" setter="set_scattering_seed" getter="get_scattering_seed">
+			The seed used to randomise scattering vectors. Randomised per emitter by default.
+		</member>
+		<member name="clamp_position" type="bool" setter="set_clamp_position" getter="get_clamp_position" default="true">
+			If [code]true[/code], keeps this emitter's position inside the world bounds.
+		</member>
+		<member name="random_trail_color" type="bool" setter="set_random_trail_color" getter="get_random_trail_color" default="false">
+			If [code]true[/code], renders each trail a different color in the debug window (dev build only).
+		</member>
+		<member name="trail_color" type="Color" setter="set_trail_color" getter="get_trail_color" default="Color(1, 1, 1, 0.098)">
+			The color of ray trails in the debug window (dev build only).
+		</member>
+		<member name="reverb_color" type="Color" setter="set_reverb_color" getter="get_reverb_color" default="Color(0.106, 0.969, 1, 0.2)">
+			The color of reverb rays in the debug window (dev build only).
+		</member>
+		<member name="occlusion_color" type="Color" setter="set_occlusion_color" getter="get_occlusion_color" default="Color(0.443, 1, 0.643, 0.2)">
+			The color of occlusion rays in the debug window (dev build only).
+		</member>
+		<member name="permeation_color" type="Color" setter="set_permeation_color" getter="get_permeation_color" default="Color(1, 0.498, 0.165, 0.2)">
+			The color of permeation rays in the debug window (dev build only).
+		</member>
+		<member name="ambient_permeation_color" type="Color" setter="set_ambient_permeation_color" getter="get_ambient_permeation_color" default="Color(1, 0.8, 0, 0.2)">
+			The color of ambient permeation rays in the debug window (dev build only).
 		</member>
 	</members>
 </class>
