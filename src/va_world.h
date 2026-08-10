@@ -329,7 +329,7 @@ public:
 
 private:
     Vector3 bounds_size = Vector3(200, 100, 200);
-    Color bounds_color = Color(1.0f, 0.65f, 0.0f, 0.25f);
+    Color bounds_color = Color(0.0f, 0.0f, 0.0f, 0.25f);
     float epsilon = 0.01f;
     bool world_is_indoors = false;
     int maximum_grouped_eax_count = 3;

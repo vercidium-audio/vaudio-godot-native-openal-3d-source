@@ -1,11 +1,15 @@
 #include "va_world_gizmo.h"
 
+#include <algorithm>
+
 #include <godot_cpp/classes/base_material3d.hpp>
+#include <godot_cpp/classes/geometry3d.hpp>
 #include <godot_cpp/classes/material.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/classes/surface_tool.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
 #include "va_world.h"
@@ -13,12 +17,22 @@
 namespace va_godot
 {
 
+// Handle IDs identify which axis of bounds_size is being dragged - the handle sits at the
+// midpoint of the +X/+Y/+Z face of the box, so dragging it only ever changes that one axis.
+enum VAWorldBoundsHandle
+{
+    VA_WORLD_BOUNDS_HANDLE_X,
+    VA_WORLD_BOUNDS_HANDLE_Y,
+    VA_WORLD_BOUNDS_HANDLE_Z,
+};
+
 void VAWorldGizmoPlugin::_bind_methods()
 {
 }
 
 VAWorldGizmoPlugin::VAWorldGizmoPlugin()
 {
+    create_handle_material("handles");
 }
 
 bool VAWorldGizmoPlugin::_has_gizmo(Node3D *for_node_3d) const
@@ -89,6 +103,20 @@ void VAWorldGizmoPlugin::_redraw(const Ref<EditorNode3DGizmo> &gizmo)
     face_material->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA);
     face_material->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
     gizmo->add_mesh(build_face_mesh(corners), face_material);
+
+    // One drag handle per axis, at the midpoint of that axis' +face, so each handle only ever
+    // resizes bounds_size along its own axis.
+    PackedVector3Array handles;
+    handles.push_back(Vector3(max.x, max.y * 0.5f, max.z * 0.5f));
+    handles.push_back(Vector3(max.x * 0.5f, max.y, max.z * 0.5f));
+    handles.push_back(Vector3(max.x * 0.5f, max.y * 0.5f, max.z));
+
+    PackedInt32Array handle_ids;
+    handle_ids.push_back(VA_WORLD_BOUNDS_HANDLE_X);
+    handle_ids.push_back(VA_WORLD_BOUNDS_HANDLE_Y);
+    handle_ids.push_back(VA_WORLD_BOUNDS_HANDLE_Z);
+
+    gizmo->add_handles(handles, get_material("handles", gizmo), handle_ids);
 }
 
 Ref<ArrayMesh> VAWorldGizmoPlugin::build_face_mesh(const Vector3 corners[8])
@@ -123,6 +151,90 @@ Ref<ArrayMesh> VAWorldGizmoPlugin::build_face_mesh(const Vector3 corners[8])
     }
 
     return st->commit();
+}
+
+String VAWorldGizmoPlugin::_get_handle_name(const Ref<EditorNode3DGizmo> &gizmo, int32_t handle_id, bool secondary) const
+{
+    switch (handle_id)
+    {
+        case VA_WORLD_BOUNDS_HANDLE_X:
+            return "Bounds Size X";
+        case VA_WORLD_BOUNDS_HANDLE_Y:
+            return "Bounds Size Y";
+        case VA_WORLD_BOUNDS_HANDLE_Z:
+            return "Bounds Size Z";
+        default:
+            return "";
+    }
+}
+
+Variant VAWorldGizmoPlugin::_get_handle_value(const Ref<EditorNode3DGizmo> &gizmo, int32_t handle_id, bool secondary) const
+{
+    VAWorld *world = Object::cast_to<VAWorld>(gizmo->get_node_3d());
+    if (!world)
+        return Variant();
+
+    // Snapshotted here and handed back to _commit_handle/_set_handle as p_restore, so a
+    // cancelled drag (e.g. Escape) can restore the exact pre-drag bounds_size.
+    return world->get_bounds_size();
+}
+
+void VAWorldGizmoPlugin::_set_handle(const Ref<EditorNode3DGizmo> &gizmo, int32_t handle_id, bool secondary, Camera3D *camera, const Vector2 &screen_pos)
+{
+    VAWorld *world = Object::cast_to<VAWorld>(gizmo->get_node_3d());
+    if (!world)
+        return;
+
+    Vector3::Axis axis;
+    switch (handle_id)
+    {
+        case VA_WORLD_BOUNDS_HANDLE_X:
+            axis = Vector3::AXIS_X;
+            break;
+        case VA_WORLD_BOUNDS_HANDLE_Y:
+            axis = Vector3::AXIS_Y;
+            break;
+        case VA_WORLD_BOUNDS_HANDLE_Z:
+            axis = Vector3::AXIS_Z;
+            break;
+        default:
+            return;
+    }
+
+    // Drag is constrained to the world-space line through the node's origin along the chosen
+    // axis - find the point on that line closest to the mouse ray, mirroring how Godot's own
+    // built-in box-shaped gizmos (e.g. GPUParticles3D's extents) implement axis-drag handles.
+    Transform3D transform = world->get_global_transform();
+    Vector3 axis_origin = transform.get_origin();
+    Vector3 axis_direction = transform.get_basis().get_column(axis).normalized();
+
+    Vector3 ray_origin = camera->project_ray_origin(screen_pos);
+    Vector3 ray_direction = camera->project_ray_normal(screen_pos);
+
+    PackedVector3Array closest_points = Geometry3D::get_singleton()->get_closest_points_between_segments(
+        axis_origin - axis_direction * 4096.0f,
+        axis_origin + axis_direction * 4096.0f,
+        ray_origin,
+        ray_origin + ray_direction * 4096.0f);
+
+    if (closest_points.size() != 2)
+        return;
+
+    float new_length = (closest_points[0] - axis_origin).dot(axis_direction);
+
+    Vector3 bounds_size = world->get_bounds_size();
+    bounds_size[axis] = std::max(new_length, 0.0f);
+    world->set_bounds_size(bounds_size);
+}
+
+void VAWorldGizmoPlugin::_commit_handle(const Ref<EditorNode3DGizmo> &gizmo, int32_t handle_id, bool secondary, const Variant &restore, bool cancel)
+{
+    VAWorld *world = Object::cast_to<VAWorld>(gizmo->get_node_3d());
+    if (!world)
+        return;
+
+    if (cancel)
+        world->set_bounds_size(restore);
 }
 
 } // namespace va_godot
