@@ -128,6 +128,7 @@ void VAWorld::_bind_methods()
     // material dropdown (EditorMaterialProperty.gd) can't drift out of sync with them.
     ClassDB::bind_static_method("VAWorld", D_METHOD("get_builtin_material_names"), &VAWorld::get_builtin_material_names);
     ClassDB::bind_static_method("VAWorld", D_METHOD("get_material_meta_key"), &VAWorld::get_material_meta_key);
+    ClassDB::bind_static_method("VAWorld", D_METHOD("get_supports_permeation_meta_key"), &VAWorld::get_supports_permeation_meta_key);
 }
 
 VAWorld::VAWorld()

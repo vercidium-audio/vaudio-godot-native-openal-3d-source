@@ -1,9 +1,11 @@
 #include "va_material_inspector_plugin.h"
 
 #include <godot_cpp/classes/editor_interface.hpp>
+#include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <godot_cpp/variant/vector2.hpp>
 
 #include "al_source_node.h"
 #include "va_custom_material.h"
@@ -56,13 +58,22 @@ void VAMaterialInspectorPlugin::_parse_end(Object *object)
 
     StringName material_meta_key = VAWorld::get_material_meta_key();
 
-    VBoxContainer *container = memnew(VBoxContainer);
+    VBoxContainer *section = memnew(VBoxContainer);
 
-    Label *header = memnew(Label);
-    header->set_text("Vercidium Audio");
-    container->add_child(header);
+    Label *heading = memnew(Label);
+    heading->set_text("Vercidium Audio");
+    section->add_child(heading);
+
+    HBoxContainer *row = memnew(HBoxContainer);
+    section->add_child(row);
+
+    Label *label = memnew(Label);
+    label->set_text("Material");
+    label->set_custom_minimum_size(Vector2(140, 0));
+    row->add_child(label);
 
     OptionButton *option_button = memnew(OptionButton);
+    option_button->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     option_button->add_item("Air (no geometry)");
 
     PackedStringArray builtin_names = VAWorld::get_builtin_material_names();
@@ -102,8 +113,25 @@ void VAMaterialInspectorPlugin::_parse_end(Object *object)
     option_button->select(selected_index);
     option_button->connect("item_selected", callable_mp(this, &VAMaterialInspectorPlugin::on_material_selected).bind(node, option_button));
 
-    container->add_child(option_button);
-    add_custom_control(container);
+    row->add_child(option_button);
+
+    StringName supports_permeation_meta_key = VAWorld::get_supports_permeation_meta_key();
+
+    HBoxContainer *permeation_row = memnew(HBoxContainer);
+    section->add_child(permeation_row);
+
+    Label *permeation_label = memnew(Label);
+    permeation_label->set_text("Supports Permeation");
+    permeation_label->set_custom_minimum_size(Vector2(140, 0));
+    permeation_row->add_child(permeation_label);
+
+    CheckBox *permeation_checkbox = memnew(CheckBox);
+    bool supports_permeation = node->has_meta(supports_permeation_meta_key) ? (bool)node->get_meta(supports_permeation_meta_key) : true;
+    permeation_checkbox->set_pressed(supports_permeation);
+    permeation_checkbox->connect("toggled", callable_mp(this, &VAMaterialInspectorPlugin::on_supports_permeation_toggled).bind(node));
+    permeation_row->add_child(permeation_checkbox);
+
+    add_custom_control(section);
 }
 
 void VAMaterialInspectorPlugin::on_material_selected(int32_t index, Node *node, OptionButton *option_button)
@@ -114,6 +142,20 @@ void VAMaterialInspectorPlugin::on_material_selected(int32_t index, Node *node, 
         node->remove_meta(material_meta_key);
     else
         node->set_meta(material_meta_key, option_button->get_item_text(index));
+
+    EditorInterface::get_singleton()->mark_scene_as_unsaved();
+}
+
+void VAMaterialInspectorPlugin::on_supports_permeation_toggled(bool toggled_on, Node *node)
+{
+    StringName supports_permeation_meta_key = VAWorld::get_supports_permeation_meta_key();
+
+    // true is the default (see add_primitive), so only store metadata for the non-default value -
+    // matches the "Air (no geometry)" material entry removing its meta key instead of storing it.
+    if (toggled_on)
+        node->remove_meta(supports_permeation_meta_key);
+    else
+        node->set_meta(supports_permeation_meta_key, false);
 
     EditorInterface::get_singleton()->mark_scene_as_unsaved();
 }
