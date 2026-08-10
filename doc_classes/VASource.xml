@@ -32,6 +32,9 @@
 		<member name="affects_grouped_eax" type="bool" setter="set_affects_grouped_eax" getter="get_affects_grouped_eax" default="true">
 			If [code]true[/code], this source's EAX is blended into the grouped EAX returned by the world.
 		</member>
+		<member name="use_listener_reverb" type="bool" setter="set_use_listener_reverb" getter="get_use_listener_reverb" default="true">
+			If [code]true[/code], this source's reverb send uses the listener's reverb effect rather than its own.
+		</member>
 		<member name="occlusion_energy_cap" type="float" setter="set_occlusion_energy_cap" getter="get_occlusion_energy_cap" default="0.15">
 			The percentage of occlusion energy required for this source to be at full volume.
 		</member>

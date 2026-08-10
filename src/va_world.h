@@ -9,6 +9,7 @@
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -126,6 +127,15 @@ public:
 
     // Returns false if another VACustomMaterial already claimed the same ID
     bool register_custom_material(va_godot::VACustomMaterial *material);
+
+    // The 23 built-in material names (e.g. "Concrete", "Brick"), for editor tooling such as the
+    // "Vercidium Audio" inspector plugin's material dropdown - see EditorMaterialProperty.gd.
+    static PackedStringArray get_builtin_material_names();
+
+    // The node metadata key that stores a node's chosen material name (built-in or custom) - the
+    // single source of truth shared with the "Vercidium Audio" editor plugin, so it never drifts
+    // out of sync with MaterialMetaKey() in va_world_primitives.cpp.
+    static String get_material_meta_key();
 
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
 

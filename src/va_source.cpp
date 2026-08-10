@@ -55,6 +55,10 @@ void VASource::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_affects_grouped_eax", "value"), &VASource::set_affects_grouped_eax);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "affects_grouped_eax"), "set_affects_grouped_eax", "get_affects_grouped_eax");
 
+    ClassDB::bind_method(D_METHOD("get_use_listener_reverb"), &VASource::get_use_listener_reverb);
+    ClassDB::bind_method(D_METHOD("set_use_listener_reverb", "value"), &VASource::set_use_listener_reverb);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_listener_reverb"), "set_use_listener_reverb", "get_use_listener_reverb");
+
     ADD_GROUP("Muffling", "");
 
     ClassDB::bind_method(D_METHOD("get_occlusion_energy_cap"), &VASource::get_occlusion_energy_cap);
@@ -263,6 +267,7 @@ void VASource::apply_properties_to_emitter()
     emitter->set_max_echogram_time(max_echogram_time);
     emitter->set_echogram_granularity(echogram_granularity);
     emitter->set_affects_grouped_eax(affects_grouped_eax);
+    emitter->set_use_listener_reverb(use_listener_reverb);
 
     emitter->set_occlusion_energy_cap(occlusion_energy_cap);
     emitter->set_permeation_energy_cap(permeation_energy_cap);
@@ -451,6 +456,21 @@ void VASource::set_affects_grouped_eax(bool value)
     if (emitter)
     {
         emitter->set_affects_grouped_eax(affects_grouped_eax);
+    }
+}
+
+bool VASource::get_use_listener_reverb() const
+{
+    return use_listener_reverb;
+}
+
+void VASource::set_use_listener_reverb(bool value)
+{
+    use_listener_reverb = value;
+
+    if (emitter)
+    {
+        emitter->set_use_listener_reverb(use_listener_reverb);
     }
 }
 

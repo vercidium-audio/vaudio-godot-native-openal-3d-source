@@ -41,6 +41,31 @@ static const StringName &MaterialMetaKey()
 namespace va_godot
 {
 
+// Names of the built-in VAMaterialType values, indexed by VAMaterialType. The single source of
+// truth for both VAWorld::get_material's matching below and get_builtin_material_names/
+// get_builtin_material_names_array, which expose this list to the "Vercidium Audio" editor plugin.
+static const char *const BUILTIN_MATERIAL_NAMES[] = {
+    "air", "brick", "cloth", "concrete", "concretepolished", "dirt",
+    "glass", "grass", "gravel", "gyprock", "ice", "leaf", "marble",
+    "metal", "mud", "rock", "sand", "snow", "tile", "tree", "water",
+    "woodindoor", "woodoutdoor"};
+
+PackedStringArray VAWorld::get_builtin_material_names()
+{
+    PackedStringArray result;
+    result.resize(VAMaterialTypeCount);
+
+    for (int i = 0; i < VAMaterialTypeCount; i++)
+        result[i] = BUILTIN_MATERIAL_NAMES[i];
+
+    return result;
+}
+
+String VAWorld::get_material_meta_key()
+{
+    return MaterialMetaKey();
+}
+
 VAMaterialType VAWorld::get_material(Node *node)
 {
     if (!node->has_meta(MaterialMetaKey()))
@@ -62,15 +87,9 @@ VAMaterialType VAWorld::get_material(Node *node)
     }
 
     // Match built-in materials.
-    static const char *names[] = {
-        "air", "brick", "cloth", "concrete", "concretepolished", "dirt",
-        "glass", "grass", "gravel", "gyprock", "ice", "leaf", "marble",
-        "metal", "mud", "rock", "sand", "snow", "tile", "tree", "water",
-        "woodindoor", "woodoutdoor"};
-
     for (int i = 0; i < VAMaterialTypeCount; i++)
     {
-        if (lower == String(names[i]))
+        if (lower == String(BUILTIN_MATERIAL_NAMES[i]))
         {
             return (VAMaterialType)i;
         }

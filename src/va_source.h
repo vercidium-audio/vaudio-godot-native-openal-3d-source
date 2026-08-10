@@ -33,8 +33,9 @@ private:
     float reverb_energy_cap = 0.15f;
     float max_volume = 1.0f;
     int max_echogram_time = 5000;
-    int echogram_granularity = 200;
+    int echogram_granularity = 100;
     bool affects_grouped_eax = true;
+    bool use_listener_reverb = false;
 
     float occlusion_energy_cap = 0.15f;
     float permeation_energy_cap = 0.15f;
@@ -105,6 +106,8 @@ public:
     void set_echogram_granularity(int value);
     bool get_affects_grouped_eax() const;
     void set_affects_grouped_eax(bool value);
+    bool get_use_listener_reverb() const;
+    void set_use_listener_reverb(bool value);
 
     float get_occlusion_energy_cap() const;
     void set_occlusion_energy_cap(float value);

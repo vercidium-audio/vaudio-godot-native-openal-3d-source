@@ -63,7 +63,7 @@ private:
     bool has_relative_reverb = false;
     float relative_reverb_inner_threshold = 0.6f;
     float relative_reverb_outer_threshold = 0.8f;
-    bool use_listener_reverb = true;
+    bool use_listener_reverb = false;
 
     int occlusion_ray_count = 0;
     int occlusion_bounce_count = 0;
