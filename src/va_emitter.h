@@ -79,10 +79,6 @@ private:
     int ambient_permeation_bounce_count = 0;
     float ambient_permeation_energy_cap = 0.15f;
 
-    int visualisation_ray_count = 0;
-    int visualisation_bounce_count = 0;
-    int visualisation_update_frequency = 500;
-
     int type = 0;
     int refresh_ray_count = 16;
     float refresh_distance_threshold = 1.0f;

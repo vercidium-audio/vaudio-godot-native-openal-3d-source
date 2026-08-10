@@ -95,20 +95,6 @@ void VASource::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_ambient_permeation_energy_cap", "value"), &VASource::set_ambient_permeation_energy_cap);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "ambient_permeation_energy_cap", PROPERTY_HINT_RANGE, "0.0,1.0,0.001,or_greater"), "set_ambient_permeation_energy_cap", "get_ambient_permeation_energy_cap");
 
-    ADD_GROUP("Visualisation", "");
-
-    ClassDB::bind_method(D_METHOD("get_visualisation_ray_count"), &VASource::get_visualisation_ray_count);
-    ClassDB::bind_method(D_METHOD("set_visualisation_ray_count", "value"), &VASource::set_visualisation_ray_count);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "visualisation_ray_count"), "set_visualisation_ray_count", "get_visualisation_ray_count");
-
-    ClassDB::bind_method(D_METHOD("get_visualisation_bounce_count"), &VASource::get_visualisation_bounce_count);
-    ClassDB::bind_method(D_METHOD("set_visualisation_bounce_count", "value"), &VASource::set_visualisation_bounce_count);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "visualisation_bounce_count"), "set_visualisation_bounce_count", "get_visualisation_bounce_count");
-
-    ClassDB::bind_method(D_METHOD("get_visualisation_update_frequency"), &VASource::get_visualisation_update_frequency);
-    ClassDB::bind_method(D_METHOD("set_visualisation_update_frequency", "value"), &VASource::set_visualisation_update_frequency);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "visualisation_update_frequency"), "set_visualisation_update_frequency", "get_visualisation_update_frequency");
-
     ADD_GROUP("Advanced", "");
 
     ClassDB::bind_method(D_METHOD("get_type"), &VASource::get_type);
@@ -278,10 +264,6 @@ void VASource::apply_properties_to_emitter()
     emitter->set_ambient_permeation_ray_count(ambient_permeation_ray_count);
     emitter->set_ambient_permeation_bounce_count(ambient_permeation_bounce_count);
     emitter->set_ambient_permeation_energy_cap(ambient_permeation_energy_cap);
-
-    emitter->set_visualisation_ray_count(visualisation_ray_count);
-    emitter->set_visualisation_bounce_count(visualisation_bounce_count);
-    emitter->set_visualisation_update_frequency(visualisation_update_frequency);
 
     emitter->set_type(type);
     emitter->set_refresh_ray_count(refresh_ray_count);
@@ -591,51 +573,6 @@ void VASource::set_ambient_permeation_energy_cap(float value)
     if (emitter)
     {
         emitter->set_ambient_permeation_energy_cap(ambient_permeation_energy_cap);
-    }
-}
-
-int VASource::get_visualisation_ray_count() const
-{
-    return visualisation_ray_count;
-}
-
-void VASource::set_visualisation_ray_count(int value)
-{
-    visualisation_ray_count = MAX(0, value);
-
-    if (emitter)
-    {
-        emitter->set_visualisation_ray_count(visualisation_ray_count);
-    }
-}
-
-int VASource::get_visualisation_bounce_count() const
-{
-    return visualisation_bounce_count;
-}
-
-void VASource::set_visualisation_bounce_count(int value)
-{
-    visualisation_bounce_count = MAX(0, value);
-
-    if (emitter)
-    {
-        emitter->set_visualisation_bounce_count(visualisation_bounce_count);
-    }
-}
-
-int VASource::get_visualisation_update_frequency() const
-{
-    return visualisation_update_frequency;
-}
-
-void VASource::set_visualisation_update_frequency(int value)
-{
-    visualisation_update_frequency = MAX(0, value);
-
-    if (emitter)
-    {
-        emitter->set_visualisation_update_frequency(visualisation_update_frequency);
     }
 }
 
