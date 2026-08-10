@@ -27,6 +27,7 @@ private:
 
     bool play_when_raytracing_completes = true;
     bool played = false;
+    bool raytrace_once = true;
 
     int reverb_ray_count = 0;
     int reverb_bounce_count = 0;
@@ -83,6 +84,9 @@ public:
 
     bool get_play_when_raytracing_completes() const;
     void set_play_when_raytracing_completes(bool value);
+
+    bool get_raytrace_once() const;
+    void set_raytrace_once(bool value);
 
     // Returns 0.0f until raytracing completes
     float get_muffling_gain_lf() const;

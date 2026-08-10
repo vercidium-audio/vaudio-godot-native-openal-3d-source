@@ -85,6 +85,10 @@ private:
     int scattering_seed = 0;
     bool clamp_position = true;
 
+    // Top-level property, matches VAEmitter.cs's RaytraceOnce - see
+    // on_raytraced_by_another_emitter for the removal behaviour this drives.
+    bool raytrace_once = false;
+
     // Debug rendering colors (vaEmitterSet/Get*Color) - editor-visible only,
     // no effect on raytracing. Defaults match emitter.c's vaEmitterCreate
     // (Color.White/Cyan/Green/Orange/Yellow, each WithAlpha).
@@ -178,6 +182,9 @@ public:
 
     bool get_is_main_listener() const;
     void set_is_main_listener(bool value);
+
+    bool get_raytrace_once() const;
+    void set_raytrace_once(bool value);
 
     ::VAEmitter *get_handle() const
     {

@@ -16,6 +16,10 @@ void VASource::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_play_when_raytracing_completes", "value"), &VASource::set_play_when_raytracing_completes);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "play_when_raytracing_completes"), "set_play_when_raytracing_completes", "get_play_when_raytracing_completes");
 
+    ClassDB::bind_method(D_METHOD("get_raytrace_once"), &VASource::get_raytrace_once);
+    ClassDB::bind_method(D_METHOD("set_raytrace_once", "value"), &VASource::set_raytrace_once);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "raytrace_once"), "set_raytrace_once", "get_raytrace_once");
+
     // Read-only muffling stats
     ClassDB::bind_method(D_METHOD("get_muffling_gain_lf"), &VASource::get_muffling_gain_lf);
     ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VASource::get_muffling_gain_hf);
@@ -137,6 +141,21 @@ void VASource::set_play_when_raytracing_completes(bool value)
     play_when_raytracing_completes = value;
 }
 
+bool VASource::get_raytrace_once() const
+{
+    return raytrace_once;
+}
+
+void VASource::set_raytrace_once(bool value)
+{
+    raytrace_once = value;
+
+    if (emitter)
+    {
+        emitter->set_raytrace_once(raytrace_once);
+    }
+}
+
 float VASource::get_muffling_gain_lf() const
 {
     return filter.get_gain();
@@ -240,6 +259,7 @@ void VASource::create_emitter()
     emitter->set_occlusion_bounce_count(0);
     emitter->set_permeation_ray_count(0);
     emitter->set_permeation_bounce_count(0);
+    emitter->set_raytrace_once(raytrace_once);
 
     apply_properties_to_emitter();
 }

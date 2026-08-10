@@ -21,6 +21,10 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_is_main_listener", "value"), &VAEmitter::set_is_main_listener);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_main_listener"), "set_is_main_listener", "get_is_main_listener");
 
+    ClassDB::bind_method(D_METHOD("get_raytrace_once"), &VAEmitter::get_raytrace_once);
+    ClassDB::bind_method(D_METHOD("set_raytrace_once", "value"), &VAEmitter::set_raytrace_once);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "raytrace_once"), "set_raytrace_once", "get_raytrace_once");
+
     // Read-only SDK forwards (not ADD_PROPERTY'd - called directly from
     // GDScript like methods, e.g. emitter.get_va_position()).
     ClassDB::bind_method(D_METHOD("get_va_position"), &VAEmitter::get_va_position);
@@ -204,6 +208,16 @@ bool VAEmitter::get_is_main_listener() const
 void VAEmitter::set_is_main_listener(bool value)
 {
     is_main_listener = value;
+}
+
+bool VAEmitter::get_raytrace_once() const
+{
+    return raytrace_once;
+}
+
+void VAEmitter::set_raytrace_once(bool value)
+{
+    raytrace_once = value;
 }
 
 // Hides is_main_listener from the inspector - VAListener is the intended way
@@ -553,6 +567,13 @@ void VAEmitter::on_raytraced_by_another_emitter(::VAEmitter *other)
     }
 
     apply_raytracing_results();
+
+    // Matches VAEmitter.cs's OnRaytracedByAnotherEmitter: once this emitter
+    // has been raytraced once, cast rays no more - remove it from the world.
+    if (raytrace_once)
+    {
+        remove_emitter();
+    }
 }
 
 void VAEmitter::on_emitter_removed()

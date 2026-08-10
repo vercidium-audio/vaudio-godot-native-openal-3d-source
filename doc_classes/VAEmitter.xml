@@ -7,6 +7,9 @@
 	<tutorials>
 	</tutorials>
 	<members>
+		<member name="raytrace_once" type="bool" setter="set_raytrace_once" getter="get_raytrace_once" default="false">
+			Raytrace once on playback, then remove the emitter. Recommended for short sounds.
+		</member>
 		<member name="reverb_ray_count" type="int" setter="set_reverb_ray_count" getter="get_reverb_ray_count">
 			The number of reverb rays to cast.
 		</member>
