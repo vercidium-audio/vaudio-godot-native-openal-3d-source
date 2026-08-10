@@ -259,32 +259,64 @@ void VAWorldGizmoPlugin::_set_handle(const Ref<EditorNode3DGizmo> &gizmo, int32_
     }
 
     // Drag is constrained to the world-space line through the box's pre-drag min corner along
-    // the chosen axis - find the point on that line closest to the mouse ray, mirroring how
-    // Godot's own built-in box-shaped gizmos (e.g. GPUParticles3D's extents) implement axis-drag
-    // handles. Anchored to drag_start_position (rather than world->get_global_transform(), which
-    // is live) because a -face drag moves bounds_position every frame - if the ray math re-read
-    // the live origin, the axis line itself would shift out from under the drag each frame
-    // instead of staying fixed for its duration.
+    // the chosen axis. Anchored to drag_start_position (rather than world->get_global_transform(),
+    // which is live) because a -face drag moves bounds_position every frame - if the ray math
+    // re-read the live origin, the axis line itself would shift out from under the drag each
+    // frame instead of staying fixed for its duration.
+    //
+    // Cast the mouse position into a 3D ray and intersect it with a *plane* through the handle's
+    // pre-drag world position - not the closest point on the ray to the axis *line* (what this
+    // used to do, mirroring Gizmo3DHelper::box_set_handle at a glance). That line-based approach
+    // is only exact when the handle sits on the axis itself (true for CSGBox3D/CollisionShape3D,
+    // whose extent handles are at e.g. (size.x/2, 0, 0)) - ours sit at face centres, off-axis
+    // (e.g. (max.x, max.y * 0.5, max.z * 0.5)), and for an off-axis handle the
+    // closest-point-on-line solution advances faster than the cursor's actual on-screen motion
+    // (verified numerically: a cursor moving a world-space delta of 2 units produced a
+    // closest-point delta of 2.39, growing with distance from the axis and view angle) - this was
+    // the "outruns the cursor" bug. Intersecting a camera-facing plane through the handle's actual
+    // position instead makes the hit point track the cursor exactly 1:1 regardless of how far the
+    // handle sits from the axis, because the ray always lands exactly where the cursor is
+    // pointing on that plane.
     Node3D *parent = world->get_parent_node_3d();
     Transform3D parent_transform = parent ? parent->get_global_transform() : Transform3D();
     Vector3 axis_origin = parent_transform.xform(drag_start_position);
-    Vector3 axis_direction = parent_transform.get_basis().get_column(axis).normalized();
+    Basis parent_basis = parent_transform.get_basis();
+    Vector3 axis_direction = parent_basis.get_column(axis).normalized();
+
+    Vector3 handle_offset = drag_start_size;
+    handle_offset[axis] = is_min_face ? 0.0f : drag_start_size[axis];
+    Vector3 handle_position = axis_origin + parent_basis.xform(handle_offset * 0.5f);
 
     Vector3 ray_origin = camera->project_ray_origin(screen_pos);
     Vector3 ray_direction = camera->project_ray_normal(screen_pos);
 
-    // Solved directly (rather than via Geometry3D::get_closest_points_between_segments, which
-    // divides by the determinant of the two directions with no epsilon guard and returns NaN
-    // whenever the mouse ray is parallel/near-parallel to the axis - a completely normal camera
-    // angle for this handle).
-    Vector3 cross = axis_direction.cross(ray_direction);
-    float denom = cross.length_squared();
-    if (denom < 0.0001f)
+    // Plane contains the axis line and is tilted to face the camera as much as possible while
+    // still containing that line - the standard construction for a view-aligned axis-constrained
+    // drag plane (used by e.g. Blender/Unity's axis gizmos).
+    Vector3 view_direction = handle_position - camera->get_global_transform().get_origin();
+    Vector3 plane_normal = axis_direction.cross(view_direction.cross(axis_direction));
+    float plane_normal_length = plane_normal.length();
+
+    if (plane_normal_length < 0.0001f)
         return;
 
-    // new_length is world-space distance from drag_start_position along the axis.
-    Vector3 diff = ray_origin - axis_origin;
-    float new_length = (diff.cross(ray_direction)).dot(cross) / denom;
+    plane_normal /= plane_normal_length;
+
+    // Camera looking straight down the axis - the plane is edge-on to the ray, so moving the
+    // mouse can't meaningfully change the position along the axis. Leave bounds_size/position
+    // untouched this frame rather than dividing by ~zero.
+    float ray_dot_plane = ray_direction.dot(plane_normal);
+    if (std::abs(ray_dot_plane) < 0.0001f)
+        return;
+
+    float t = (handle_position - ray_origin).dot(plane_normal) / ray_dot_plane;
+    Vector3 hit_point = ray_origin + ray_direction * t;
+
+    // new_length is world-space distance from drag_start_position along the axis. Note this makes
+    // the drag speed vary with distance from the camera (the face sweeps more world-space per
+    // on-screen pixel the further it recedes along the view direction) - that's expected
+    // perspective foreshortening inherent to any true 3D-space axis drag, not a bug.
+    float new_length = (hit_point - axis_origin).dot(axis_direction);
 
     // Preserve the offset between where the user clicked and the handle's exact position (rather
     // than snapping the box edge to exactly under the cursor), so the drag starts smoothly from
