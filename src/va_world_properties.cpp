@@ -2,6 +2,7 @@
 #include "va_engine_util.h"
 #include "va_world.h"
 
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
@@ -199,12 +200,16 @@ void VAWorld::set_emitters_outside_the_world_are_muffled(bool value)
 
 void VAWorld::set_maximum_concurrency_level(int value)
 {
-    maximum_concurrency_level = std::max(1, value);
+    maximum_concurrency_level = std::max(0, value);
 
     if (!world)
         return;
 
-    VAResult result = vaWorldSetMaximumConcurrencyLevel(world, maximum_concurrency_level);
+    // 0 maps to processor count - 1
+    if (value == 0)
+        value = std::max(1, OS::get_singleton()->get_processor_count() - 1);
+
+    VAResult result = vaWorldSetMaximumConcurrencyLevel(world, value);
 
     if (result != VA_SUCCESS)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world maximum concurrency level (may be < 1)");

@@ -95,7 +95,7 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_pending_shutdown", "value"), &VAWorld::set_pending_shutdown);
 
     ADD_GROUP("Threading", "");
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "maximum_concurrency_level", PROPERTY_HINT_RANGE, "1,32,1,or_greater"), "set_maximum_concurrency_level", "get_maximum_concurrency_level");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "maximum_concurrency_level", PROPERTY_HINT_RANGE, "0,32,1,or_greater"), "set_maximum_concurrency_level", "get_maximum_concurrency_level");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "work_item_count", PROPERTY_HINT_RANGE, "1,256,1,or_greater"), "set_work_item_count", "get_work_item_count");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "pending_shutdown"), "set_pending_shutdown", "get_pending_shutdown");
     
@@ -167,10 +167,6 @@ VAWorld::VAWorld()
     set_reference_frequency_lf(reference_frequency_lf);
     set_reference_frequency_hf(reference_frequency_hf);
     set_emitters_outside_the_world_are_muffled(emitters_outside_the_world_are_muffled);
-
-    // Default to processor count - 1 (leaving a core free for the main/render
-    // thread) rather than a fixed guess - matches vaWorld's own internal default.
-    maximum_concurrency_level = std::max(1, OS::get_singleton()->get_processor_count() - 1);
     set_maximum_concurrency_level(maximum_concurrency_level);
     set_work_item_count(work_item_count);
     set_rendering_enabled(rendering_enabled);

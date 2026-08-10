@@ -111,7 +111,7 @@
 			If [code]true[/code], emitters outside the world bounds have zero occlusion/permeation energy (fully muffled). If [code]false[/code], they have maximum energy (unmuffled).
 		</member>
 		<member name="maximum_concurrency_level" type="int" setter="set_maximum_concurrency_level" getter="get_maximum_concurrency_level">
-			The maximum number of threads that can run in parallel for this world. Defaults to the processor count minus one, leaving a core free for the main/render thread.
+			The maximum number of threads that can run in parallel for this world. Set to 0 to default to the user's processor count minus one.
 		</member>
 		<member name="work_item_count" type="int" setter="set_work_item_count" getter="get_work_item_count" default="128">
 			The number of work items to distribute raytracing work across. A value higher than your thread count helps evenly distribute work across all threads.
