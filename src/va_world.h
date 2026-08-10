@@ -5,8 +5,11 @@
 #include <godot_cpp/classes/csg_cylinder3d.hpp>
 #include <godot_cpp/classes/csg_sphere3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
-#include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
+#include <godot_cpp/core/property_info.hpp>
+#include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -35,9 +38,13 @@ class VAEmitter;
 
 // Name collision: the vaudio C SDK's opaque handle type is also called "VAWorld" (see vaudio.h), in the global namespace.
 // Inside the va_godot namespace, 'VAWorld' always means this class, and '::VAWorld' means the SDK's opaque handle type.
-class VAWorld : public Node
+//
+// This is a Node3D purely so the editor can draw a gizmo showing the bounds_position/bounds_size
+// AABB (see VAWorldGizmoPlugin) - the node's own transform is otherwise unused by vaudio, which
+// always treats bounds_position/bounds_size as absolute world-space coordinates.
+class VAWorld : public Node3D
 {
-    GDCLASS(VAWorld, Node);
+    GDCLASS(VAWorld, Node3D);
 
 private:
     ::VAWorld *world = nullptr;
@@ -88,7 +95,7 @@ private:
     // Get the type of a custom or default material
     VAMaterialType get_material(Node *node);
 
-    void add_primitive(Node *node, VAMaterialType material, bool recursive);
+    void add_primitive(Node *node, VAMaterialType material, bool supports_permeation, bool recursive);
     void remove_primitive(Node *node, bool recursive);
 
     VAPrimitiveRef *attach_watcher(Node3D *node, void *primitive, VAPrimitiveKind kind, std::function<void()> update);
@@ -97,7 +104,7 @@ private:
     void create_primitive(CSGCylinder3D *csg_cylinder, VAMaterialType material);
     void create_primitive(CSGSphere3D *csg_sphere, VAMaterialType material);
     void create_primitive(CollisionShape3D *collision_shape, VAMaterialType material);
-    void create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material);
+    void create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material, bool supports_permeation);
 
     void update_collision_shape_primitive(CollisionShape3D *collision_shape, VAPrimitiveRef *ref);
 
@@ -111,6 +118,7 @@ public:
     void _ready() override;
     void _exit_tree() override;
     void _process(double delta) override;
+    void _validate_property(PropertyInfo &p_property) const;
 
     ::VAWorld *get_handle() const
     {
@@ -119,6 +127,20 @@ public:
 
     // Returns false if another VACustomMaterial already claimed the same ID
     bool register_custom_material(va_godot::VACustomMaterial *material);
+
+    // The 23 built-in material names (e.g. "Concrete", "Brick"), for editor tooling such as the
+    // "Vercidium Audio" inspector plugin's material dropdown - see VAMaterialInspectorPlugin.
+    static PackedStringArray get_builtin_material_names();
+
+    // The node metadata key that stores a node's chosen material name (built-in or custom) - the
+    // single source of truth shared with the "Vercidium Audio" editor plugin, so it never drifts
+    // out of sync with MaterialMetaKey() in va_world_primitives.cpp.
+    static String get_material_meta_key();
+
+    // The node metadata key that stores a node's "Supports Permeation" override (see
+    // vaMeshPrimitiveSetSupports3DPermeation) - shared with the "Vercidium Audio" editor plugin,
+    // so it never drifts out of sync with SupportsPermeationMetaKey() in va_world_primitives.cpp.
+    static String get_supports_permeation_meta_key();
 
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
 
@@ -202,17 +224,25 @@ public:
             vaWorldSetRenderingEnabled(world, value);
     }
 
+    // Overrides/shadows the inherited Node3D::position property so that moving this node also
+    // updates vaWorldSetPosition - see set_position's doc comment in va_world_properties.cpp.
     Vector3 get_position() const
     {
-        return position;
+        return Node3D::get_position();
     }
-    void set_position(Vector3 value);
+    void set_position(const Vector3 &value);
 
-    Vector3 get_size() const
+    Vector3 get_bounds_size() const
     {
-        return size;
+        return bounds_size;
     }
-    void set_size(Vector3 value);
+    void set_bounds_size(Vector3 value);
+
+    Color get_bounds_color() const
+    {
+        return bounds_color;
+    }
+    void set_bounds_color(Color value);
 
     float get_epsilon() const
     {
@@ -298,8 +328,8 @@ public:
     double get_analysis_time() const;
 
 private:
-    Vector3 position = Vector3(-100, 0, -100);
-    Vector3 size = Vector3(200, 100, 200);
+    Vector3 bounds_size = Vector3(200, 100, 200);
+    Color bounds_color = Color(0.0f, 0.0f, 0.0f, 0.25f);
     float epsilon = 0.01f;
     bool world_is_indoors = false;
     int maximum_grouped_eax_count = 3;
@@ -311,7 +341,7 @@ private:
     float reference_frequency_lf = 300.0f;
     float reference_frequency_hf = 4000.0f;
     bool emitters_outside_the_world_are_muffled = true;
-    int maximum_concurrency_level = 4; // overwritten in VAWorld::VAWorld() with processor count - 1
+    int maximum_concurrency_level = 0;
     int work_item_count = 128;
 };
 

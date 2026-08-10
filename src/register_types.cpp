@@ -23,7 +23,9 @@
 #include "va_source_ambient.h"
 #include "va_source_leech.h"
 #include "va_source_relative.h"
+#include "va_visualisation.h"
 #include "va_world.h"
+#include "va_world_gizmo.h"
 
 using namespace godot;
 
@@ -36,6 +38,9 @@ void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_le
     {
         // Scene tree right-click "Convert to VASource"/"Convert to VASourceRelative" items - editor-only, so registered at the Editor level rather than alongside the Scene-level classes below.
         ClassDB::register_class<va_godot::ConversionContextMenuPlugin>();
+        ClassDB::register_class<va_godot::VAOpenALSettingsInspectorPlugin>();
+        ClassDB::register_class<va_godot::VAMaterialInspectorPlugin>();
+        ClassDB::register_class<va_godot::VAWorldGizmoPlugin>();
         ClassDB::register_class<va_godot::VAConversionPlugin>();
         EditorPlugins::add_by_type<va_godot::VAConversionPlugin>();
         return;
@@ -61,6 +66,7 @@ void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_le
     ClassDB::register_class<VASourceRelative>();
     ClassDB::register_class<VASourceAmbient>();
     ClassDB::register_class<VASourceLeech>();
+    ClassDB::register_class<va_godot::VAVisualisation>();
 
     // Internal helper classes
     ClassDB::register_class<TransformWatcher>();

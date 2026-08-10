@@ -1,6 +1,7 @@
 #include "va_conversion_plugin.h"
 
 #include <godot_cpp/classes/audio_stream_randomizer.hpp>
+#include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/editor_interface.hpp>
 #include <godot_cpp/classes/editor_selection.hpp>
 #include <godot_cpp/classes/node3d.hpp>
@@ -12,6 +13,7 @@
 #include "al_source_node.h"
 #include "va_emitter.h"
 #include "va_engine_util.h"
+#include "va_openal_settings.h"
 #include "va_source.h"
 #include "va_source_ambient.h"
 #include "va_source_leech.h"
@@ -269,6 +271,28 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
     EditorInterface::get_singleton()->mark_scene_as_unsaved();
 }
 
+void VAOpenALSettingsInspectorPlugin::_bind_methods()
+{
+}
+
+bool VAOpenALSettingsInspectorPlugin::_can_handle(Object *object) const
+{
+    return Object::cast_to<VAOpenALSettings>(object) != nullptr;
+}
+
+void VAOpenALSettingsInspectorPlugin::_parse_end(Object *object)
+{
+    VAOpenALSettings *settings = Object::cast_to<VAOpenALSettings>(object);
+
+    if (!settings)
+        return;
+
+    Button *refresh_button = memnew(Button);
+    refresh_button->set_text("Refresh Devices");
+    refresh_button->connect("pressed", Callable(settings, "refresh_devices"));
+    add_custom_control(refresh_button);
+}
+
 void VAConversionPlugin::_bind_methods()
 {
 }
@@ -277,10 +301,28 @@ void VAConversionPlugin::_enter_tree()
 {
     context_menu_plugin.instantiate();
     add_context_menu_plugin(EditorContextMenuPlugin::CONTEXT_SLOT_SCENE_TREE, context_menu_plugin);
+
+    openal_settings_inspector_plugin.instantiate();
+    add_inspector_plugin(openal_settings_inspector_plugin);
+
+    material_inspector_plugin.instantiate();
+    add_inspector_plugin(material_inspector_plugin);
+
+    world_gizmo_plugin.instantiate();
+    add_node_3d_gizmo_plugin(world_gizmo_plugin);
 }
 
 void VAConversionPlugin::_exit_tree()
 {
     remove_context_menu_plugin(context_menu_plugin);
     context_menu_plugin.unref();
+
+    remove_inspector_plugin(openal_settings_inspector_plugin);
+    openal_settings_inspector_plugin.unref();
+
+    remove_inspector_plugin(material_inspector_plugin);
+    material_inspector_plugin.unref();
+
+    remove_node_3d_gizmo_plugin(world_gizmo_plugin);
+    world_gizmo_plugin.unref();
 }

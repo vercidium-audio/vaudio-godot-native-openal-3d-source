@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VAVisualisation" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+		Renders an emitter's visualisation rays as fading diamond sprites, one per ray bounce. Must be added as a direct child of a [VAEmitter] (or a node that inherits from it, such as [VASource] or [VAListener]) - it registers itself against that parent and drives its ray_count/bounce_count/update_frequency_ms properties. Every update_frequency_ms milliseconds, the parent emitter reports new ray bounce positions and normals, which are drawn as diamonds that fade in, hold, then fade out over fade_in_ms/duration_ms/fade_out_ms.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="ray_count" type="int" setter="set_ray_count" getter="get_ray_count" default="32">
+			The number of visualisation rays to cast from the parent emitter. Mirrors the parent emitter's visualisation_ray_count.
+		</member>
+		<member name="bounce_count" type="int" setter="set_bounce_count" getter="get_bounce_count" default="4">
+			The maximum number of bounces per visualisation ray. Mirrors the parent emitter's visualisation_bounce_count.
+		</member>
+		<member name="update_frequency_ms" type="int" setter="set_update_frequency_ms" getter="get_update_frequency_ms" default="500">
+			The interval, in milliseconds, between visualisation ray updates. Mirrors the parent emitter's visualisation_update_frequency.
+		</member>
+		<member name="fade_in_ms" type="int" setter="set_fade_in_ms" getter="get_fade_in_ms" default="100">
+			How long, in milliseconds, each diamond takes to fade in from transparent to color's alpha after it first appears.
+		</member>
+		<member name="fade_out_ms" type="int" setter="set_fade_out_ms" getter="get_fade_out_ms" default="400">
+			How long, in milliseconds, each diamond takes to fade out to transparent at the end of its lifetime.
+		</member>
+		<member name="duration_ms" type="int" setter="set_duration_ms" getter="get_duration_ms" default="1500">
+			How long, in milliseconds, each diamond remains visible in total, including fade_in_ms and fade_out_ms.
+		</member>
+		<member name="color" type="Color" setter="set_color" getter="get_color" default="Color(0.11, 0.97, 1, 0.75)">
+			The colour of each diamond. The alpha channel is the maximum opacity reached once a diamond has fully faded in.
+		</member>
+		<member name="size" type="float" setter="set_size" getter="get_size" default="0.1">
+			The radius of each diamond, in world units.
+		</member>
+		<member name="normal_offset" type="float" setter="set_normal_offset" getter="get_normal_offset" default="0.02">
+			How far, in world units, each diamond is pushed off the surface it landed on along the hit normal. Increase this if diamonds z-fight with nearby world geometry.
+		</member>
+		<member name="max_distance" type="float" setter="set_max_distance" getter="get_max_distance" default="20.0">
+			Ray bounces further than this distance from the parent emitter are not rendered. Set to 0 to render bounces at any distance.
+		</member>
+	</members>
+</class>

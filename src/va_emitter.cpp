@@ -26,6 +26,7 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_va_position"), &VAEmitter::get_va_position);
     ClassDB::bind_method(D_METHOD("get_within_world_bounds"), &VAEmitter::get_within_world_bounds);
     ClassDB::bind_method(D_METHOD("is_raytraced"), &VAEmitter::is_raytraced);
+    ClassDB::bind_method(D_METHOD("get_eax_debug_info"), &VAEmitter::get_eax_debug_info);
 
     // Read-only ambient filter stats (listener only) - same no-ADD_PROPERTY
     // rationale as the SDK forwards above.
@@ -78,6 +79,10 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_relative_reverb_outer_threshold"), &VAEmitter::get_relative_reverb_outer_threshold);
     ClassDB::bind_method(D_METHOD("set_relative_reverb_outer_threshold", "value"), &VAEmitter::set_relative_reverb_outer_threshold);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "relative_reverb_outer_threshold", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_relative_reverb_outer_threshold", "get_relative_reverb_outer_threshold");
+
+    ClassDB::bind_method(D_METHOD("get_use_listener_reverb"), &VAEmitter::get_use_listener_reverb);
+    ClassDB::bind_method(D_METHOD("set_use_listener_reverb", "value"), &VAEmitter::set_use_listener_reverb);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_listener_reverb"), "set_use_listener_reverb", "get_use_listener_reverb");
 
     ADD_GROUP("Muffling", "");
 
@@ -213,6 +218,16 @@ bool VAEmitter::get_is_main_listener() const
 void VAEmitter::set_is_main_listener(bool value)
 {
     is_main_listener = value;
+}
+
+// Hides is_main_listener from the inspector - VAListener is the intended way
+// to designate a world's listener (see va_listener.cpp), so exposing this
+// checkbox here as well would just invite two conflicting ways to do the
+// same thing.
+void VAEmitter::_validate_property(PropertyInfo &p_property) const
+{
+    if (p_property.name == StringName("is_main_listener"))
+        p_property.usage = PROPERTY_USAGE_NONE;
 }
 
 void VAEmitter::_enter_tree()
@@ -404,6 +419,49 @@ Vector3 VAEmitter::get_va_position() const
 bool VAEmitter::get_within_world_bounds() const
 {
     return vaEmitterGetWithinWorldBounds(emitter);
+}
+
+Dictionary VAEmitter::get_eax_debug_info() const
+{
+    Dictionary info;
+
+    if (!emitter)
+        return info;
+
+    VAEAXReverb *eax = vaEmitterGetEAX(emitter);
+
+    if (!eax)
+        return info;
+
+    info["outside_percent"] = eax->outsidePercent;
+    info["returned_percent"] = eax->returnedPercent;
+    info["material_absorption_lf"] = eax->materialAbsorptionLF;
+    info["material_absorption_hf"] = eax->materialAbsorptionHF;
+    info["material_roughness"] = eax->materialRoughness;
+    info["reflections_delay"] = eax->reflectionsDelay;
+    info["density"] = eax->density;
+    info["diffusion"] = eax->diffusion;
+    info["gain_lf"] = eax->gainLF;
+    info["gain_hf"] = eax->gainHF;
+    info["gain"] = eax->gain;
+    info["decay_time"] = eax->decayTime;
+    info["decay_lf_ratio"] = eax->decayLFRatio;
+    info["decay_hf_ratio"] = eax->decayHFRatio;
+    info["reflections_gain"] = eax->reflectionsGain;
+    info["late_reverb_gain"] = eax->lateReverbGain;
+    info["late_reverb_delay"] = eax->lateReverbDelay;
+    info["echo_time"] = eax->echoTime;
+    info["echo_depth"] = eax->echoDepth;
+    info["modulation_time"] = eax->modulationTime;
+    info["modulation_depth"] = eax->modulationDepth;
+    info["air_absorption_gain_hf"] = eax->airAbsorptionGainHF;
+    info["hf_reference"] = eax->hfReference;
+    info["lf_reference"] = eax->lfReference;
+    info["room_rolloff_factor"] = eax->roomRolloffFactor;
+    info["decay_hf_limit"] = (bool)eax->decayHFLimit;
+    info["is_temp_background"] = (bool)eax->isTempBackground;
+
+    return info;
 }
 
 void VAEmitter::add_target(VAEmitter *target)
@@ -708,6 +766,16 @@ void VAEmitter::set_relative_reverb_outer_threshold(float value)
     {
         vaEmitterSetRelativeReverbOuterThreshold(emitter, relative_reverb_outer_threshold);
     }
+}
+
+bool VAEmitter::get_use_listener_reverb() const
+{
+    return use_listener_reverb;
+}
+
+void VAEmitter::set_use_listener_reverb(bool value)
+{
+    use_listener_reverb = value;
 }
 
 int VAEmitter::get_occlusion_ray_count() const

@@ -38,8 +38,44 @@ static const StringName &MaterialMetaKey()
     return key;
 }
 
+static const StringName &SupportsPermeationMetaKey()
+{
+    static StringName key = "vercidium_audio_supports_permeation";
+    return key;
+}
+
 namespace va_godot
 {
+
+// Names of the built-in VAMaterialType values, indexed by VAMaterialType. The single source of
+// truth for both VAWorld::get_material's matching below and get_builtin_material_names/
+// get_builtin_material_names_array, which expose this list to the "Vercidium Audio" editor plugin.
+static const char *const BUILTIN_MATERIAL_NAMES[] = {
+    "air", "brick", "cloth", "concrete", "concretepolished", "dirt",
+    "glass", "grass", "gravel", "gyprock", "ice", "leaf", "marble",
+    "metal", "mud", "rock", "sand", "snow", "tile", "tree", "water",
+    "woodindoor", "woodoutdoor"};
+
+PackedStringArray VAWorld::get_builtin_material_names()
+{
+    PackedStringArray result;
+    result.resize(VAMaterialTypeCount);
+
+    for (int i = 0; i < VAMaterialTypeCount; i++)
+        result[i] = BUILTIN_MATERIAL_NAMES[i];
+
+    return result;
+}
+
+String VAWorld::get_material_meta_key()
+{
+    return MaterialMetaKey();
+}
+
+String VAWorld::get_supports_permeation_meta_key()
+{
+    return SupportsPermeationMetaKey();
+}
 
 VAMaterialType VAWorld::get_material(Node *node)
 {
@@ -62,15 +98,9 @@ VAMaterialType VAWorld::get_material(Node *node)
     }
 
     // Match built-in materials.
-    static const char *names[] = {
-        "air", "brick", "cloth", "concrete", "concretepolished", "dirt",
-        "glass", "grass", "gravel", "gyprock", "ice", "leaf", "marble",
-        "metal", "mud", "rock", "sand", "snow", "tile", "tree", "water",
-        "woodindoor", "woodoutdoor"};
-
     for (int i = 0; i < VAMaterialTypeCount; i++)
     {
-        if (lower == String(names[i]))
+        if (lower == String(BUILTIN_MATERIAL_NAMES[i]))
         {
             return (VAMaterialType)i;
         }
@@ -679,7 +709,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
     collision_shape->set_meta(PrimitiveMetaKey(), ref);
 }
 
-void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material)
+void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material, bool supports_permeation)
 {
     if (mesh_instance->has_meta(PrimitiveMetaKey()))
     {
@@ -712,8 +742,7 @@ void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType mat
         return;
     }
 
-    // TODO - make this a metadata / inspector flag in Godot.
-    VAResult permeation_result = vaMeshPrimitiveSetSupports3DPermeation(prim, true);
+    VAResult permeation_result = vaMeshPrimitiveSetSupports3DPermeation(prim, supports_permeation);
     if (permeation_result != VA_SUCCESS && permeation_result != VA_UNCHANGED)
     {
         VA_ERROR(
@@ -920,12 +949,18 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
     }
 }
 
-void VAWorld::add_primitive(Node *node, VAMaterialType material, bool recursive)
+void VAWorld::add_primitive(Node *node, VAMaterialType material, bool supports_permeation, bool recursive)
 {
     // Use this specific material rather than the parent material.
     if (node->has_meta(MaterialMetaKey()))
     {
         material = get_material(node);
+    }
+
+    // Use this specific permeation override rather than the parent's.
+    if (node->has_meta(SupportsPermeationMetaKey()))
+    {
+        supports_permeation = node->get_meta(SupportsPermeationMetaKey());
     }
 
     // Ignore nodes without materials.
@@ -940,7 +975,7 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool recursive)
         else if (CollisionShape3D *collision_shape = Object::cast_to<CollisionShape3D>(node))
             create_primitive(collision_shape, material);
         else if (MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(node))
-            create_primitive(mesh_instance, material);
+            create_primitive(mesh_instance, material, supports_permeation);
     }
 
     if (recursive)
@@ -948,7 +983,7 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool recursive)
         TypedArray<Node> children = node->get_children();
         for (int i = 0; i < children.size(); i++)
         {
-            add_primitive(Object::cast_to<Node>(children[i]), material, true);
+            add_primitive(Object::cast_to<Node>(children[i]), material, supports_permeation, true);
         }
     }
 }
@@ -1157,7 +1192,7 @@ void VAWorld::init_scene()
     TypedArray<Node> children = root->get_children();
     for (int i = 0; i < children.size(); i++)
     {
-        add_primitive(Object::cast_to<Node>(children[i]), VAMaterialAir, true);
+        add_primitive(Object::cast_to<Node>(children[i]), VAMaterialAir, true, true);
     }
 
     get_tree()->connect("node_added", callable_mp(this, &VAWorld::on_node_added));
@@ -1180,7 +1215,7 @@ void VAWorld::on_node_added(Node *node)
         node->remove_meta(PrimitiveMetaKey());
     }
 
-    add_primitive(node, VAMaterialAir, false);
+    add_primitive(node, VAMaterialAir, true, false);
 }
 
 // This fires for the new parent node AND each of its child nodes separately -

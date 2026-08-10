@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VASource" inherits="ALSourceNode3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+		A spatialised 3D sound source that casts its own raytracing rays for reverb, ambience, and visualisation. Muffling (occlusion/permeation) is applied to it by the listener's own rays, so this node never casts occlusion or permeation rays itself - use [VAEmitter]'s occlusion/permeation settings on the listener to control muffling.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="play_when_raytracing_completes" type="bool" setter="set_play_when_raytracing_completes" getter="get_play_when_raytracing_completes" default="true">
+			If [code]true[/code] and [method play] is called before this source's emitter has produced any raytracing results yet, playback is deferred and starts automatically as soon as those results are available.
+		</member>
+		<member name="reverb_ray_count" type="int" setter="set_reverb_ray_count" getter="get_reverb_ray_count">
+			The number of reverb rays to cast.
+		</member>
+		<member name="reverb_bounce_count" type="int" setter="set_reverb_bounce_count" getter="get_reverb_bounce_count">
+			The maximum number of bounces per reverb ray. Reverb rays stop bouncing after reaching the edge of the world when the world's "is indoors" setting is false.
+		</member>
+		<member name="reverb_energy_cap" type="float" setter="set_reverb_energy_cap" getter="get_reverb_energy_cap" default="0.15">
+			The percentage of returning energy required for reverb to be at maximum volume.
+		</member>
+		<member name="max_volume" type="float" setter="set_max_volume" getter="get_max_volume" default="1.0">
+			The loudest volume that this source's sound will ever be played at.
+		</member>
+		<member name="max_echogram_time" type="int" setter="set_max_echogram_time" getter="get_max_echogram_time" default="5000">
+			How long, in milliseconds, the echogram records data for. Returning reverb rays after this period are ignored.
+		</member>
+		<member name="echogram_granularity" type="int" setter="set_echogram_granularity" getter="get_echogram_granularity" default="200">
+			The length, in milliseconds, of each entry in the echogram.
+		</member>
+		<member name="affects_grouped_eax" type="bool" setter="set_affects_grouped_eax" getter="get_affects_grouped_eax" default="true">
+			If [code]true[/code], this source's EAX is blended into the grouped EAX returned by the world.
+		</member>
+		<member name="use_listener_reverb" type="bool" setter="set_use_listener_reverb" getter="get_use_listener_reverb" default="true">
+			If [code]true[/code], this source's reverb send uses the listener's reverb effect rather than its own.
+		</member>
+		<member name="occlusion_energy_cap" type="float" setter="set_occlusion_energy_cap" getter="get_occlusion_energy_cap" default="0.15">
+			The percentage of occlusion energy required for this source to be at full volume.
+		</member>
+		<member name="permeation_energy_cap" type="float" setter="set_permeation_energy_cap" getter="get_permeation_energy_cap" default="0.15">
+			The percentage of permeation energy required for this source to be at full volume.
+		</member>
+		<member name="ambient_occlusion_ray_count" type="int" setter="set_ambient_occlusion_ray_count" getter="get_ambient_occlusion_ray_count">
+			The number of ambient occlusion rays to cast.
+		</member>
+		<member name="ambient_occlusion_bounce_count" type="int" setter="set_ambient_occlusion_bounce_count" getter="get_ambient_occlusion_bounce_count">
+			The maximum number of bounces per ambient occlusion ray. Ambient occlusion rays stop bouncing after reaching the edge of the world.
+		</member>
+		<member name="ambient_occlusion_energy_cap" type="float" setter="set_ambient_occlusion_energy_cap" getter="get_ambient_occlusion_energy_cap" default="0.15">
+			The percentage of ambient occlusion energy required for ambience to be at full volume.
+		</member>
+		<member name="ambient_permeation_ray_count" type="int" setter="set_ambient_permeation_ray_count" getter="get_ambient_permeation_ray_count">
+			The number of ambient permeation rays to cast.
+		</member>
+		<member name="ambient_permeation_bounce_count" type="int" setter="set_ambient_permeation_bounce_count" getter="get_ambient_permeation_bounce_count">
+			The number of bounces per ambient permeation ray.
+		</member>
+		<member name="ambient_permeation_energy_cap" type="float" setter="set_ambient_permeation_energy_cap" getter="get_ambient_permeation_energy_cap" default="0.15">
+			The percentage of ambient permeation energy required for ambience to be at full volume.
+		</member>
+		<member name="visualisation_ray_count" type="int" setter="set_visualisation_ray_count" getter="get_visualisation_ray_count">
+			The number of visualisation rays to cast.
+		</member>
+		<member name="visualisation_bounce_count" type="int" setter="set_visualisation_bounce_count" getter="get_visualisation_bounce_count">
+			The number of bounces per visualisation ray.
+		</member>
+		<member name="visualisation_update_frequency" type="int" setter="set_visualisation_update_frequency" getter="get_visualisation_update_frequency" default="500">
+			The interval, in milliseconds, between visualisation ray updates.
+		</member>
+		<member name="type" type="int" setter="set_type" getter="get_type" default="0">
+			A user-defined integer tag for categorising sources.
+		</member>
+		<member name="refresh_ray_count" type="int" setter="set_refresh_ray_count" getter="get_refresh_ray_count" default="16">
+			The number of trails that are rebuilt from scratch each frame, to prevent staleness when this source moves. Trails are only rebuilt if the initial bounce position has strayed too far from the new bounce position.
+		</member>
+		<member name="refresh_distance_threshold" type="float" setter="set_refresh_distance_threshold" getter="get_refresh_distance_threshold" default="1.0">
+			The distance threshold for recreating trails, to prevent staleness when this source moves. Trails are only rebuilt once the initial bounce position has strayed further than this from the new bounce position.
+		</member>
+		<member name="scattering_seed" type="int" setter="set_scattering_seed" getter="get_scattering_seed">
+			The seed used to randomise scattering vectors. Randomised per source by default.
+		</member>
+	</members>
+</class>

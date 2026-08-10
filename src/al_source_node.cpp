@@ -3,14 +3,23 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include "openal/al_manager.h"
 #include "openal/al_source.h"
 #include "va_engine_util.h"
+
+#include <algorithm>
 
 void ALSourceNode::_bind_methods()
 {
     ClassDB::bind_method(D_METHOD("get_streams"), &ALSourceNode::get_streams);
     ClassDB::bind_method(D_METHOD("set_streams", "value"), &ALSourceNode::set_streams);
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "streams", PROPERTY_HINT_TYPE_STRING, String::num(Variant::OBJECT) + "/" + String::num(PROPERTY_HINT_RESOURCE_TYPE) + ":AudioStream"), "set_streams", "get_streams");
+
+    // Script-only alias for `streams` - not exposed in the inspector, see
+    // get_stream()/set_stream()'s comment in al_source_node.h for why this exists.
+    ClassDB::bind_method(D_METHOD("get_stream"), &ALSourceNode::get_stream);
+    ClassDB::bind_method(D_METHOD("set_stream", "value"), &ALSourceNode::set_stream);
+    ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "stream", PROPERTY_HINT_RESOURCE_TYPE, "AudioStream", PROPERTY_USAGE_NONE), "set_stream", "get_stream");
 
     ClassDB::bind_method(D_METHOD("get_gain"), &ALSourceNode::get_gain);
     ClassDB::bind_method(D_METHOD("set_gain", "value"), &ALSourceNode::set_gain);
@@ -19,6 +28,18 @@ void ALSourceNode::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_pitch"), &ALSourceNode::get_pitch);
     ClassDB::bind_method(D_METHOD("set_pitch", "value"), &ALSourceNode::set_pitch);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pitch", PROPERTY_HINT_RANGE, "0.01,4.0,0.01"), "set_pitch", "get_pitch");
+
+    // Script-only alias for `pitch` - not exposed in the inspector, see
+    // get_pitch_scale()/set_pitch_scale()'s comment in al_source_node.h for why this exists.
+    ClassDB::bind_method(D_METHOD("get_pitch_scale"), &ALSourceNode::get_pitch_scale);
+    ClassDB::bind_method(D_METHOD("set_pitch_scale", "value"), &ALSourceNode::set_pitch_scale);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pitch_scale", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_pitch_scale", "get_pitch_scale");
+
+    // Script-only alias for `gain` - not exposed in the inspector, see
+    // get_volume_db()'s comment in al_source_node.h for why this exists.
+    ClassDB::bind_method(D_METHOD("get_volume_db"), &ALSourceNode::get_volume_db);
+    ClassDB::bind_method(D_METHOD("set_volume_db", "value"), &ALSourceNode::set_volume_db);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "volume_db", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_volume_db", "get_volume_db");
 
     ClassDB::bind_method(D_METHOD("get_pitch_randomness"), &ALSourceNode::get_pitch_randomness);
     ClassDB::bind_method(D_METHOD("set_pitch_randomness", "value"), &ALSourceNode::set_pitch_randomness);
@@ -69,6 +90,15 @@ void ALSourceNode::_ready()
 void ALSourceNode::_process(double delta)
 {
     poll_decode_task();
+
+    // Sources never get removed on their own once they finish playing (they
+    // just sit there holding an OpenAL source handle) - without this, every
+    // play() call permanently leaks a handle until alGenSources starts
+    // failing once the device's source limit is reached.
+    sources.erase(
+        std::remove_if(sources.begin(), sources.end(), [](const std::unique_ptr<ALSource> &source)
+                        { return source->is_finished(); }),
+        sources.end());
 }
 
 void ALSourceNode::decode_stream_task(void *userdata)
@@ -268,8 +298,12 @@ bool ALSourceNode::start_playing()
 
     configure_source(*source);
 
+    ALManager *manager = ALManager::get_singleton();
+    bool reverb_only = manager && manager->get_reverb_only();
+
     ALuint reverb_slot = effect ? effect->get_slot_handle() : 0;
-    source->set_direct_filter(filter.get_handle());
+    ALuint direct_filter_handle = reverb_only ? manager->get_silence_filter_handle() : filter.get_handle();
+    source->set_direct_filter(direct_filter_handle);
     source->set_reverb_send(reverb_slot);
 
     source->play();
@@ -318,14 +352,18 @@ void ALSourceNode::update_filter(float new_gain, float new_gain_hf, bool fullRev
     else
         filter.set_gain(new_gain, new_gain_hf);
 
+    ALManager *manager = ALManager::get_singleton();
+    bool reverb_only = manager && manager->get_reverb_only();
+
     ALuint reverb_slot = effect ? effect->get_slot_handle() : 0;
+    ALuint direct_filter_handle = reverb_only ? manager->get_silence_filter_handle() : filter.get_handle();
 
     // if fullReverb=true, the clean/unfiltered sound is sent to the reverb effect, and then the reverb effect's output gain is reduced based on vaEAXReverbGetRelativeGain
     ALuint reverb_filter_handle = fullReverb ? 0 : filter.get_handle();
 
     for (auto &source : sources)
     {
-        source->set_direct_filter(filter.get_handle());
+        source->set_direct_filter(direct_filter_handle);
         source->set_reverb_send(reverb_slot, reverb_filter_handle);
     }
 }
@@ -357,4 +395,14 @@ void ALSourceNode::set_looping(bool value)
 void ALSourceNode::set_autoplay(bool value)
 {
     autoplay = value;
+}
+
+float ALSourceNode::get_volume_db() const
+{
+    return (float)UtilityFunctions::linear_to_db(gain);
+}
+
+void ALSourceNode::set_volume_db(float value)
+{
+    set_gain((float)UtilityFunctions::db_to_linear(value));
 }

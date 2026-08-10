@@ -190,8 +190,12 @@ void ALManager::unload_library()
 // vaudio-godot-openal's ALManagerDevice.cs auto-selecting the first entry in
 // the output device list) and creates+activates a context against it, with
 // max_auxiliary_sends passed as ALC_MAX_AUXILIARY_SENDS when non-zero
-// (0 leaves it at the driver default). Assumes the library is already loaded
-// and functions already resolved - shared by initialize() and reinitialize().
+// (0 leaves it at the driver default), sample_rate passed as ALC_FREQUENCY
+// when non-zero (0 leaves it at the driver default), and hrtf_enabled passed
+// as ALC_HRTF_SOFT (ALC_SOFT_HRTF extension) to request/deny HRTF binaural
+// rendering - the driver can still refuse HRTF (e.g. no HRTF data available
+// for the output device). Assumes the library is already loaded and
+// functions already resolved - shared by initialize() and reinitialize().
 // Returns false (with a Godot error already logged) on any failure.
 bool ALManager::open_device_and_context()
 {
@@ -204,18 +208,27 @@ bool ALManager::open_device_and_context()
         return false;
     }
 
-    ALCint attributes[3] = {0, 0, 0};
-    const ALCint *attribute_list = nullptr;
+    ALCint attributes[7];
+    int count = 0;
 
     if (max_auxiliary_sends > 0)
     {
-        attributes[0] = ALC_MAX_AUXILIARY_SENDS;
-        attributes[1] = max_auxiliary_sends;
-        attributes[2] = 0;
-        attribute_list = attributes;
+        attributes[count++] = ALC_MAX_AUXILIARY_SENDS;
+        attributes[count++] = max_auxiliary_sends;
     }
 
-    context = alcCreateContext_(device, attribute_list);
+    if (sample_rate > 0)
+    {
+        attributes[count++] = ALC_FREQUENCY;
+        attributes[count++] = sample_rate;
+    }
+
+    attributes[count++] = ALC_HRTF_SOFT;
+    attributes[count++] = hrtf_enabled ? ALC_TRUE : ALC_FALSE;
+
+    attributes[count++] = 0;
+
+    context = alcCreateContext_(device, attributes);
 
     if (!context)
     {
@@ -236,12 +249,20 @@ bool ALManager::open_device_and_context()
     }
 
     // AL_INVERSE_DISTANCE_CLAMPED is already OpenAL's spec-default distance
-    // model, but set it explicitly rather than relying on that - it's the
-    // physically-correct real-world falloff curve (gain ~ referenceDistance /
-    // (referenceDistance + rolloff * (distance - referenceDistance)), clamped
-    // to each source's reference/max distance), as opposed to
-    // AL_LINEAR_DISTANCE's straight-line falloff.
-    alDistanceModel_(AL_INVERSE_DISTANCE_CLAMPED);
+    // model (and distance_model's own default) - the physically-correct
+    // real-world falloff curve (gain ~ referenceDistance / (referenceDistance
+    // + rolloff * (distance - referenceDistance)), clamped to each source's
+    // reference/max distance), as opposed to AL_LINEAR_DISTANCE's
+    // straight-line falloff. Re-applied here since it's per-context state,
+    // lost whenever open_device_and_context() recreates the context.
+    alDistanceModel_(distance_model);
+
+    // meters_per_unit/speed_of_sound are also per-context listener state,
+    // lost across a context recreation - re-apply the last value set via
+    // set_meters_per_unit/set_speed_of_sound (or their defaults, on the very
+    // first open_device_and_context() call from initialize()).
+    alListenerf_(AL_METERS_PER_UNIT, meters_per_unit);
+    alSpeedOfSound_(speed_of_sound);
 
     efx_present = resolve_efx_functions();
 
@@ -297,18 +318,21 @@ void ALManager::close_device()
     }
 }
 
-bool ALManager::reinitialize(const String &new_device_name, int new_max_auxiliary_sends)
+bool ALManager::reinitialize(const String &new_device_name, int new_max_auxiliary_sends, int new_sample_rate, bool new_hrtf_enabled)
 {
     CharString new_device_name_utf8 = new_device_name.utf8();
     const char *new_device_name_cstr = new_device_name_utf8.get_data();
 
-    if (device_name == new_device_name_cstr && max_auxiliary_sends == new_max_auxiliary_sends && is_initialized())
+    if (device_name == new_device_name_cstr && max_auxiliary_sends == new_max_auxiliary_sends
+        && sample_rate == new_sample_rate && hrtf_enabled == new_hrtf_enabled && is_initialized())
     {
         return true;
     }
 
     device_name = new_device_name_cstr;
     max_auxiliary_sends = new_max_auxiliary_sends;
+    sample_rate = new_sample_rate;
+    hrtf_enabled = new_hrtf_enabled;
 
     if (!library)
     {

@@ -25,18 +25,29 @@ static constexpr int FirstCustomMaterialId = 1000;
 
 void VAWorld::_bind_methods()
 {
+    // Rebinds the inherited Node3D "position" property to VAWorld's own get_position/set_position,
+    // so moving this node in the viewport or Inspector also updates vaWorldSetPosition - see
+    // set_position's doc comment in va_world_properties.cpp.
     ClassDB::bind_method(D_METHOD("get_position"), &VAWorld::get_position);
     ClassDB::bind_method(D_METHOD("set_position", "value"), &VAWorld::set_position);
-    ClassDB::bind_method(D_METHOD("get_size"), &VAWorld::get_size);
-    ClassDB::bind_method(D_METHOD("set_size", "value"), &VAWorld::set_size);
+    ClassDB::bind_method(D_METHOD("get_bounds_size"), &VAWorld::get_bounds_size);
+    ClassDB::bind_method(D_METHOD("set_bounds_size", "value"), &VAWorld::set_bounds_size);
+    ClassDB::bind_method(D_METHOD("get_bounds_color"), &VAWorld::get_bounds_color);
+    ClassDB::bind_method(D_METHOD("set_bounds_color", "value"), &VAWorld::set_bounds_color);
     ClassDB::bind_method(D_METHOD("get_epsilon"), &VAWorld::get_epsilon);
     ClassDB::bind_method(D_METHOD("set_epsilon", "value"), &VAWorld::set_epsilon);
     ClassDB::bind_method(D_METHOD("get_world_is_indoors"), &VAWorld::get_world_is_indoors);
     ClassDB::bind_method(D_METHOD("set_world_is_indoors", "value"), &VAWorld::set_world_is_indoors);
 
     ADD_GROUP("World", "");
-    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position"), "set_position", "get_position");
-    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "size"), "set_size", "get_size");
+
+    // Without this, ClassDB still resolves the inherited "position" property to Node3D's own
+    // accessors, so VAWorld::set_position (bound above) would never be called through the
+    // property system - only direct .set_position() calls would reach vaWorldSetPosition.
+    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position", PROPERTY_HINT_RANGE, "-1000,1000,1,or_less,or_greater"), "set_position", "get_position");
+
+    ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_size", PROPERTY_HINT_RANGE, "1,1000,1,or_greater"), "set_bounds_size", "get_bounds_size");
+    ADD_PROPERTY(PropertyInfo(Variant::COLOR, "bounds_color"), "set_bounds_color", "get_bounds_color");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "epsilon"), "set_epsilon", "get_epsilon");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "world_is_indoors"), "set_world_is_indoors", "get_world_is_indoors");
 
@@ -84,7 +95,7 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_pending_shutdown", "value"), &VAWorld::set_pending_shutdown);
 
     ADD_GROUP("Threading", "");
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "maximum_concurrency_level", PROPERTY_HINT_RANGE, "1,32,1,or_greater"), "set_maximum_concurrency_level", "get_maximum_concurrency_level");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "maximum_concurrency_level", PROPERTY_HINT_RANGE, "0,32,1,or_greater"), "set_maximum_concurrency_level", "get_maximum_concurrency_level");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "work_item_count", PROPERTY_HINT_RANGE, "1,256,1,or_greater"), "set_work_item_count", "get_work_item_count");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "pending_shutdown"), "set_pending_shutdown", "get_pending_shutdown");
     
@@ -111,10 +122,21 @@ void VAWorld::_bind_methods()
     // Exports world settings/materials/primitives/emitters to a binary file
     // (vaWorldExport) - callable from GDScript, e.g. wired to a UI button.
     ClassDB::bind_method(D_METHOD("export_to_file", "file_path"), &VAWorld::export_to_file);
+
+    // Exposes the 23 built-in material names, and the metadata key they and custom material
+    // selections are stored under, to GDScript - so the "Vercidium Audio" editor plugin's
+    // material dropdown (EditorMaterialProperty.gd) can't drift out of sync with them.
+    ClassDB::bind_static_method("VAWorld", D_METHOD("get_builtin_material_names"), &VAWorld::get_builtin_material_names);
+    ClassDB::bind_static_method("VAWorld", D_METHOD("get_material_meta_key"), &VAWorld::get_material_meta_key);
+    ClassDB::bind_static_method("VAWorld", D_METHOD("get_supports_permeation_meta_key"), &VAWorld::get_supports_permeation_meta_key);
 }
 
 VAWorld::VAWorld()
 {
+    // The bounds are an axis-aligned box - scale isn't meaningful (see _validate_property), so
+    // don't let an inherited scale (e.g. from a scaled parent) skew the rendered gizmo box either.
+    set_disable_scale(true);
+
     // The world should only exist at runtime, not in the editor - matches
     // the is_editor_hint() guard already in _ready()/_exit_tree() below.
     // world stays nullptr; every other method already null-checks it (see
@@ -132,8 +154,8 @@ VAWorld::VAWorld()
     vaWorldSetOnReverbUpdatedCallback(world, &VAWorld::on_reverb_updated_trampoline);
 
     // These objects handle error checking for us
-    set_position(position);
-    set_size(size);
+    set_position(get_position());
+    set_bounds_size(bounds_size);
     set_epsilon(epsilon);
     set_world_is_indoors(world_is_indoors);
     set_maximum_grouped_eax_count(maximum_grouped_eax_count);
@@ -145,10 +167,6 @@ VAWorld::VAWorld()
     set_reference_frequency_lf(reference_frequency_lf);
     set_reference_frequency_hf(reference_frequency_hf);
     set_emitters_outside_the_world_are_muffled(emitters_outside_the_world_are_muffled);
-
-    // Default to processor count - 1 (leaving a core free for the main/render
-    // thread) rather than a fixed guess - matches vaWorld's own internal default.
-    maximum_concurrency_level = std::max(1, OS::get_singleton()->get_processor_count() - 1);
     set_maximum_concurrency_level(maximum_concurrency_level);
     set_work_item_count(work_item_count);
     set_rendering_enabled(rendering_enabled);
@@ -183,6 +201,23 @@ VAWorld::~VAWorld()
             VA_ERROR("Failed to destroy the world (VAResult=", VAResultToString(result), ")");
 
         world = nullptr;
+    }
+}
+
+// The bounds are always an axis-aligned box (vaWorldSetPosition/vaWorldSetSize take no
+// rotation/scale), so hide the rest of Node3D's transform and only expose position.
+void VAWorld::_validate_property(PropertyInfo &p_property) const
+{
+    if (p_property.name == StringName("rotation") ||
+        p_property.name == StringName("rotation_degrees") ||
+        p_property.name == StringName("quaternion") ||
+        p_property.name == StringName("basis") ||
+        p_property.name == StringName("scale") ||
+        p_property.name == StringName("transform") ||
+        p_property.name == StringName("rotation_edit_mode") ||
+        p_property.name == StringName("rotation_order"))
+    {
+        p_property.usage = PROPERTY_USAGE_NONE;
     }
 }
 
@@ -464,6 +499,19 @@ ALReverbEffect *VAWorld::get_reverb_effect(::VAEmitter *emitter)
 
             return grouped_reverb_effects[grouped_eax_index].get();
         }
+    }
+
+    // Doesn't cast reverb rays or affect a grouped EAX zone - falls back to the listener's
+    // reverb effect only if this emitter opted into that via use_listener_reverb, otherwise
+    // it gets no reverb send at all (nullptr, see ALSourceNode::apply_filter's effect ?
+    // effect->get_slot_handle() : 0). use_listener_reverb has no SDK-side backing, so it's
+    // read off the va_godot::VAEmitter via the user data vaEmitterCreate stashed on the handle.
+    if (emitter)
+    {
+        VAEmitter *self = static_cast<VAEmitter *>(vaEmitterGetUserData(emitter));
+
+        if (self && !self->get_use_listener_reverb())
+            return nullptr;
     }
 
     return &listener_reverb_effect;

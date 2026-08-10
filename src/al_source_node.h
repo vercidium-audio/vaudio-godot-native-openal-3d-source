@@ -220,6 +220,43 @@ public:
         streams = value;
     }
 
+    // Script-only alias for `streams`, matching AudioStreamPlayer3D's single
+    // `stream` field - lets a script written against AudioStreamPlayer3D keep
+    // working unmodified after converting to this node (see
+    // va_conversion_plugin.cpp, which does the same remap at conversion
+    // time). Reads back the first entry of `streams`; writes replace `streams`
+    // with a one-entry array.
+    Ref<AudioStream> get_stream() const
+    {
+        return streams.is_empty() ? Ref<AudioStream>() : Ref<AudioStream>(streams[0]);
+    }
+
+    void set_stream(const Ref<AudioStream> &value)
+    {
+        TypedArray<AudioStream> value_array;
+        value_array.push_back(value);
+        streams = value_array;
+    }
+
+    // Script-only alias for `pitch`, matching AudioStreamPlayer3D's
+    // `pitch_scale` - see get_stream()/set_stream() above for the rationale.
+    float get_pitch_scale() const
+    {
+        return get_pitch();
+    }
+
+    void set_pitch_scale(float value)
+    {
+        set_pitch(value);
+    }
+
+    // Script-only alias for `gain`, matching AudioStreamPlayer(3D)'s
+    // logarithmic `volume_db` - see get_stream()/set_stream()'s comment above
+    // for the rationale. Converts through linear_to_db/db_to_linear since
+    // `gain` is linear (see va_conversion_plugin.cpp's identical conversion).
+    float get_volume_db() const;
+    void set_volume_db(float value);
+
 protected:
     std::vector<std::unique_ptr<ALSource>> &get_sources()
     {

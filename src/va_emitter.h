@@ -1,7 +1,9 @@
 #pragma once
 
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 
 extern "C"
 {
@@ -17,6 +19,7 @@ namespace va_godot
 {
 
 class VAWorld;
+class VAVisualisation;
 
 // Port of vaudio-godot-openal's VAEmitter.cs, scoped to structural/lifecycle
 // behaviour (native_godot_plan.md "Implement VASource's per-frame result
@@ -52,14 +55,15 @@ private:
     // once the handle is created; changes after that push straight through.
     int reverb_ray_count = 0;
     int reverb_bounce_count = 0;
-    float reverb_energy_cap = 0.2f;
+    float reverb_energy_cap = 0.15f;
     float max_volume = 1.0f;
     int max_echogram_time = 5000;
-    int echogram_granularity = 200;
+    int echogram_granularity = 100;
     bool affects_grouped_eax = false;
     bool has_relative_reverb = false;
     float relative_reverb_inner_threshold = 0.6f;
     float relative_reverb_outer_threshold = 0.8f;
+    bool use_listener_reverb = false;
 
     int occlusion_ray_count = 0;
     int occlusion_bounce_count = 0;
@@ -123,6 +127,9 @@ private:
     // VAWorld::get_reverb_effect - not owned by VAEmitter.
     ALReverbEffect *effect = nullptr;
 
+    // Not owned by VAEmitter - see get_visualisation/set_visualisation.
+    VAVisualisation *visualisation = nullptr;
+
     void create_emitter();
     void remove_emitter();
 
@@ -171,6 +178,7 @@ public:
     void _enter_tree() override;
     void _exit_tree() override;
     void _process(double delta) override;
+    void _validate_property(PropertyInfo &p_property) const;
 
     bool get_is_main_listener() const;
     void set_is_main_listener(bool value);
@@ -193,6 +201,18 @@ public:
     // Thin forward to vaEmitterGetWithinWorldBounds - emitters outside the
     // VAWorld's position/size bounds are not raytraced (see vaudio.h).
     bool get_within_world_bounds() const;
+
+    // Snapshot of this emitter's computed EAX reverb parameters
+    // (vaEmitterGetEAX), for runtime debugging from GDScript (e.g. printing
+    // a VAListener's reverb state on-screen) - matches CopyReverbParams'
+    // field selection in va_world.cpp, plus outsidePercent/returnedPercent
+    // since those directly gate whether reverb should be audible at all.
+    // Returns an empty Dictionary if this emitter has no handle yet or
+    // vaEmitterGetEAX returns null (e.g. before the first raytracing pass).
+    // Skips relativeDirections/relativeGains/relativeEmitters - those are
+    // keyed per target emitter (vaEAXReverbGetRelativeDirection/Gain), not a
+    // single scalar this flat Dictionary shape can represent.
+    Dictionary get_eax_debug_info() const;
 
     // Thin forwards to the SDK, matching VAEmitter.cs's AddTarget/RemoveTarget
     // and HasRaytracedTarget/GetTargetFilter shortcuts.
@@ -228,6 +248,21 @@ public:
         return effect;
     }
 
+    // Set by VAVisualisation::find_emitter when a VAVisualisation child registers itself against
+    // this emitter - lets VAVisualisation::visualisation_callback_trampoline resolve which node
+    // to forward vaEmitterSetVisualisationCallback's data to, without stealing
+    // vaEmitterSetUserData (already pointed at this VAEmitter by create_emitter(), and relied on
+    // by the raytracing-result trampolines above).
+    VAVisualisation *get_visualisation() const
+    {
+        return visualisation;
+    }
+
+    void set_visualisation(VAVisualisation *value)
+    {
+        visualisation = value;
+    }
+
     // Exported tuning-knob surface (ADD_PROPERTY'd in _bind_methods) - see
     // the field block above for the matching private storage.
     int get_reverb_ray_count() const;
@@ -250,6 +285,8 @@ public:
     void set_relative_reverb_inner_threshold(float value);
     float get_relative_reverb_outer_threshold() const;
     void set_relative_reverb_outer_threshold(float value);
+    bool get_use_listener_reverb() const;
+    void set_use_listener_reverb(bool value);
 
     int get_occlusion_ray_count() const;
     void set_occlusion_ray_count(int value);

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VACustomMaterial" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+		Defines a custom acoustic material that can be assigned to geometry in a [VAWorld], controlling how sound absorbs, scatters, and transmits through it. Must be added as a child of (or alongside) the level's [VAWorld].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_material_type" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the material's runtime identifier, auto-assigned when this node registers itself with the [VAWorld].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="material_name" type="String" setter="set_material_name" getter="get_material_name" default="&quot;CustomMaterial&quot;">
+			The name of this material. Cannot be changed at runtime once the material has been created.
+		</member>
+		<member name="absorption_lf" type="float" setter="set_absorption_lf" getter="get_absorption_lf" default="0.02">
+			The percentage of low-frequency energy that is lost when a ray bounces off this material.
+		</member>
+		<member name="absorption_hf" type="float" setter="set_absorption_hf" getter="get_absorption_hf" default="0.1">
+			The percentage of high-frequency energy that is lost when a ray bounces off this material.
+		</member>
+		<member name="scattering" type="float" setter="set_scattering" getter="get_scattering" default="0.1">
+			The scattering strength when a ray bounces off this material. 0.0 means no scattering, 1.0 skews the ray's reflection direction by up to 90 degrees.
+		</member>
+		<member name="transmission_lf" type="float" setter="set_transmission_lf" getter="get_transmission_lf" default="10.0">
+			How many meters a ray must travel through this material before it loses all low-frequency energy.
+		</member>
+		<member name="transmission_hf" type="float" setter="set_transmission_hf" getter="get_transmission_hf" default="5.0">
+			How many meters a ray must travel through this material before it loses all high-frequency energy.
+		</member>
+		<member name="plane_transmission_lf" type="float" setter="set_plane_transmission_lf" getter="get_plane_transmission_lf" default="0.1">
+			The percentage of low-frequency energy that is lost when a permeation ray passes through a flat (plane, disk, triangle, or non-watertight mesh) surface using this material.
+		</member>
+		<member name="plane_transmission_hf" type="float" setter="set_plane_transmission_hf" getter="get_plane_transmission_hf" default="0.25">
+			The percentage of high-frequency energy that is lost when a permeation ray passes through a flat (plane, disk, triangle, or non-watertight mesh) surface using this material.
+		</member>
+		<member name="color" type="Color" setter="set_color" getter="get_color" default="Color(1, 1, 1, 1)">
+			The debug rendering color for this material (dev build only).
+		</member>
+	</members>
+</class>

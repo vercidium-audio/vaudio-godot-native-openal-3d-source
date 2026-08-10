@@ -2,6 +2,7 @@
 #include "va_engine_util.h"
 #include "va_world.h"
 
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
@@ -16,9 +17,14 @@
 namespace va_godot
 {
 
-void VAWorld::set_position(Vector3 value)
+// Shadows the inherited Node3D::set_position (see _bind_methods) so that moving this node - via
+// the viewport gizmo, the Inspector's Position field, or code - also updates vaWorldSetPosition.
+// The bounds are always axis-aligned starting at this position (see _validate_property, which
+// hides rotation/scale), so the node's position doubles as the AABB's world-space origin.
+void VAWorld::set_position(const Vector3 &value)
 {
-    position = value;
+    Node3D::set_position(value);
+    update_gizmos();
 
     if (!world)
         return;
@@ -29,9 +35,10 @@ void VAWorld::set_position(Vector3 value)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world position (may be NaN/Infinity)");
 }
 
-void VAWorld::set_size(Vector3 value)
+void VAWorld::set_bounds_size(Vector3 value)
 {
-    size = value;
+    bounds_size = value;
+    update_gizmos();
 
     if (!world)
         return;
@@ -40,6 +47,13 @@ void VAWorld::set_size(Vector3 value)
 
     if (result != VA_SUCCESS)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world size (may be negative or NaN/Infinity)");
+}
+
+// Editor-only visualization setting, not forwarded to the SDK - just recolors the viewport gizmo.
+void VAWorld::set_bounds_color(Color value)
+{
+    bounds_color = value;
+    update_gizmos();
 }
 
 void VAWorld::set_epsilon(float value)
@@ -186,12 +200,16 @@ void VAWorld::set_emitters_outside_the_world_are_muffled(bool value)
 
 void VAWorld::set_maximum_concurrency_level(int value)
 {
-    maximum_concurrency_level = std::max(1, value);
+    maximum_concurrency_level = std::max(0, value);
 
     if (!world)
         return;
 
-    VAResult result = vaWorldSetMaximumConcurrencyLevel(world, maximum_concurrency_level);
+    // 0 maps to processor count - 1
+    if (value == 0)
+        value = std::max(1, OS::get_singleton()->get_processor_count() - 1);
+
+    VAResult result = vaWorldSetMaximumConcurrencyLevel(world, value);
 
     if (result != VA_SUCCESS)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world maximum concurrency level (may be < 1)");

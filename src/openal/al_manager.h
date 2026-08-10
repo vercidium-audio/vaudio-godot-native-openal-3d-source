@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include "al_filter.h"
 #include "al_functions.h"
 
 using namespace godot;
@@ -102,6 +103,48 @@ private:
     std::string device_name;
     int max_auxiliary_sends = 0;
 
+    // ALC_FREQUENCY attribute passed to alcCreateContext - 0 means "leave the
+    // mixing sample rate at the driver default" (matches max_auxiliary_sends'
+    // 0-means-default convention above).
+    int sample_rate = 0;
+
+    // ALC_HRTF_SOFT attribute passed to alcCreateContext (ALC_SOFT_HRTF
+    // extension) - lets the user request HRTF-based binaural rendering
+    // instead of the driver's default panning. The driver can still refuse
+    // (e.g. no HRTF data for the output device); not checked here.
+    bool hrtf_enabled = false;
+
+    // Current AL distance model - applied via alDistanceModel_ in
+    // open_device_and_context(). Stored so reinitialize() can re-apply it
+    // after a device/context recreation.
+    ALenum distance_model = AL_INVERSE_DISTANCE_CLAMPED;
+
+    // AL_METERS_PER_UNIT (EFX) listener property - the OpenAL/EFX-side
+    // scale used by air-absorption and reverb decay math, distinct from
+    // VAWorld::meters_per_unit which only feeds vaudio's own raytracing/
+    // acoustics model. Applied via alListenerf_, so - like master volume -
+    // it's per-context state re-applied after reinitialize() recreates the
+    // context, not baked into alcCreateContext's attribute list.
+    float meters_per_unit = 1.0f;
+
+    // Global AL speed of sound (alSpeedOfSound), used by OpenAL's own
+    // Doppler calculation - distinct from VAWorld::speed_of_sound which only
+    // feeds vaudio's raytracing/acoustics model. Also per-context state.
+    float speed_of_sound = 343.0f;
+
+    // When true, every ALSourceNode's direct/dry path is routed through a
+    // gain-0 lowpass filter (silence_filter below) instead of its own muffle
+    // filter, so only each source's reverb send is audible - a diagnostic
+    // toggle for tuning reverb in isolation. Matches ALManager.cs's
+    // ReverbOnly / ALSource3D.cs's silenceFilter.
+    bool reverb_only = false;
+
+    // Lazily-created shared AL_LOWPASS_GAIN=0 filter substituted for a
+    // source's own direct filter while reverb_only is enabled - process-wide
+    // like ALSource3D.cs's static ALFilter silenceFilter, since silence is
+    // the same regardless of which source it's applied to.
+    ALFilter silence_filter;
+
     bool load_library();
     bool resolve_functions();
     bool resolve_efx_functions();
@@ -121,15 +164,15 @@ public:
     bool initialize();
 
     // Tears down the current device/context (if any) and reopens them using
-    // device_name/max_auxiliary_sends, leaving the resolved function
-    // pointers and loaded library alone. Called by VAOpenALSettings::_ready
-    // when its exported device/reverb-send settings differ from the
-    // defaults initialize() already applied at module load - see
-    // register_types.cpp. Every existing AL object (sources, buffers,
-    // filters, effects) is invalidated by this - safe only because it's
-    // expected to run once, early, before any VASource/VAEmitter has
-    // created OpenAL objects against the old device.
-    bool reinitialize(const String &new_device_name, int new_max_auxiliary_sends);
+    // device_name/max_auxiliary_sends/new_sample_rate/new_hrtf_enabled,
+    // leaving the resolved function pointers and loaded library alone.
+    // Called by VAOpenALSettings::_ready when its exported device/reverb-send
+    // settings differ from the defaults initialize() already applied at
+    // module load - see register_types.cpp. Every existing AL object
+    // (sources, buffers, filters, effects) is invalidated by this - safe only
+    // because it's expected to run once, early, before any VASource/VAEmitter
+    // has created OpenAL objects against the old device.
+    bool reinitialize(const String &new_device_name, int new_max_auxiliary_sends, int new_sample_rate, bool new_hrtf_enabled);
 
     // Thin forward to alListenerf(AL_GAIN, ...) - the process-wide master
     // volume multiplier applied on top of every source's own gain. Safe to
@@ -137,6 +180,84 @@ public:
     void set_master_volume(float value)
     {
         alListenerf_(AL_GAIN, value);
+    }
+
+    // Thin forward to alDistanceModel_ - safe to call at any time after
+    // initialize() (no context recreation needed). Re-applied automatically
+    // after reinitialize() recreates the context, since AL distance model is
+    // per-context state.
+    void set_distance_model(ALenum value)
+    {
+        distance_model = value;
+
+        if (alDistanceModel_)
+            alDistanceModel_(distance_model);
+    }
+
+    ALenum get_distance_model() const
+    {
+        return distance_model;
+    }
+
+    // Thin forward to alListenerf(AL_METERS_PER_UNIT, ...) - safe to call at
+    // any time after initialize() (no context recreation needed). Re-applied
+    // automatically after reinitialize() recreates the context, since this is
+    // per-context listener state.
+    void set_meters_per_unit(float value)
+    {
+        meters_per_unit = value;
+
+        if (alListenerf_)
+            alListenerf_(AL_METERS_PER_UNIT, meters_per_unit);
+    }
+
+    float get_meters_per_unit() const
+    {
+        return meters_per_unit;
+    }
+
+    // Thin forward to alSpeedOfSound_ - safe to call at any time after
+    // initialize() (no context recreation needed). Re-applied automatically
+    // after reinitialize() recreates the context, since AL speed of sound is
+    // per-context state.
+    void set_speed_of_sound(float value)
+    {
+        speed_of_sound = value;
+
+        if (alSpeedOfSound_)
+            alSpeedOfSound_(speed_of_sound);
+    }
+
+    float get_speed_of_sound() const
+    {
+        return speed_of_sound;
+    }
+
+    // Enables/disables reverb-only mode - see reverb_only's doc comment.
+    // Takes effect the next time a source's direct filter is (re)applied
+    // (ALSourceNode::start_playing/update_filter), not retroactively on
+    // sources already playing with their normal filter attached.
+    void set_reverb_only(bool value)
+    {
+        reverb_only = value;
+    }
+
+    bool get_reverb_only() const
+    {
+        return reverb_only;
+    }
+
+    // Returns the shared gain-0 lowpass filter used for a source's direct
+    // path while reverb_only is enabled, lazily creating it on first use (a
+    // no-op returning an invalid/0 handle if ALC_EXT_EFX isn't present, same
+    // as any other ALFilter). Callers should prefer this over filter.get_handle()
+    // for a source's direct filter whenever get_reverb_only() is true.
+    ALuint get_silence_filter_handle()
+    {
+        if (!silence_filter.is_valid())
+            silence_filter.create(0.0f, 0.0f);
+
+        return silence_filter.get_handle();
     }
 
     // Lists every playback device name the current driver reports via the
