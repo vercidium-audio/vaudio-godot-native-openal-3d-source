@@ -79,6 +79,15 @@ public:
 
     bool is_raytraced() const;
 
+    // The internal VAEmitter this source owns (see create_emitter) - lets
+    // VAVisualisation::find_emitter resolve a valid emitter when it's placed
+    // as a direct child of a VASource, since VASource itself is not a
+    // VAEmitter subclass.
+    va_godot::VAEmitter *get_emitter() const
+    {
+        return emitter;
+    }
+
     // If raytracing hasn't produced results yet, arms play_when_raytracing_completes and returns false. Actual playback happens once is_raytraced() is true.
     bool play() override;
 

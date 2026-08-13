@@ -10,6 +10,7 @@
 #include "va_conversions.h"
 #include "va_emitter.h"
 #include "va_engine_util.h"
+#include "va_source.h"
 
 namespace va_godot
 {
@@ -156,6 +157,17 @@ void VAVisualisation::_process(double delta)
 void VAVisualisation::find_emitter()
 {
     emitter = Object::cast_to<VAEmitter>(get_parent());
+
+    if (!emitter)
+    {
+        // VASource isn't itself a VAEmitter - it owns a hidden child VAEmitter
+        // node instead (see VASource::create_emitter) - so fall back to that
+        // when this node's direct parent is a VASource.
+        VASource *source = Object::cast_to<VASource>(get_parent());
+
+        if (source)
+            emitter = source->get_emitter();
+    }
 
     if (!emitter)
     {
