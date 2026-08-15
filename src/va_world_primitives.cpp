@@ -988,6 +988,29 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool supports_p
     }
 }
 
+void VAWorld::sync_primitive(Node *node)
+{
+    // Guards against being called on a VAWorld whose world hasn't been created yet (e.g. init_scene
+    // hasn't run this frame yet) - should always be non-null in practice, since this is only called
+    // via the debugger-message capture in register_types.cpp, which only exists in a running game.
+    if (!world)
+        return;
+
+    // Recursive, matching init_scene's own top-level add_primitive calls - the edited node itself
+    // often has no geometry of its own (e.g. a plain Node3D grouping node like "Tunnel" in the demo
+    // project), with the material/permeation override only taking effect on its descendants (see
+    // add_primitive's "Use this specific material/permeation override" comments below). Unlike
+    // on_node_added/on_node_removed (non-recursive - the node_added/node_removed signals they
+    // handle already fire once per node), this is a single one-shot call for the whole edited
+    // subtree, so it has to walk it itself.
+    remove_primitive(node, true);
+
+    // add_primitive re-reads each node's current vercidium_audio_material/
+    // vercidium_audio_supports_permeation metadata itself (see its "Use this specific..." comments
+    // below) - VAMaterialAir/true here are just the fallback for a node with no metadata at all.
+    add_primitive(node, VAMaterialAir, true, true);
+}
+
 void VAWorld::remove_primitive(Node *node, bool recursive)
 {
     // When a node is removed from the scene, remove it from the raytracing

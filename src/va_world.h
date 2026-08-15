@@ -128,6 +128,15 @@ public:
     // Returns false if another VACustomMaterial already claimed the same ID
     bool register_custom_material(va_godot::VACustomMaterial *material);
 
+    // Re-registers a single node's raytracing primitive after its "Vercidium Audio" material or
+    // permeation metadata changed in the Inspector while the game is running - removes the old
+    // primitive if one exists, then re-adds it using the node's current metadata. Only ever called
+    // on the running game's own VAWorld instance, via the debugger-message capture in
+    // register_types.cpp (see VADebuggerPlugin/VAMaterialInspectorPlugin::sync_running_game) - a
+    // custom EditorInspectorPlugin control has no way to reach this VAWorld directly, since it only
+    // ever runs against the editor's own local copy of the scene, whose world is always null.
+    void sync_primitive(Node *node);
+
     // The 23 built-in material names (e.g. "Concrete", "Brick"), for editor tooling such as the
     // "Vercidium Audio" inspector plugin's material dropdown - see VAMaterialInspectorPlugin.
     static PackedStringArray get_builtin_material_names();

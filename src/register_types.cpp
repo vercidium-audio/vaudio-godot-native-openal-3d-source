@@ -3,9 +3,14 @@
 #include <gdextension_interface.h>
 
 #include <godot_cpp/classes/editor_plugin_registration.hpp>
+#include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/engine_debugger.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <godot_cpp/variant/node_path.hpp>
 
 #include "al_source_node.h"
 #include "al_source_node3d.h"
@@ -13,8 +18,10 @@
 #include "openal/al_manager.h"
 #include "transform_watcher.h"
 #include "va_conversion_plugin.h"
+#include "va_debugger_plugin.h"
 #include "va_default_material.h"
 #include "va_emitter.h"
+#include "va_engine_util.h"
 #include "va_listener.h"
 #include "va_custom_material.h"
 #include "va_openal_settings.h"
@@ -26,11 +33,108 @@
 #include "va_visualisation.h"
 #include "va_world.h"
 #include "va_world_gizmo.h"
+#include "va_world_lookup.h"
 
 using namespace godot;
 
 // Process-wide OpenAL device/context owner. Constructed/destroyed alongside the module rather than tied to any single node's lifetime, since there's only ever one OpenAL device for the whole plugin (see al_manager.h).
 static ALManager al_manager;
+
+// Depth-first search for a descendant named scene_root_name - used instead of
+// SceneTree::get_current_scene() below, which isn't reliable in a game that manually adds a scene
+// as a plain child rather than via change_scene_to_*/change_scene_to_file (e.g. this plugin's own
+// demo project's car_select.gd, which loads town_scene.tscn via get_parent().add_child(town) and
+// never touches current_scene, leaving it permanently pointed at the CarSelect menu scene).
+static Node *find_child_named_recursive(Node *node, const StringName &name)
+{
+    TypedArray<Node> children = node->get_children();
+
+    for (int i = 0; i < children.size(); i++)
+    {
+        Node *child = Object::cast_to<Node>(children[i]);
+
+        if (child->get_name() == name)
+            return child;
+
+        if (Node *found = find_child_named_recursive(child, name))
+            return found;
+    }
+
+    return nullptr;
+}
+
+// Receiving end of VADebuggerPlugin::sync_primitive - the editor process sends a
+// "vaudio:sync_primitive" debugger message with the edited scene's root node name and a NodePath
+// relative to it, whenever the "Vercidium Audio" Inspector material dropdown or permeation
+// checkbox changes while the game is running. EditorInspectorPlugin controls can only edit the
+// editor's own local copy of the scene, so this debugger-message capture is the only way those
+// edits reach the running game's actual VAWorld - see va_debugger_plugin.h.
+static bool on_debugger_message(const String &message, const Array &data)
+{
+    if (message != "sync_primitive" || data.size() < 4)
+        return false;
+
+    SceneTree *scene_tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
+    Node *tree_root = scene_tree ? scene_tree->get_root() : nullptr;
+
+    if (!tree_root)
+    {
+        VA_WARN("Received a material/permeation edit from the editor, but the game has no scene tree root");
+        return true;
+    }
+
+    StringName scene_root_name = data[0];
+    Node *scene_root = find_child_named_recursive(tree_root, scene_root_name);
+
+    if (!scene_root)
+    {
+        VA_WARN("Received a material/permeation edit from the editor, but no node named '", scene_root_name, "' exists in the running scene");
+        return true;
+    }
+
+    NodePath node_path = data[1];
+    Node *node = scene_root->get_node_or_null(node_path);
+
+    if (!node)
+    {
+        VA_WARN(
+            "Received a material/permeation edit from the editor for '", node_path,
+            "', but no matching node exists under '", scene_root_name, "' (", scene_root->get_path(), ")");
+        return true;
+    }
+
+    va_godot::VAWorld *va_world = va_godot::find_va_world(node);
+
+    if (!va_world)
+    {
+        VA_WARN("Received a material/permeation edit from the editor for '", node->get_name(), "', but couldn't find a VAWorld in the running scene");
+        return true;
+    }
+
+    // The running game has its own separate copy of this node - apply the metadata the editor's
+    // local copy just had set/removed on it (see VAMaterialInspectorPlugin::sync_running_game)
+    // before re-adding the primitive below, since add_primitive/get_material read it straight off
+    // this node, not off anything sent directly.
+    String material = data[2];
+    StringName material_meta_key = va_godot::VAWorld::get_material_meta_key();
+
+    if (material.is_empty())
+        node->remove_meta(material_meta_key);
+    else
+        node->set_meta(material_meta_key, material);
+
+    Variant supports_permeation = data[3];
+    StringName supports_permeation_meta_key = va_godot::VAWorld::get_supports_permeation_meta_key();
+
+    if (supports_permeation.get_type() == Variant::NIL)
+        node->remove_meta(supports_permeation_meta_key);
+    else
+        node->set_meta(supports_permeation_meta_key, supports_permeation);
+
+    va_world->sync_primitive(node);
+
+    return true;
+}
 
 void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_level)
 {
@@ -41,6 +145,7 @@ void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_le
         ClassDB::register_class<va_godot::VAOpenALSettingsInspectorPlugin>();
         ClassDB::register_class<va_godot::VAMaterialInspectorPlugin>();
         ClassDB::register_class<va_godot::VAWorldGizmoPlugin>();
+        ClassDB::register_class<va_godot::VADebuggerPlugin>();
         ClassDB::register_class<va_godot::VAConversionPlugin>();
         EditorPlugins::add_by_type<va_godot::VAConversionPlugin>();
         return;
@@ -73,6 +178,12 @@ void initialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_le
     ClassDB::register_class<VAPrimitiveRef>();
 
     al_manager.initialize();
+
+    // Only the running game needs to receive VADebuggerPlugin's messages - EngineDebugger only
+    // exists at all when running under the editor's debugger (see is_active()), and there's no
+    // running game to sync in the editor process itself.
+    if (!IS_EDITOR_HINT() && EngineDebugger::get_singleton() && EngineDebugger::get_singleton()->is_active())
+        EngineDebugger::get_singleton()->register_message_capture("vaudio", callable_mp_static(&on_debugger_message));
 }
 
 void uninitialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_level)
@@ -89,6 +200,9 @@ void uninitialize_vaudio_godot_native_openal_module(ModuleInitializationLevel p_
     }
 
     al_manager.shutdown();
+
+    if (EngineDebugger::get_singleton() && EngineDebugger::get_singleton()->has_capture("vaudio"))
+        EngineDebugger::get_singleton()->unregister_message_capture("vaudio");
 }
 
 extern "C" {
