@@ -24,8 +24,8 @@ private:
     float scattering = 0.01f;
     float transmission_lf = 0.1f;
     float transmission_hf = 0.05f;
-    float plane_transmission_lf = 0.1f;
-    float plane_transmission_hf = 0.25f;
+    float flat_transmission_lf = 0.1f;
+    float flat_transmission_hf = 0.25f;
     Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
 
     // true once the material has been configured at runtime by _enter_tree()
@@ -64,11 +64,11 @@ public:
     float get_transmission_hf() const;
     void set_transmission_hf(float value);
 
-    float get_plane_transmission_lf() const;
-    void set_plane_transmission_lf(float value);
+    float get_flat_transmission_lf() const;
+    void set_flat_transmission_lf(float value);
 
-    float get_plane_transmission_hf() const;
-    void set_plane_transmission_hf(float value);
+    float get_flat_transmission_hf() const;
+    void set_flat_transmission_hf(float value);
 
     Color get_color() const;
     void set_color(const Color &value);
