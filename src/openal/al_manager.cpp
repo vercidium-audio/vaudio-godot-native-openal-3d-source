@@ -187,7 +187,7 @@ void ALManager::unload_library()
 }
 
 // Opens device_name (empty = default playback device, matching
-// vaudio-godot-openal's ALManagerDevice.cs auto-selecting the first entry in
+// vaudio-godot-mono-openal-3d's ALManagerDevice.cs auto-selecting the first entry in
 // the output device list) and creates+activates a context against it, with
 // max_auxiliary_sends passed as ALC_MAX_AUXILIARY_SENDS when non-zero
 // (0 leaves it at the driver default), sample_rate passed as ALC_FREQUENCY

@@ -25,7 +25,7 @@ void VASource::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VASource::get_muffling_gain_hf);
     ClassDB::bind_method(D_METHOD("is_raytraced"), &VASource::is_raytraced);
 
-    // Direct port of vaudio-godot-openal's VASourceProperties.cs groups
+    // Direct port of vaudio-godot-mono-openal-3d's VASourceProperties.cs groups
     // (Reverb/Muffling/Ambience/Visualisation/Advanced) - see va_source.h for
     // why this is a subset of VAEmitter's own property surface. Debug
     // Rendering colors are not ported, same rationale as VAEmitter.

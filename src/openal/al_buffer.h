@@ -11,7 +11,7 @@
 using namespace godot;
 
 // Owns one OpenAL buffer's worth of fully-decoded PCM data - the native
-// C++ equivalent of vaudio-godot-openal's ALBuffer (other/ALBuffer.cs),
+// C++ equivalent of vaudio-godot-mono-openal-3d's ALBuffer (other/ALBuffer.cs),
 // scoped down for now to just decode+upload (no source-creation helper yet -
 // that's a separate, not-yet-done checklist item in native_godot_plan.md).
 //

@@ -9,7 +9,7 @@
 #include "va_world.h"
 #include "va_world_lookup.h"
 
-// Port of vaudio-godot-openal's VACustomMaterial.cs. Only the material-property
+// Port of vaudio-godot-mono-openal-3d's VACustomMaterial.cs. Only the material-property
 // side is ported here - GetDebugColor/_GetConfigurationWarnings/_ValidateProperty
 // are editor-only visualisation niceties with no SDK-facing behaviour, so they're
 // intentionally left out.

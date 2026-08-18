@@ -38,7 +38,7 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_lf"), &VAEmitter::get_ambient_filter_gain_lf);
     ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_hf"), &VAEmitter::get_ambient_filter_gain_hf);
 
-    // Direct port of vaudio-godot-openal's VAEmitterProperties.cs groups
+    // Direct port of vaudio-godot-mono-openal-3d's VAEmitterProperties.cs groups
     // (Reverb/Muffling/Ambience/Visualisation/Advanced). Debug Rendering
     // colors are not ported - no backing SDK API in this C SDK version (see
     // va_emitter.h).

@@ -9,7 +9,7 @@ namespace va_godot
 class VAWorld;
 }
 
-// Port of vaudio-godot-openal's VASourceRelative.cs. Reads the listener's
+// Port of vaudio-godot-mono-openal-3d's VASourceRelative.cs. Reads the listener's
 // already-computed reverb effect rather than owning its own VAEmitter - a
 // "relative" source is meant to sound the same regardless of where the
 // listener actually is (e.g. UI/footstep-style sounds attached to the

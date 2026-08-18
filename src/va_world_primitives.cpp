@@ -16,7 +16,7 @@
 #include "va_custom_material.h"
 #include "va_engine_util.h"
 
-// Port of vaudio-godot-openal's VAWorldPrimitives.cs. CSG box/cylinder/sphere,
+// Port of vaudio-godot-mono-openal-3d's VAWorldPrimitives.cs. CSG box/cylinder/sphere,
 // CollisionShape3D box/sphere/capsule/cylinder/world-boundary shapes, and
 // MeshInstance3D (via ConvertMeshToVAudio in va_conversions.h) are covered.
 // CsgPolygon3D/CsgMesh3D and the ConvexPolygon/Concave/HeightMap

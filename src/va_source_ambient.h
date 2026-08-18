@@ -9,7 +9,7 @@ namespace va_godot
 class VAWorld;
 }
 
-// Port of vaudio-godot-openal's VASourceAmbient.cs. Reads the listener's
+// Port of vaudio-godot-mono-openal-3d's VASourceAmbient.cs. Reads the listener's
 // already-computed ambient (non-directional) muffling gain rather than
 // owning its own VAEmitter - meant for background ambience loops that should
 // be muffled by the room the listener is currently in, without being

@@ -21,7 +21,7 @@ namespace va_godot
 class VAWorld;
 class VAVisualisation;
 
-// Port of vaudio-godot-openal's VAEmitter.cs, scoped to structural/lifecycle
+// Port of vaudio-godot-mono-openal-3d's VAEmitter.cs, scoped to structural/lifecycle
 // behaviour (native_godot_plan.md "Implement VASource's per-frame result
 // application"): creation/destruction, listener/target registration, and
 // per-frame LPF muffling + reverb-slot resolution. The exported tuning knobs
@@ -48,7 +48,7 @@ private:
 
     bool is_main_listener = false;
 
-    // Exported tuning-knob surface, direct port of vaudio-godot-openal's
+    // Exported tuning-knob surface, direct port of vaudio-godot-mono-openal-3d's
     // VAEmitterProperties.cs. Each setter below mirrors the C#'s
     // "store locally, push to the SDK handle if it already exists" pattern -
     // values set before create_emitter() runs (e.g. from a .tscn) are applied
