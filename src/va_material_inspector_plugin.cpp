@@ -115,20 +115,20 @@ void VAMaterialInspectorPlugin::_parse_end(Object *object)
 
     row->add_child(option_button);
 
-    StringName supports_permeation_meta_key = VAWorld::get_supports_permeation_meta_key();
+    StringName use_flat_transmission_meta_key = VAWorld::get_use_flat_transmission_meta_key();
 
     HBoxContainer *permeation_row = memnew(HBoxContainer);
     section->add_child(permeation_row);
 
     Label *permeation_label = memnew(Label);
-    permeation_label->set_text("Supports Permeation");
+    permeation_label->set_text("Use Flat Transmission");
     permeation_label->set_custom_minimum_size(Vector2(140, 0));
     permeation_row->add_child(permeation_label);
 
     CheckBox *permeation_checkbox = memnew(CheckBox);
-    bool supports_permeation = node->has_meta(supports_permeation_meta_key) ? (bool)node->get_meta(supports_permeation_meta_key) : true;
-    permeation_checkbox->set_pressed(supports_permeation);
-    permeation_checkbox->connect("toggled", callable_mp(this, &VAMaterialInspectorPlugin::on_supports_permeation_toggled).bind(node));
+    bool use_flat_transmission = node->has_meta(use_flat_transmission_meta_key) ? (bool)node->get_meta(use_flat_transmission_meta_key) : false;
+    permeation_checkbox->set_pressed(use_flat_transmission);
+    permeation_checkbox->connect("toggled", callable_mp(this, &VAMaterialInspectorPlugin::on_use_flat_transmission_toggled).bind(node));
     permeation_row->add_child(permeation_checkbox);
 
     add_custom_control(section);
@@ -148,16 +148,16 @@ void VAMaterialInspectorPlugin::on_material_selected(int32_t index, Node *node, 
     sync_running_game(node);
 }
 
-void VAMaterialInspectorPlugin::on_supports_permeation_toggled(bool toggled_on, Node *node)
+void VAMaterialInspectorPlugin::on_use_flat_transmission_toggled(bool toggled_on, Node *node)
 {
-    StringName supports_permeation_meta_key = VAWorld::get_supports_permeation_meta_key();
+    StringName use_flat_transmission_meta_key = VAWorld::get_use_flat_transmission_meta_key();
 
-    // true is the default (see add_primitive), so only store metadata for the non-default value -
+    // false is the default (see add_primitive), so only store metadata for the non-default value -
     // matches the "Air (no geometry)" material entry removing its meta key instead of storing it.
-    if (toggled_on)
-        node->remove_meta(supports_permeation_meta_key);
+    if (!toggled_on)
+        node->remove_meta(use_flat_transmission_meta_key);
     else
-        node->set_meta(supports_permeation_meta_key, false);
+        node->set_meta(use_flat_transmission_meta_key, true);
 
     EditorInterface::get_singleton()->mark_scene_as_unsaved();
 
@@ -183,9 +183,9 @@ void VAMaterialInspectorPlugin::sync_running_game(Node *node)
     StringName material_meta_key = VAWorld::get_material_meta_key();
     String material = node->has_meta(material_meta_key) ? String(node->get_meta(material_meta_key)) : String();
 
-    StringName supports_permeation_meta_key = VAWorld::get_supports_permeation_meta_key();
-    Variant supports_permeation = node->has_meta(supports_permeation_meta_key) ? node->get_meta(supports_permeation_meta_key) : Variant();
+    StringName use_flat_transmission_meta_key = VAWorld::get_use_flat_transmission_meta_key();
+    Variant use_flat_transmission = node->has_meta(use_flat_transmission_meta_key) ? node->get_meta(use_flat_transmission_meta_key) : Variant();
 
     NodePath node_path = scene_root->get_path_to(node);
-    debugger_plugin->sync_primitive(scene_root->get_name(), node_path, material, supports_permeation);
+    debugger_plugin->sync_primitive(scene_root->get_name(), node_path, material, use_flat_transmission);
 }

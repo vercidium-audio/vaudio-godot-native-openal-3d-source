@@ -32,12 +32,12 @@ public:
     // anywhere under the running game's root instead - see on_debugger_message in register_types.cpp.
     //
     // The running game has its own separate copy of this node, whose metadata was never touched by
-    // the edit that just happened in the editor's local copy - material/supports_permeation carry
+    // the edit that just happened in the editor's local copy - material/use_flat_transmission carry
     // that new metadata across so the receiving end can apply it before re-adding the primitive.
     // An empty material means "no material metadata" (Air), matching remove_meta in
-    // VAMaterialInspectorPlugin::on_material_selected; supports_permeation is NIL for the same
-    // "no metadata, use the default" case, matching on_supports_permeation_toggled.
-    void sync_primitive(const String &scene_root_name, const NodePath &node_path, const String &material, const Variant &supports_permeation);
+    // VAMaterialInspectorPlugin::on_material_selected; use_flat_transmission is NIL for the same
+    // "no metadata, use the default" case, matching on_use_flat_transmission_toggled.
+    void sync_primitive(const String &scene_root_name, const NodePath &node_path, const String &material, const Variant &use_flat_transmission);
 };
 
 } // namespace va_godot

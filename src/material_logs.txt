@@ -1,0 +1,16 @@
+[vaudio-godot-native-openal] Sending material/permeation edit for 'TownModel/Tunnel' (edited scene root 'TownScene') to the running game
+[vaudio-godot-native-openal] Syncing material/permeation edit from the editor for 'Tunnel'
+[vaudio-godot-native-openal] remove_primitive: 'Tunnel' has_primitive=false recursive=true
+[vaudio-godot-native-openal] remove_primitive: 'HugeTire' has_primitive=false recursive=true
+[vaudio-godot-native-openal] remove_primitive: 'HugeTireMesh' has_primitive=false recursive=true
+[vaudio-godot-native-openal] remove_primitive: 'HugeTireCollider' has_primitive=false recursive=true
+[vaudio-godot-native-openal] remove_primitive: 'Floor' has_primitive=false recursive=true
+[vaudio-godot-native-openal] remove_primitive: 'Back' has_primitive=false recursive=true
+[vaudio-godot-native-openal] remove_primitive: 'Front' has_primitive=false recursive=true
+[vaudio-godot-native-openal] add_primitive: 'Tunnel' class=Node3D material=0 recursive=true
+[vaudio-godot-native-openal] add_primitive: 'HugeTire' class=StaticBody3D material=0 recursive=true
+[vaudio-godot-native-openal] add_primitive: 'HugeTireMesh' class=MeshInstance3D material=0 recursive=true
+[vaudio-godot-native-openal] add_primitive: 'HugeTireCollider' class=CollisionShape3D material=0 recursive=true
+[vaudio-godot-native-openal] add_primitive: 'Floor' class=CSGBox3D material=0 recursive=true
+[vaudio-godot-native-openal] add_primitive: 'Back' class=CSGBox3D material=0 recursive=true
+[vaudio-godot-native-openal] add_primitive: 'Front' class=CSGBox3D material=0 recursive=true

@@ -123,13 +123,13 @@ static bool on_debugger_message(const String &message, const Array &data)
     else
         node->set_meta(material_meta_key, material);
 
-    Variant supports_permeation = data[3];
-    StringName supports_permeation_meta_key = va_godot::VAWorld::get_supports_permeation_meta_key();
+    Variant use_flat_transmission = data[3];
+    StringName use_flat_transmission_meta_key = va_godot::VAWorld::get_use_flat_transmission_meta_key();
 
-    if (supports_permeation.get_type() == Variant::NIL)
-        node->remove_meta(supports_permeation_meta_key);
+    if (use_flat_transmission.get_type() == Variant::NIL)
+        node->remove_meta(use_flat_transmission_meta_key);
     else
-        node->set_meta(supports_permeation_meta_key, supports_permeation);
+        node->set_meta(use_flat_transmission_meta_key, use_flat_transmission);
 
     va_world->sync_primitive(node);
 

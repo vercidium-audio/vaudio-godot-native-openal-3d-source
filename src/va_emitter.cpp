@@ -455,7 +455,6 @@ Dictionary VAEmitter::get_eax_debug_info() const
     info["lf_reference"] = eax->lfReference;
     info["room_rolloff_factor"] = eax->roomRolloffFactor;
     info["decay_hf_limit"] = (bool)eax->decayHFLimit;
-    info["is_temp_background"] = (bool)eax->isTempBackground;
 
     return info;
 }

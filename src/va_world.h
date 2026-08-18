@@ -95,7 +95,7 @@ private:
     // Get the type of a custom or default material
     VAMaterialType get_material(Node *node);
 
-    void add_primitive(Node *node, VAMaterialType material, bool supports_permeation, bool recursive);
+    void add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, bool recursive);
     void remove_primitive(Node *node, bool recursive);
 
     VAPrimitiveRef *attach_watcher(Node3D *node, void *primitive, VAPrimitiveKind kind, std::function<void()> update);
@@ -104,7 +104,7 @@ private:
     void create_primitive(CSGCylinder3D *csg_cylinder, VAMaterialType material);
     void create_primitive(CSGSphere3D *csg_sphere, VAMaterialType material);
     void create_primitive(CollisionShape3D *collision_shape, VAMaterialType material);
-    void create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material, bool supports_permeation);
+    void create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material, bool use_flat_transmission);
 
     void update_collision_shape_primitive(CollisionShape3D *collision_shape, VAPrimitiveRef *ref);
 
@@ -146,10 +146,10 @@ public:
     // out of sync with MaterialMetaKey() in va_world_primitives.cpp.
     static String get_material_meta_key();
 
-    // The node metadata key that stores a node's "Supports Permeation" override (see
-    // vaMeshPrimitiveSetSupports3DPermeation) - shared with the "Vercidium Audio" editor plugin,
-    // so it never drifts out of sync with SupportsPermeationMetaKey() in va_world_primitives.cpp.
-    static String get_supports_permeation_meta_key();
+    // The node metadata key that stores a node's "Use Flat Transmission" override (see
+    // vaMeshPrimitiveSetUseFlatTransmission) - shared with the "Vercidium Audio" editor plugin,
+    // so it never drifts out of sync with UseFlatTransmissionMetaKey() in va_world_primitives.cpp.
+    static String get_use_flat_transmission_meta_key();
 
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
 
