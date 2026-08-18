@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="vaudio-godot-native-openal test project"
+config/name="vaudio-godot-native-openal-3d test project"
 run/main_scene="res://test_scene.tscn"
 config/features=PackedStringArray("4.5")
 config/icon="res://icon.svg"
