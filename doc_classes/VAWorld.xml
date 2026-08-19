@@ -122,5 +122,14 @@
 		<member name="rendering_enabled" type="bool" setter="set_rendering_enabled" getter="get_rendering_enabled" default="false">
 			If [code]true[/code], opens a native debug window visualising raytracing (dev build only). Not applied if the project's renderer is gl_compatibility, since the debug window's own native OpenGL context is known to crash the engine in that configuration.
 		</member>
+		<member name="master_volume" type="float" setter="set_master_volume" getter="get_master_volume" default="1.0">
+			The overall output volume, as a linear multiplier. 1.0 is unchanged, 0.0 is silent. Forwarded to the process-wide [ALManager] singleton; if multiple [VAWorld]s exist, the last one to set this wins.
+		</member>
+		<member name="distance_model" type="int" setter="set_distance_model" getter="get_distance_model" default="53250">
+			How volume attenuates with distance from the listener. One of OpenAL's distance model constants (Inverse Distance Clamped, Inverse Distance, Linear Distance Clamped, Linear Distance, Exponent Distance Clamped, Exponent Distance, or None). Forwarded to the process-wide [ALManager] singleton; if multiple [VAWorld]s exist, the last one to set this wins.
+		</member>
+		<member name="reverb_only" type="bool" setter="set_reverb_only" getter="get_reverb_only" default="false">
+			If [code]true[/code], every sound's direct path is silenced so only reverb is audible. A diagnostic toggle for tuning reverb in isolation. Forwarded to the process-wide [ALManager] singleton; if multiple [VAWorld]s exist, the last one to set this wins.
+		</member>
 	</members>
 </class>

@@ -81,6 +81,22 @@ void VAWorld::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reference_frequency_lf", PROPERTY_HINT_RANGE, "0.0001,1000,1,or_greater"), "set_reference_frequency_lf", "get_reference_frequency_lf");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reference_frequency_hf", PROPERTY_HINT_RANGE, "0.0001,20000,1,or_greater"), "set_reference_frequency_hf", "get_reference_frequency_hf");
 
+    ClassDB::bind_method(D_METHOD("get_master_volume"), &VAWorld::get_master_volume);
+    ClassDB::bind_method(D_METHOD("set_master_volume", "value"), &VAWorld::set_master_volume);
+    ClassDB::bind_method(D_METHOD("get_distance_model"), &VAWorld::get_distance_model);
+    ClassDB::bind_method(D_METHOD("set_distance_model", "value"), &VAWorld::set_distance_model);
+    ClassDB::bind_method(D_METHOD("get_reverb_only"), &VAWorld::get_reverb_only);
+    ClassDB::bind_method(D_METHOD("set_reverb_only", "value"), &VAWorld::set_reverb_only);
+
+    // AL-only mixer settings - forwarded to the process-wide ALManager singleton (see
+    // set_master_volume/set_distance_model/set_reverb_only in va_world_properties.cpp). If
+    // multiple VAWorlds exist in a scene, last-write-wins on ALManager's actual state, matching
+    // how output_device/sample_rate/etc are already process-wide Project Settings.
+    ADD_GROUP("Mixer", "");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "master_volume"), "set_master_volume", "get_master_volume");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "distance_model"), "set_distance_model", "get_distance_model");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reverb_only"), "set_reverb_only", "get_reverb_only");
+
     ClassDB::bind_method(D_METHOD("get_emitters_outside_the_world_are_muffled"), &VAWorld::get_emitters_outside_the_world_are_muffled);
     ClassDB::bind_method(D_METHOD("set_emitters_outside_the_world_are_muffled", "value"), &VAWorld::set_emitters_outside_the_world_are_muffled);
 
@@ -161,6 +177,9 @@ VAWorld::VAWorld()
     set_maximum_grouped_eax_count(maximum_grouped_eax_count);
     set_meters_per_unit(meters_per_unit);
     set_speed_of_sound(speed_of_sound);
+    set_master_volume(master_volume);
+    set_distance_model(distance_model);
+    set_reverb_only(reverb_only);
     set_humidity(humidity);
     set_temperature(temperature);
     set_pressure(pressure);

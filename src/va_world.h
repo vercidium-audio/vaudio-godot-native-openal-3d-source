@@ -283,6 +283,24 @@ public:
     }
     void set_speed_of_sound(float value);
 
+    float get_master_volume() const
+    {
+        return master_volume;
+    }
+    void set_master_volume(float value);
+
+    int get_distance_model() const
+    {
+        return distance_model;
+    }
+    void set_distance_model(int value);
+
+    bool get_reverb_only() const
+    {
+        return reverb_only;
+    }
+    void set_reverb_only(bool value);
+
     float get_humidity() const
     {
         return humidity;
@@ -344,6 +362,9 @@ private:
     int maximum_grouped_eax_count = 3;
     float meters_per_unit = 1.0f;
     float speed_of_sound = 343.0f;
+    float master_volume = 1.0f;
+    int distance_model = AL_INVERSE_DISTANCE_CLAMPED;
+    bool reverb_only = false;
     float humidity = 0.1f;
     float temperature = 26.0f;
     float pressure = 101325.0f;

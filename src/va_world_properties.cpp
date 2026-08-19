@@ -1,3 +1,4 @@
+#include "openal/al_manager.h"
 #include "va_conversions.h"
 #include "va_engine_util.h"
 #include "va_world.h"
@@ -124,6 +125,32 @@ void VAWorld::set_speed_of_sound(float value)
 
     if (result != VA_SUCCESS)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world speed of sound (may be <= 0, NaN or Infinity)");
+}
+
+// AL-only settings (no vaudio SDK equivalent) - forwarded straight to ALManager. Guarded since
+// VAWorld can exist before/without ALManager having initialized successfully (e.g. in the editor).
+void VAWorld::set_master_volume(float value)
+{
+    master_volume = value;
+
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_master_volume(master_volume);
+}
+
+void VAWorld::set_distance_model(int value)
+{
+    distance_model = value;
+
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_distance_model(static_cast<ALenum>(distance_model));
+}
+
+void VAWorld::set_reverb_only(bool value)
+{
+    reverb_only = value;
+
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_reverb_only(reverb_only);
 }
 
 void VAWorld::set_humidity(float value)
