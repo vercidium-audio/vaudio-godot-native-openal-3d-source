@@ -11,11 +11,11 @@ void VAOpenALSettings::_bind_methods()
 {
     ClassDB::bind_method(D_METHOD("get_device_name"), &VAOpenALSettings::get_device_name);
     ClassDB::bind_method(D_METHOD("set_device_name", "value"), &VAOpenALSettings::set_device_name);
-    ADD_PROPERTY(PropertyInfo(Variant::STRING, "device_name"), "set_device_name", "get_device_name");
+    ADD_PROPERTY(PropertyInfo(Variant::STRING, "device_name", PROPERTY_HINT_ENUM, DEFAULT_DEVICE_LABEL), "set_device_name", "get_device_name");
 
     ClassDB::bind_method(D_METHOD("get_capture_device_name"), &VAOpenALSettings::get_capture_device_name);
     ClassDB::bind_method(D_METHOD("set_capture_device_name", "value"), &VAOpenALSettings::set_capture_device_name);
-    ADD_PROPERTY(PropertyInfo(Variant::STRING, "capture_device_name"), "set_capture_device_name", "get_capture_device_name");
+    ADD_PROPERTY(PropertyInfo(Variant::STRING, "capture_device_name", PROPERTY_HINT_ENUM, DEFAULT_DEVICE_LABEL), "set_capture_device_name", "get_capture_device_name");
 
     ClassDB::bind_method(D_METHOD("get_max_reverb_sends"), &VAOpenALSettings::get_max_reverb_sends);
     ClassDB::bind_method(D_METHOD("set_max_reverb_sends", "value"), &VAOpenALSettings::set_max_reverb_sends);
@@ -63,12 +63,23 @@ void VAOpenALSettings::_bind_methods()
 // Turns device_name/capture_device_name into an editor dropdown of the
 // driver's currently available playback/capture devices, without changing
 // how the value itself is stored (still a plain String, set via
-// set_device_name/set_capture_device_name like any other property) - a
-// suggestion hint rather than a strict enum, since the device list is only
-// known at runtime and can vary between machines/driver sessions: a strict
-// PROPERTY_HINT_ENUM would reject or blank out a saved device name that isn't
-// in the list currently being queried (e.g. project opened before drivers
-// finish enumerating, or the device is temporarily unplugged).
+// set_device_name/set_capture_device_name like any other property).
+//
+// A strict PROPERTY_HINT_ENUM (rather than PROPERTY_HINT_ENUM_SUGGESTION)
+// is used deliberately: for a Variant::STRING property, Godot's editor
+// (EditorPropertyTextEnum::update_property in editor/inspector/
+// editor_properties.cpp) unconditionally injects an extra blank "" entry
+// into the dropdown in ENUM_SUGGESTION's "loose mode", regardless of
+// hint_string content - there's no way to suppress that while keeping the
+// suggestion (non-strict) behavior. With a strict enum, if a saved device
+// name isn't in the current hint_string list (e.g. project opened before
+// drivers finish enumerating, or the device is temporarily unplugged),
+// Godot's OptionButton falls back to displaying that raw saved string as
+// its label with nothing selected, rather than blanking it out - so no data
+// loss, just no visual pre-selection until refresh_devices() (the
+// "Refresh Devices" Inspector button, VADeviceRefreshInspectorPlugin in
+// va_conversion_plugin.h) re-queries the driver and the name reappears in
+// the list.
 void VAOpenALSettings::_validate_property(PropertyInfo &property) const
 {
     bool is_playback = property.name == StringName("device_name");
@@ -87,7 +98,9 @@ void VAOpenALSettings::_validate_property(PropertyInfo &property) const
     if (devices.is_empty())
         return;
 
-    property.hint = PROPERTY_HINT_ENUM_SUGGESTION;
+    devices.insert(0, DEFAULT_DEVICE_LABEL);
+
+    property.hint = PROPERTY_HINT_ENUM;
     property.hint_string = String(",").join(devices);
 }
 
@@ -110,12 +123,12 @@ void VAOpenALSettings::_ready()
 
 String VAOpenALSettings::get_device_name() const
 {
-    return device_name;
+    return device_name.is_empty() ? DEFAULT_DEVICE_LABEL : device_name;
 }
 
 void VAOpenALSettings::set_device_name(const String &value)
 {
-    device_name = value;
+    device_name = value == DEFAULT_DEVICE_LABEL ? String() : value;
 
     ALManager *manager = ALManager::get_singleton();
 
@@ -127,14 +140,14 @@ void VAOpenALSettings::set_device_name(const String &value)
 
 String VAOpenALSettings::get_capture_device_name() const
 {
-    return capture_device_name;
+    return capture_device_name.is_empty() ? DEFAULT_DEVICE_LABEL : capture_device_name;
 }
 
 void VAOpenALSettings::set_capture_device_name(const String &value)
 {
     // Just stored - see capture_device_name's doc comment in
     // va_openal_settings.h for why nothing needs pushing to ALManager here.
-    capture_device_name = value;
+    capture_device_name = value == DEFAULT_DEVICE_LABEL ? String() : value;
 }
 
 int VAOpenALSettings::get_max_reverb_sends() const

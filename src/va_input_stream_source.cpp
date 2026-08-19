@@ -31,13 +31,15 @@ void VAInputStreamSource::_bind_methods()
 
     ClassDB::bind_method(D_METHOD("get_device_name"), &VAInputStreamSource::get_device_name);
     ClassDB::bind_method(D_METHOD("set_device_name", "value"), &VAInputStreamSource::set_device_name);
-    ADD_PROPERTY(PropertyInfo(Variant::STRING, "device_name"), "set_device_name", "get_device_name");
+    ADD_PROPERTY(PropertyInfo(Variant::STRING, "device_name", PROPERTY_HINT_ENUM, DEFAULT_DEVICE_LABEL), "set_device_name", "get_device_name");
 
     ClassDB::bind_method(D_METHOD("get_buffer_size_frames"), &VAInputStreamSource::get_buffer_size_frames);
     ClassDB::bind_method(D_METHOD("set_buffer_size_frames", "value"), &VAInputStreamSource::set_buffer_size_frames);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "buffer_size_frames", PROPERTY_HINT_RANGE, "1,65536,1,or_greater"), "set_buffer_size_frames", "get_buffer_size_frames");
 
     ClassDB::bind_method(D_METHOD("open_capture", "device_name", "format", "frequency", "buffer_size_frames"), &VAInputStreamSource::open_capture);
+
+    ClassDB::bind_method(D_METHOD("refresh_devices"), &VAInputStreamSource::refresh_devices);
     ClassDB::bind_method(D_METHOD("start_capture"), &VAInputStreamSource::start_capture);
     ClassDB::bind_method(D_METHOD("stop_capture"), &VAInputStreamSource::stop_capture);
     ClassDB::bind_method(D_METHOD("close_capture"), &VAInputStreamSource::close_capture);
@@ -45,8 +47,13 @@ void VAInputStreamSource::_bind_methods()
 }
 
 // Matches VAOpenALSettings::_validate_property's identical device_name
-// dropdown pattern - see that class's doc comment for why this is a
-// suggestion hint rather than a strict enum.
+// dropdown pattern - see that class's doc comment for why a strict
+// PROPERTY_HINT_ENUM is used (Godot's editor unconditionally injects a
+// blank entry into a Variant::STRING PROPERTY_HINT_ENUM_SUGGESTION dropdown,
+// with no way to suppress it) and why that's safe despite device_name being
+// runtime-dependent (an unrecognized saved value is shown as-is, not
+// blanked out - just not pre-selected until refresh_devices() re-queries
+// the driver).
 void VAInputStreamSource::_validate_property(PropertyInfo &p_property) const
 {
     if (p_property.name != StringName("device_name"))
@@ -62,8 +69,20 @@ void VAInputStreamSource::_validate_property(PropertyInfo &p_property) const
     if (devices.is_empty())
         return;
 
-    p_property.hint = PROPERTY_HINT_ENUM_SUGGESTION;
+    devices.insert(0, DEFAULT_DEVICE_LABEL);
+
+    p_property.hint = PROPERTY_HINT_ENUM;
     p_property.hint_string = String(",").join(devices);
+}
+
+void VAInputStreamSource::set_device_name(const String &value)
+{
+    device_name = value == DEFAULT_DEVICE_LABEL ? String() : value;
+}
+
+void VAInputStreamSource::refresh_devices()
+{
+    notify_property_list_changed();
 }
 
 // Matches ALSourceNode::_ready()'s autoplay pattern: only runs in a live

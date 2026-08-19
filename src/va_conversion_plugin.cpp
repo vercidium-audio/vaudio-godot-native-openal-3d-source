@@ -13,6 +13,7 @@
 #include "al_source_node.h"
 #include "va_emitter.h"
 #include "va_engine_util.h"
+#include "va_input_stream_source.h"
 #include "va_openal_settings.h"
 #include "va_source.h"
 #include "va_source_ambient.h"
@@ -271,26 +272,43 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
     EditorInterface::get_singleton()->mark_scene_as_unsaved();
 }
 
-void VAOpenALSettingsInspectorPlugin::_bind_methods()
+void VADeviceRefreshInspectorPlugin::_bind_methods()
 {
 }
 
-bool VAOpenALSettingsInspectorPlugin::_can_handle(Object *object) const
+bool VADeviceRefreshInspectorPlugin::_can_handle(Object *object) const
 {
-    return Object::cast_to<VAOpenALSettings>(object) != nullptr;
+    return Object::cast_to<VAOpenALSettings>(object) != nullptr || Object::cast_to<VAInputStreamSource>(object) != nullptr;
 }
 
-void VAOpenALSettingsInspectorPlugin::_parse_end(Object *object)
+bool VADeviceRefreshInspectorPlugin::_parse_property(Object *object, Variant::Type type, const String &name, PropertyHint hint_type,
+    const String &hint_string, BitField<PropertyUsageFlags> usage_flags, bool wide)
 {
-    VAOpenALSettings *settings = Object::cast_to<VAOpenALSettings>(object);
+    // add_custom_control() (unlike add_property_editor's add_to_end flag)
+    // inserts the control just before the current property's own row is
+    // drawn (see EditorInspector::update_tree's per-property parse_property
+    // loop in editor/inspector/editor_inspector.cpp), not after it - so to
+    // land the button visually below capture_device_name/device_name, this
+    // has to match on the NEXT property in each class's _bind_methods order
+    // (max_reverb_sends after capture_device_name for VAOpenALSettings,
+    // buffer_size_frames after device_name for VAInputStreamSource) rather
+    // than the device property itself. Both classes expose a
+    // refresh_devices() method with the same no-argument signature (see
+    // their own doc comments) - Callable(object, "refresh_devices") doesn't
+    // care which concrete type object is, so no per-class branch is needed
+    // here beyond picking the right "next property" name.
+    bool is_settings_target = Object::cast_to<VAOpenALSettings>(object) && name == StringName("max_reverb_sends");
+    bool is_input_stream_target = Object::cast_to<VAInputStreamSource>(object) && name == StringName("buffer_size_frames");
 
-    if (!settings)
-        return;
+    if (!is_settings_target && !is_input_stream_target)
+        return false;
 
     Button *refresh_button = memnew(Button);
-    refresh_button->set_text("Refresh Devices");
-    refresh_button->connect("pressed", Callable(settings, "refresh_devices"));
+    refresh_button->set_text("Refresh OpenAL Devices");
+    refresh_button->connect("pressed", Callable(object, "refresh_devices"));
     add_custom_control(refresh_button);
+
+    return false;
 }
 
 void VAConversionPlugin::_bind_methods()
@@ -302,8 +320,8 @@ void VAConversionPlugin::_enter_tree()
     context_menu_plugin.instantiate();
     add_context_menu_plugin(EditorContextMenuPlugin::CONTEXT_SLOT_SCENE_TREE, context_menu_plugin);
 
-    openal_settings_inspector_plugin.instantiate();
-    add_inspector_plugin(openal_settings_inspector_plugin);
+    device_refresh_inspector_plugin.instantiate();
+    add_inspector_plugin(device_refresh_inspector_plugin);
 
     debugger_plugin.instantiate();
     add_debugger_plugin(debugger_plugin);
@@ -321,8 +339,8 @@ void VAConversionPlugin::_exit_tree()
     remove_context_menu_plugin(context_menu_plugin);
     context_menu_plugin.unref();
 
-    remove_inspector_plugin(openal_settings_inspector_plugin);
-    openal_settings_inspector_plugin.unref();
+    remove_inspector_plugin(device_refresh_inspector_plugin);
+    device_refresh_inspector_plugin.unref();
 
     remove_inspector_plugin(material_inspector_plugin);
     material_inspector_plugin.unref();

@@ -6,6 +6,7 @@
 #include <godot_cpp/variant/string.hpp>
 
 #include "openal/al_functions.h"
+#include "va_device_name.h"
 
 using namespace godot;
 
@@ -32,16 +33,23 @@ class VAOpenALSettings : public Node
 
 private:
     // Empty means "use the driver's default playback device", matching
-    // ALManager's own default. Matched against ALManager::get_available_devices()
-    // by name (not index) - device lists can reorder between driver
-    // sessions, but names are stable.
+    // ALManager's own default - this is the internal/normalized form
+    // consumed directly by ALManager::reinitialize. get_device_name() maps
+    // "" to DEFAULT_DEVICE_LABEL and set_device_name() maps it back, so the
+    // Node's own property getter (what the inspector's enum dropdown reads
+    // for its "current value") never returns "" - otherwise that dropdown
+    // shows a second, unlabelled blank entry alongside the labelled one in
+    // hint_string. Matched against ALManager::get_available_devices() by
+    // name (not index) - device lists can reorder between driver sessions,
+    // but names are stable.
     String device_name;
 
-    // Empty means "let ALCaptureDevice::open() use the driver's default
-    // capture device". Unlike device_name above, this isn't pushed anywhere
-    // automatically by this class - VAOpenALSettings only owns the playback
-    // device/context (ALManager). Capture devices are opened independently
-    // by whatever script/node creates an ALCaptureDevice (see
+    // Same "" = default convention as device_name above, with the same
+    // get/set_capture_device_name DEFAULT_DEVICE_LABEL translation for the
+    // inspector's benefit. Unlike device_name above, this isn't pushed
+    // anywhere automatically by this class - VAOpenALSettings only owns the
+    // playback device/context (ALManager). Capture devices are opened
+    // independently by whatever script/node creates an ALCaptureDevice (see
     // openal/al_capture_device.h); this property exists purely as an
     // inspector-discoverable name to pass to ALCaptureDevice::open(),
     // matching godot_stream_plan.md section 6's "device selection... matched
@@ -132,10 +140,10 @@ public:
     PackedStringArray get_available_capture_devices() const;
 
     // Re-queries the driver's device list and re-validates device_name's
-    // PROPERTY_HINT_ENUM_SUGGESTION so a device plugged in after this node
-    // was selected in the editor shows up without reselecting the node or
-    // restarting the editor. Wired to the "Refresh Devices" button
-    // VAOpenALSettingsInspectorPlugin adds in the Inspector (va_conversion_plugin.cpp) -
+    // PROPERTY_HINT_ENUM so a device plugged in after this node was selected
+    // in the editor shows up without reselecting the node or restarting the
+    // editor. Wired to the "Refresh Devices" button
+    // VADeviceRefreshInspectorPlugin adds in the Inspector (va_conversion_plugin.cpp) -
     // Godot only rebuilds a cached property list on specific triggers
     // (selection, this call, scene reload), never by polling for hardware
     // changes on its own.

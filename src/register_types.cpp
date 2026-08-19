@@ -146,7 +146,7 @@ void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p
     {
         // Scene tree right-click "Convert to VASource"/"Convert to VASourceRelative" items - editor-only, so registered at the Editor level rather than alongside the Scene-level classes below.
         ClassDB::register_class<va_godot::ConversionContextMenuPlugin>();
-        ClassDB::register_class<va_godot::VAOpenALSettingsInspectorPlugin>();
+        ClassDB::register_class<va_godot::VADeviceRefreshInspectorPlugin>();
         ClassDB::register_class<va_godot::VAMaterialInspectorPlugin>();
         ClassDB::register_class<va_godot::VAWorldGizmoPlugin>();
         ClassDB::register_class<va_godot::VADebuggerPlugin>();

@@ -4,6 +4,7 @@
 #include <godot_cpp/variant/string.hpp>
 
 #include "openal/al_capture_device.h"
+#include "va_device_name.h"
 #include "va_stream_source.h"
 
 using namespace godot;
@@ -50,11 +51,16 @@ public:
 
     // Turns device_name into an editor dropdown of the driver's currently
     // available capture devices - matches VAOpenALSettings::device_name's
-    // identical PROPERTY_HINT_ENUM_SUGGESTION pattern (a suggestion, not a
-    // strict enum, since the device list is only known at runtime and a
-    // strict PROPERTY_HINT_ENUM would blank out a saved device name that
-    // isn't in the list currently being queried).
+    // identical PROPERTY_HINT_ENUM pattern.
     void _validate_property(PropertyInfo &p_property) const;
+
+    // Re-queries the driver's capture device list and re-validates
+    // device_name's PROPERTY_HINT_ENUM so a device plugged in after this
+    // node was selected shows up without reselecting the node - see
+    // VADeviceRefreshInspectorPlugin (va_conversion_plugin.h) for the
+    // Inspector button that calls this. Matches
+    // VAOpenALSettings::refresh_devices.
+    void refresh_devices();
 
     int get_format() const
     {
@@ -76,15 +82,18 @@ public:
         sample_rate = value;
     }
 
+    // device_name itself stores "" for "use the driver's default capture
+    // device" (what open_capture expects - see _ready()'s direct use of the
+    // field below), but the getter/setter exposed to the inspector translate
+    // that to/from DEFAULT_DEVICE_LABEL, since the Inspector's enum dropdown
+    // (_validate_property) shows the property's current value as one of its
+    // entries and an unlabelled "" would otherwise show as a blank entry.
     String get_device_name() const
     {
-        return device_name;
+        return device_name.is_empty() ? DEFAULT_DEVICE_LABEL : device_name;
     }
 
-    void set_device_name(const String &value)
-    {
-        device_name = value;
-    }
+    void set_device_name(const String &value);
 
     int get_buffer_size_frames() const
     {
