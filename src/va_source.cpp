@@ -16,12 +16,16 @@ void VASource::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_play_when_raytracing_completes", "value"), &VASource::set_play_when_raytracing_completes);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "play_when_raytracing_completes"), "set_play_when_raytracing_completes", "get_play_when_raytracing_completes");
 
+    ClassDB::bind_method(D_METHOD("get_raytrace_once"), &VASource::get_raytrace_once);
+    ClassDB::bind_method(D_METHOD("set_raytrace_once", "value"), &VASource::set_raytrace_once);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "raytrace_once"), "set_raytrace_once", "get_raytrace_once");
+
     // Read-only muffling stats
     ClassDB::bind_method(D_METHOD("get_muffling_gain_lf"), &VASource::get_muffling_gain_lf);
     ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VASource::get_muffling_gain_hf);
     ClassDB::bind_method(D_METHOD("is_raytraced"), &VASource::is_raytraced);
 
-    // Direct port of vaudio-godot-openal's VASourceProperties.cs groups
+    // Direct port of vaudio-godot-mono-openal-3d's VASourceProperties.cs groups
     // (Reverb/Muffling/Ambience/Visualisation/Advanced) - see va_source.h for
     // why this is a subset of VAEmitter's own property surface. Debug
     // Rendering colors are not ported, same rationale as VAEmitter.
@@ -95,20 +99,6 @@ void VASource::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_ambient_permeation_energy_cap", "value"), &VASource::set_ambient_permeation_energy_cap);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "ambient_permeation_energy_cap", PROPERTY_HINT_RANGE, "0.0,1.0,0.001,or_greater"), "set_ambient_permeation_energy_cap", "get_ambient_permeation_energy_cap");
 
-    ADD_GROUP("Visualisation", "");
-
-    ClassDB::bind_method(D_METHOD("get_visualisation_ray_count"), &VASource::get_visualisation_ray_count);
-    ClassDB::bind_method(D_METHOD("set_visualisation_ray_count", "value"), &VASource::set_visualisation_ray_count);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "visualisation_ray_count"), "set_visualisation_ray_count", "get_visualisation_ray_count");
-
-    ClassDB::bind_method(D_METHOD("get_visualisation_bounce_count"), &VASource::get_visualisation_bounce_count);
-    ClassDB::bind_method(D_METHOD("set_visualisation_bounce_count", "value"), &VASource::set_visualisation_bounce_count);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "visualisation_bounce_count"), "set_visualisation_bounce_count", "get_visualisation_bounce_count");
-
-    ClassDB::bind_method(D_METHOD("get_visualisation_update_frequency"), &VASource::get_visualisation_update_frequency);
-    ClassDB::bind_method(D_METHOD("set_visualisation_update_frequency", "value"), &VASource::set_visualisation_update_frequency);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "visualisation_update_frequency"), "set_visualisation_update_frequency", "get_visualisation_update_frequency");
-
     ADD_GROUP("Advanced", "");
 
     ClassDB::bind_method(D_METHOD("get_type"), &VASource::get_type);
@@ -149,6 +139,21 @@ bool VASource::get_play_when_raytracing_completes() const
 void VASource::set_play_when_raytracing_completes(bool value)
 {
     play_when_raytracing_completes = value;
+}
+
+bool VASource::get_raytrace_once() const
+{
+    return raytrace_once;
+}
+
+void VASource::set_raytrace_once(bool value)
+{
+    raytrace_once = value;
+
+    if (emitter)
+    {
+        emitter->set_raytrace_once(raytrace_once);
+    }
 }
 
 float VASource::get_muffling_gain_lf() const
@@ -254,6 +259,7 @@ void VASource::create_emitter()
     emitter->set_occlusion_bounce_count(0);
     emitter->set_permeation_ray_count(0);
     emitter->set_permeation_bounce_count(0);
+    emitter->set_raytrace_once(raytrace_once);
 
     apply_properties_to_emitter();
 }
@@ -278,10 +284,6 @@ void VASource::apply_properties_to_emitter()
     emitter->set_ambient_permeation_ray_count(ambient_permeation_ray_count);
     emitter->set_ambient_permeation_bounce_count(ambient_permeation_bounce_count);
     emitter->set_ambient_permeation_energy_cap(ambient_permeation_energy_cap);
-
-    emitter->set_visualisation_ray_count(visualisation_ray_count);
-    emitter->set_visualisation_bounce_count(visualisation_bounce_count);
-    emitter->set_visualisation_update_frequency(visualisation_update_frequency);
 
     emitter->set_type(type);
     emitter->set_refresh_ray_count(refresh_ray_count);
@@ -591,51 +593,6 @@ void VASource::set_ambient_permeation_energy_cap(float value)
     if (emitter)
     {
         emitter->set_ambient_permeation_energy_cap(ambient_permeation_energy_cap);
-    }
-}
-
-int VASource::get_visualisation_ray_count() const
-{
-    return visualisation_ray_count;
-}
-
-void VASource::set_visualisation_ray_count(int value)
-{
-    visualisation_ray_count = MAX(0, value);
-
-    if (emitter)
-    {
-        emitter->set_visualisation_ray_count(visualisation_ray_count);
-    }
-}
-
-int VASource::get_visualisation_bounce_count() const
-{
-    return visualisation_bounce_count;
-}
-
-void VASource::set_visualisation_bounce_count(int value)
-{
-    visualisation_bounce_count = MAX(0, value);
-
-    if (emitter)
-    {
-        emitter->set_visualisation_bounce_count(visualisation_bounce_count);
-    }
-}
-
-int VASource::get_visualisation_update_frequency() const
-{
-    return visualisation_update_frequency;
-}
-
-void VASource::set_visualisation_update_frequency(int value)
-{
-    visualisation_update_frequency = MAX(0, value);
-
-    if (emitter)
-    {
-        emitter->set_visualisation_update_frequency(visualisation_update_frequency);
     }
 }
 

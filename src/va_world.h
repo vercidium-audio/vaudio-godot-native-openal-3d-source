@@ -95,7 +95,7 @@ private:
     // Get the type of a custom or default material
     VAMaterialType get_material(Node *node);
 
-    void add_primitive(Node *node, VAMaterialType material, bool supports_permeation, bool recursive);
+    void add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, bool recursive);
     void remove_primitive(Node *node, bool recursive);
 
     VAPrimitiveRef *attach_watcher(Node3D *node, void *primitive, VAPrimitiveKind kind, std::function<void()> update);
@@ -104,7 +104,7 @@ private:
     void create_primitive(CSGCylinder3D *csg_cylinder, VAMaterialType material);
     void create_primitive(CSGSphere3D *csg_sphere, VAMaterialType material);
     void create_primitive(CollisionShape3D *collision_shape, VAMaterialType material);
-    void create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material, bool supports_permeation);
+    void create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material, bool use_flat_transmission);
 
     void update_collision_shape_primitive(CollisionShape3D *collision_shape, VAPrimitiveRef *ref);
 
@@ -128,6 +128,15 @@ public:
     // Returns false if another VACustomMaterial already claimed the same ID
     bool register_custom_material(va_godot::VACustomMaterial *material);
 
+    // Re-registers a single node's raytracing primitive after its "Vercidium Audio" material or
+    // permeation metadata changed in the Inspector while the game is running - removes the old
+    // primitive if one exists, then re-adds it using the node's current metadata. Only ever called
+    // on the running game's own VAWorld instance, via the debugger-message capture in
+    // register_types.cpp (see VADebuggerPlugin/VAMaterialInspectorPlugin::sync_running_game) - a
+    // custom EditorInspectorPlugin control has no way to reach this VAWorld directly, since it only
+    // ever runs against the editor's own local copy of the scene, whose world is always null.
+    void sync_primitive(Node *node);
+
     // The 23 built-in material names (e.g. "Concrete", "Brick"), for editor tooling such as the
     // "Vercidium Audio" inspector plugin's material dropdown - see VAMaterialInspectorPlugin.
     static PackedStringArray get_builtin_material_names();
@@ -137,10 +146,10 @@ public:
     // out of sync with MaterialMetaKey() in va_world_primitives.cpp.
     static String get_material_meta_key();
 
-    // The node metadata key that stores a node's "Supports Permeation" override (see
-    // vaMeshPrimitiveSetSupports3DPermeation) - shared with the "Vercidium Audio" editor plugin,
-    // so it never drifts out of sync with SupportsPermeationMetaKey() in va_world_primitives.cpp.
-    static String get_supports_permeation_meta_key();
+    // The node metadata key that stores a node's "Use Flat Transmission" override (see
+    // vaMeshPrimitiveSetUseFlatTransmission) - shared with the "Vercidium Audio" editor plugin,
+    // so it never drifts out of sync with UseFlatTransmissionMetaKey() in va_world_primitives.cpp.
+    static String get_use_flat_transmission_meta_key();
 
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
 

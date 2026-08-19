@@ -16,7 +16,7 @@
 using namespace godot;
 
 // Owns the OpenAL Soft device/context pair for the whole plugin - the native
-// C++ equivalent of vaudio-godot-openal's ALManager (manager/ALManagerDevice.cs),
+// C++ equivalent of vaudio-godot-mono-openal-3d's ALManager (manager/ALManagerDevice.cs),
 // scoped down for now to just device+context creation/teardown (no capture
 // device, no per-listener property plumbing yet - those are separate,
 // not-yet-done checklist items in native_godot_plan.md).
@@ -439,7 +439,7 @@ public:
 
     // Pushes the AL listener's position/orientation - called once per frame
     // from VAWorld::_process against the scene's listener VAEmitter, matching
-    // vaudio-godot-openal's VAWorldGodot.cs._Process
+    // vaudio-godot-mono-openal-3d's VAWorldGodot.cs._Process
     // (ALManager.instance.ListenerPosition/Pitch/Yaw = listener.GlobalPosition/
     // Pitch/Yaw). No coordinate remap needed (architectural decision #7 in
     // native_godot_plan.md - same as ALSource::set_position). forward/up are

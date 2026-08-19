@@ -21,14 +21,14 @@ if env["target"] in ["editor", "template_debug"]:
 # Windows-only for v1 (see native_godot_plan.md architectural decision #8).
 if env["platform"] != "windows":
     raise SCons.Errors.UserError(
-        "vaudio-godot-native-openal only supports the 'windows' platform for v1."
+        "vaudio-godot-native-openal-3d only supports the 'windows' platform for v1."
     )
 
 env.Append(LIBPATH=["thirdparty/vaudio/lib/win64/"])
 env.Append(LIBS=["vaudionative"])
 
 library = env.SharedLibrary(
-    "addons/vaudio-godot-native-openal/bin/libvaudiogodotnativeopenal{}{}".format(
+    "addons/vaudio-godot-native-openal-3d/bin/libvaudiogodotnativeopenal3d{}{}".format(
         env["suffix"], env["SHLIBSUFFIX"]
     ),
     source=sources,
@@ -36,7 +36,7 @@ library = env.SharedLibrary(
 
 # Keep the DLL alongside the import lib so the GDExtension can find it at runtime.
 dll_copy = env.Command(
-    "addons/vaudio-godot-native-openal/bin/vaudionative.dll",
+    "addons/vaudio-godot-native-openal-3d/bin/vaudionative.dll",
     "thirdparty/vaudio/lib/win64/vaudionative.dll",
     Copy("$TARGET", "$SOURCE"),
 )
@@ -46,7 +46,7 @@ env.Depends(library, dll_copy)
 # against an import lib - see src/openal/al_manager.cpp. It still needs to be
 # alongside the built extension so that LoadLibrary(L"soft_oal.dll") resolves.
 openal_dll_copy = env.Command(
-    "addons/vaudio-godot-native-openal/bin/soft_oal.dll",
+    "addons/vaudio-godot-native-openal-3d/bin/soft_oal.dll",
     "thirdparty/openal/lib/win64/soft_oal.dll",
     Copy("$TARGET", "$SOURCE"),
 )

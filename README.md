@@ -3,12 +3,11 @@
 Raytraced audio GDExtension with realistic muffling, reverb, ambience and visualisation for non-Mono Godot 4, using OpenAL Soft as the audio backend.
 
 > [!WARNING]
-> This repository contains the source code for the plugin. For releases, see [vaudio-godot-native-release](https://github.com/vercidium-audio/vaudio-godot-native-release).
+> This repository contains the source code for the plugin. For releases, see [vaudio-godot-native-openal-3d-release](https://github.com/vercidium-audio/vaudio-godot-native-openal-3d-release).
 
-> [!WARNING]
-> This plugin is experimental and requires testing and feedback
+For Mono Godot (C#), please use [this plugin](https://github.com/vercidium-audio/vaudio-godot-mono-openal-3d/releases).
 
-This repository requires Vercidium Audio v1.6.3 and OpenAL Soft to run:
+This repository requires Vercidium Audio v1.7.0 and OpenAL Soft to run:
 - Download the Vercidium Audio SDK from [vercidium.com](https://vercidium.com)
 - Download the OpenAL Soft DLL from [github.com/kcat/openal-soft](https://github.com/kcat/openal-soft/releases/tag/1.25.2)
 
@@ -23,12 +22,12 @@ This repository requires Vercidium Audio v1.6.3 and OpenAL Soft to run:
 - Dynamic scene updates - automatically handles moving objects
 
 ## References
-- [Source repo](https://github.com/vercidium-audio/vaudio-godot-native-source)
+- [Release repo](https://github.com/vercidium-audio/vaudio-godot-native-openal-3d-release)
 - [Vercidium Audio documentation](https://vercidium.com/docs)
 
 ## Building
 
-Run `build.bat` to build the plugin. To automatically copy the plugin to your game, add your game's path to `.env`, e.g. `VAUDIO_RELEASE_DIR=your-godot-game\addons\vaudio-godot-native-release`
+Run `build.bat` to build the plugin. To automatically copy the plugin to your game, add your game's path to `.env`, e.g. `VAUDIO_RELEASE_DIR=your-godot-game\addons\vaudio-godot-native-openal-3d-release`
 
 ## Licencing
 

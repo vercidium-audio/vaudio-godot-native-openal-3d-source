@@ -21,6 +21,10 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_is_main_listener", "value"), &VAEmitter::set_is_main_listener);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_main_listener"), "set_is_main_listener", "get_is_main_listener");
 
+    ClassDB::bind_method(D_METHOD("get_raytrace_once"), &VAEmitter::get_raytrace_once);
+    ClassDB::bind_method(D_METHOD("set_raytrace_once", "value"), &VAEmitter::set_raytrace_once);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "raytrace_once"), "set_raytrace_once", "get_raytrace_once");
+
     // Read-only SDK forwards (not ADD_PROPERTY'd - called directly from
     // GDScript like methods, e.g. emitter.get_va_position()).
     ClassDB::bind_method(D_METHOD("get_va_position"), &VAEmitter::get_va_position);
@@ -34,7 +38,7 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_lf"), &VAEmitter::get_ambient_filter_gain_lf);
     ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_hf"), &VAEmitter::get_ambient_filter_gain_hf);
 
-    // Direct port of vaudio-godot-openal's VAEmitterProperties.cs groups
+    // Direct port of vaudio-godot-mono-openal-3d's VAEmitterProperties.cs groups
     // (Reverb/Muffling/Ambience/Visualisation/Advanced). Debug Rendering
     // colors are not ported - no backing SDK API in this C SDK version (see
     // va_emitter.h).
@@ -72,6 +76,10 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_has_relative_reverb", "value"), &VAEmitter::set_has_relative_reverb);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "has_relative_reverb"), "set_has_relative_reverb", "get_has_relative_reverb");
 
+    ClassDB::bind_method(D_METHOD("get_use_listener_reverb"), &VAEmitter::get_use_listener_reverb);
+    ClassDB::bind_method(D_METHOD("set_use_listener_reverb", "value"), &VAEmitter::set_use_listener_reverb);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_listener_reverb"), "set_use_listener_reverb", "get_use_listener_reverb");
+
     ClassDB::bind_method(D_METHOD("get_relative_reverb_inner_threshold"), &VAEmitter::get_relative_reverb_inner_threshold);
     ClassDB::bind_method(D_METHOD("set_relative_reverb_inner_threshold", "value"), &VAEmitter::set_relative_reverb_inner_threshold);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "relative_reverb_inner_threshold", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_relative_reverb_inner_threshold", "get_relative_reverb_inner_threshold");
@@ -79,10 +87,6 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_relative_reverb_outer_threshold"), &VAEmitter::get_relative_reverb_outer_threshold);
     ClassDB::bind_method(D_METHOD("set_relative_reverb_outer_threshold", "value"), &VAEmitter::set_relative_reverb_outer_threshold);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "relative_reverb_outer_threshold", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_relative_reverb_outer_threshold", "get_relative_reverb_outer_threshold");
-
-    ClassDB::bind_method(D_METHOD("get_use_listener_reverb"), &VAEmitter::get_use_listener_reverb);
-    ClassDB::bind_method(D_METHOD("set_use_listener_reverb", "value"), &VAEmitter::set_use_listener_reverb);
-    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_listener_reverb"), "set_use_listener_reverb", "get_use_listener_reverb");
 
     ADD_GROUP("Muffling", "");
 
@@ -135,20 +139,6 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_ambient_permeation_energy_cap"), &VAEmitter::get_ambient_permeation_energy_cap);
     ClassDB::bind_method(D_METHOD("set_ambient_permeation_energy_cap", "value"), &VAEmitter::set_ambient_permeation_energy_cap);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "ambient_permeation_energy_cap", PROPERTY_HINT_RANGE, "0.0,1.0,0.001,or_greater"), "set_ambient_permeation_energy_cap", "get_ambient_permeation_energy_cap");
-
-    ADD_GROUP("Visualisation", "");
-
-    ClassDB::bind_method(D_METHOD("get_visualisation_ray_count"), &VAEmitter::get_visualisation_ray_count);
-    ClassDB::bind_method(D_METHOD("set_visualisation_ray_count", "value"), &VAEmitter::set_visualisation_ray_count);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "visualisation_ray_count"), "set_visualisation_ray_count", "get_visualisation_ray_count");
-
-    ClassDB::bind_method(D_METHOD("get_visualisation_bounce_count"), &VAEmitter::get_visualisation_bounce_count);
-    ClassDB::bind_method(D_METHOD("set_visualisation_bounce_count", "value"), &VAEmitter::set_visualisation_bounce_count);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "visualisation_bounce_count"), "set_visualisation_bounce_count", "get_visualisation_bounce_count");
-
-    ClassDB::bind_method(D_METHOD("get_visualisation_update_frequency"), &VAEmitter::get_visualisation_update_frequency);
-    ClassDB::bind_method(D_METHOD("set_visualisation_update_frequency", "value"), &VAEmitter::set_visualisation_update_frequency);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "visualisation_update_frequency"), "set_visualisation_update_frequency", "get_visualisation_update_frequency");
 
     ADD_GROUP("Advanced", "");
 
@@ -218,6 +208,16 @@ bool VAEmitter::get_is_main_listener() const
 void VAEmitter::set_is_main_listener(bool value)
 {
     is_main_listener = value;
+}
+
+bool VAEmitter::get_raytrace_once() const
+{
+    return raytrace_once;
+}
+
+void VAEmitter::set_raytrace_once(bool value)
+{
+    raytrace_once = value;
 }
 
 // Hides is_main_listener from the inspector - VAListener is the intended way
@@ -365,10 +365,6 @@ void VAEmitter::apply_properties_to_handle()
     vaEmitterSetAmbientPermeationBounceCount(emitter, ambient_permeation_bounce_count);
     vaEmitterSetAmbientPermeationEnergyCap(emitter, ambient_permeation_energy_cap);
 
-    vaEmitterSetVisualisationRayCount(emitter, visualisation_ray_count);
-    vaEmitterSetVisualisationBounceCount(emitter, visualisation_bounce_count);
-    vaEmitterSetVisualisationUpdateFrequency(emitter, visualisation_update_frequency);
-
     vaEmitterSetType(emitter, type);
     vaEmitterSetRefreshRayCount(emitter, refresh_ray_count);
     vaEmitterSetRefreshDistanceThreshold(emitter, refresh_distance_threshold);
@@ -459,7 +455,6 @@ Dictionary VAEmitter::get_eax_debug_info() const
     info["lf_reference"] = eax->lfReference;
     info["room_rolloff_factor"] = eax->roomRolloffFactor;
     info["decay_hf_limit"] = (bool)eax->decayHFLimit;
-    info["is_temp_background"] = (bool)eax->isTempBackground;
 
     return info;
 }
@@ -571,6 +566,13 @@ void VAEmitter::on_raytraced_by_another_emitter(::VAEmitter *other)
     }
 
     apply_raytracing_results();
+
+    // Matches VAEmitter.cs's OnRaytracedByAnotherEmitter: once this emitter
+    // has been raytraced once, cast rays no more - remove it from the world.
+    if (raytrace_once)
+    {
+        remove_emitter();
+    }
 }
 
 void VAEmitter::on_emitter_removed()
@@ -953,51 +955,6 @@ void VAEmitter::set_ambient_permeation_energy_cap(float value)
     if (emitter)
     {
         vaEmitterSetAmbientPermeationEnergyCap(emitter, ambient_permeation_energy_cap);
-    }
-}
-
-int VAEmitter::get_visualisation_ray_count() const
-{
-    return visualisation_ray_count;
-}
-
-void VAEmitter::set_visualisation_ray_count(int value)
-{
-    visualisation_ray_count = MAX(0, value);
-
-    if (emitter)
-    {
-        vaEmitterSetVisualisationRayCount(emitter, visualisation_ray_count);
-    }
-}
-
-int VAEmitter::get_visualisation_bounce_count() const
-{
-    return visualisation_bounce_count;
-}
-
-void VAEmitter::set_visualisation_bounce_count(int value)
-{
-    visualisation_bounce_count = MAX(0, value);
-
-    if (emitter)
-    {
-        vaEmitterSetVisualisationBounceCount(emitter, visualisation_bounce_count);
-    }
-}
-
-int VAEmitter::get_visualisation_update_frequency() const
-{
-    return visualisation_update_frequency;
-}
-
-void VAEmitter::set_visualisation_update_frequency(int value)
-{
-    visualisation_update_frequency = MAX(0, value);
-
-    if (emitter)
-    {
-        vaEmitterSetVisualisationUpdateFrequency(emitter, visualisation_update_frequency);
     }
 }
 

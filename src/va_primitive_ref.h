@@ -28,7 +28,7 @@ enum class VAPrimitiveKind
 
 // Stashed as Node metadata (see VAWorld::PRIMITIVE_META_KEY) so a primitive can
 // be removed/updated later when its owning node moves or leaves the scene tree.
-// Mirrors vaudio-godot-openal's VAPrimitiveRef (misc/VAPrimitiveRef.cs).
+// Mirrors vaudio-godot-mono-openal-3d's VAPrimitiveRef (misc/VAPrimitiveRef.cs).
 class VAPrimitiveRef : public RefCounted
 {
     GDCLASS(VAPrimitiveRef, RefCounted);

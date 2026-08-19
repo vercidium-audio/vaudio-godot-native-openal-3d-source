@@ -21,7 +21,7 @@ namespace va_godot
 class VAWorld;
 class VAVisualisation;
 
-// Port of vaudio-godot-openal's VAEmitter.cs, scoped to structural/lifecycle
+// Port of vaudio-godot-mono-openal-3d's VAEmitter.cs, scoped to structural/lifecycle
 // behaviour (native_godot_plan.md "Implement VASource's per-frame result
 // application"): creation/destruction, listener/target registration, and
 // per-frame LPF muffling + reverb-slot resolution. The exported tuning knobs
@@ -48,7 +48,7 @@ private:
 
     bool is_main_listener = false;
 
-    // Exported tuning-knob surface, direct port of vaudio-godot-openal's
+    // Exported tuning-knob surface, direct port of vaudio-godot-mono-openal-3d's
     // VAEmitterProperties.cs. Each setter below mirrors the C#'s
     // "store locally, push to the SDK handle if it already exists" pattern -
     // values set before create_emitter() runs (e.g. from a .tscn) are applied
@@ -79,15 +79,15 @@ private:
     int ambient_permeation_bounce_count = 0;
     float ambient_permeation_energy_cap = 0.15f;
 
-    int visualisation_ray_count = 0;
-    int visualisation_bounce_count = 0;
-    int visualisation_update_frequency = 500;
-
     int type = 0;
     int refresh_ray_count = 16;
     float refresh_distance_threshold = 1.0f;
     int scattering_seed = 0;
     bool clamp_position = true;
+
+    // Top-level property, matches VAEmitter.cs's RaytraceOnce - see
+    // on_raytraced_by_another_emitter for the removal behaviour this drives.
+    bool raytrace_once = false;
 
     // Debug rendering colors (vaEmitterSet/Get*Color) - editor-visible only,
     // no effect on raytracing. Defaults match emitter.c's vaEmitterCreate
@@ -182,6 +182,9 @@ public:
 
     bool get_is_main_listener() const;
     void set_is_main_listener(bool value);
+
+    bool get_raytrace_once() const;
+    void set_raytrace_once(bool value);
 
     ::VAEmitter *get_handle() const
     {

@@ -2,7 +2,7 @@
 .scons_cache/
 *.os
 *.obj
-addons/vaudio-godot-native-openal/bin/
+addons/vaudio-godot-native-openal-3d/bin/
 devproject/.godot/
 devproject/addons/
 src/gen/

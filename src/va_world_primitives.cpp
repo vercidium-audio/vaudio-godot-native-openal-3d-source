@@ -16,7 +16,7 @@
 #include "va_custom_material.h"
 #include "va_engine_util.h"
 
-// Port of vaudio-godot-openal's VAWorldPrimitives.cs. CSG box/cylinder/sphere,
+// Port of vaudio-godot-mono-openal-3d's VAWorldPrimitives.cs. CSG box/cylinder/sphere,
 // CollisionShape3D box/sphere/capsule/cylinder/world-boundary shapes, and
 // MeshInstance3D (via ConvertMeshToVAudio in va_conversions.h) are covered.
 // CsgPolygon3D/CsgMesh3D and the ConvexPolygon/Concave/HeightMap
@@ -38,9 +38,9 @@ static const StringName &MaterialMetaKey()
     return key;
 }
 
-static const StringName &SupportsPermeationMetaKey()
+static const StringName &UseFlatTransmissionMetaKey()
 {
-    static StringName key = "vercidium_audio_supports_permeation";
+    static StringName key = "vercidium_audio_use_flat_transmission";
     return key;
 }
 
@@ -72,9 +72,9 @@ String VAWorld::get_material_meta_key()
     return MaterialMetaKey();
 }
 
-String VAWorld::get_supports_permeation_meta_key()
+String VAWorld::get_use_flat_transmission_meta_key()
 {
-    return SupportsPermeationMetaKey();
+    return UseFlatTransmissionMetaKey();
 }
 
 VAMaterialType VAWorld::get_material(Node *node)
@@ -709,7 +709,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
     collision_shape->set_meta(PrimitiveMetaKey(), ref);
 }
 
-void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material, bool supports_permeation)
+void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType material, bool use_flat_transmission)
 {
     if (mesh_instance->has_meta(PrimitiveMetaKey()))
     {
@@ -742,11 +742,11 @@ void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType mat
         return;
     }
 
-    VAResult permeation_result = vaMeshPrimitiveSetSupports3DPermeation(prim, supports_permeation);
+    VAResult permeation_result = vaMeshPrimitiveSetUseFlatTransmission(prim, use_flat_transmission);
     if (permeation_result != VA_SUCCESS && permeation_result != VA_UNCHANGED)
     {
         VA_ERROR(
-            "VAWorld::create_primitive(MeshInstance3D) failed to set 3D permeation support for '",
+            "VAWorld::create_primitive(MeshInstance3D) failed to set flat transmission for '",
             mesh_instance->get_name(), "' (VAResult=", VAResultToString(permeation_result), ")");
     }
 
@@ -949,7 +949,7 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
     }
 }
 
-void VAWorld::add_primitive(Node *node, VAMaterialType material, bool supports_permeation, bool recursive)
+void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, bool recursive)
 {
     // Use this specific material rather than the parent material.
     if (node->has_meta(MaterialMetaKey()))
@@ -957,10 +957,10 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool supports_p
         material = get_material(node);
     }
 
-    // Use this specific permeation override rather than the parent's.
-    if (node->has_meta(SupportsPermeationMetaKey()))
+    // Use this specific transmission override rather than the parent's.
+    if (node->has_meta(UseFlatTransmissionMetaKey()))
     {
-        supports_permeation = node->get_meta(SupportsPermeationMetaKey());
+        use_flat_transmission = node->get_meta(UseFlatTransmissionMetaKey());
     }
 
     // Ignore nodes without materials.
@@ -975,7 +975,7 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool supports_p
         else if (CollisionShape3D *collision_shape = Object::cast_to<CollisionShape3D>(node))
             create_primitive(collision_shape, material);
         else if (MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(node))
-            create_primitive(mesh_instance, material, supports_permeation);
+            create_primitive(mesh_instance, material, use_flat_transmission);
     }
 
     if (recursive)
@@ -983,9 +983,32 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool supports_p
         TypedArray<Node> children = node->get_children();
         for (int i = 0; i < children.size(); i++)
         {
-            add_primitive(Object::cast_to<Node>(children[i]), material, supports_permeation, true);
+            add_primitive(Object::cast_to<Node>(children[i]), material, use_flat_transmission, true);
         }
     }
+}
+
+void VAWorld::sync_primitive(Node *node)
+{
+    // Guards against being called on a VAWorld whose world hasn't been created yet (e.g. init_scene
+    // hasn't run this frame yet) - should always be non-null in practice, since this is only called
+    // via the debugger-message capture in register_types.cpp, which only exists in a running game.
+    if (!world)
+        return;
+
+    // Recursive, matching init_scene's own top-level add_primitive calls - the edited node itself
+    // often has no geometry of its own (e.g. a plain Node3D grouping node like "Tunnel" in the demo
+    // project), with the material/transmission override only taking effect on its descendants (see
+    // add_primitive's "Use this specific material/transmission override" comments below). Unlike
+    // on_node_added/on_node_removed (non-recursive - the node_added/node_removed signals they
+    // handle already fire once per node), this is a single one-shot call for the whole edited
+    // subtree, so it has to walk it itself.
+    remove_primitive(node, true);
+
+    // add_primitive re-reads each node's current vercidium_audio_material/
+    // vercidium_audio_use_flat_transmission metadata itself (see its "Use this specific..." comments
+    // below) - VAMaterialAir/false here are just the fallback for a node with no metadata at all.
+    add_primitive(node, VAMaterialAir, false, true);
 }
 
 void VAWorld::remove_primitive(Node *node, bool recursive)
@@ -1192,7 +1215,7 @@ void VAWorld::init_scene()
     TypedArray<Node> children = root->get_children();
     for (int i = 0; i < children.size(); i++)
     {
-        add_primitive(Object::cast_to<Node>(children[i]), VAMaterialAir, true, true);
+        add_primitive(Object::cast_to<Node>(children[i]), VAMaterialAir, false, true);
     }
 
     get_tree()->connect("node_added", callable_mp(this, &VAWorld::on_node_added));
@@ -1215,7 +1238,7 @@ void VAWorld::on_node_added(Node *node)
         node->remove_meta(PrimitiveMetaKey());
     }
 
-    add_primitive(node, VAMaterialAir, true, false);
+    add_primitive(node, VAMaterialAir, false, false);
 }
 
 // This fires for the new parent node AND each of its child nodes separately -

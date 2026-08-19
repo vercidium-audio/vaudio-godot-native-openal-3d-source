@@ -36,8 +36,8 @@ namespace
         float scattering;
         float transmission_lf;
         float transmission_hf;
-        float plane_transmission_lf;
-        float plane_transmission_hf;
+        float flat_transmission_lf;
+        float flat_transmission_hf;
         Color color;
     };
 
@@ -58,8 +58,8 @@ namespace
                 defaults[i].scattering = vaWorldGetMaterialScattering(world, i);
                 defaults[i].transmission_lf = vaWorldGetMaterialTransmissionLF(world, i);
                 defaults[i].transmission_hf = vaWorldGetMaterialTransmissionHF(world, i);
-                defaults[i].plane_transmission_lf = vaWorldGetMaterialPlaneTransmissionLF(world, i);
-                defaults[i].plane_transmission_hf = vaWorldGetMaterialPlaneTransmissionHF(world, i);
+                defaults[i].flat_transmission_lf = vaWorldGetMaterialFlatTransmissionLF(world, i);
+                defaults[i].flat_transmission_hf = vaWorldGetMaterialFlatTransmissionHF(world, i);
                 defaults[i].color = FromVAudio(vaWorldGetMaterialColor(world, i));
             }
 
@@ -111,13 +111,13 @@ void VADefaultMaterial::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_transmission_hf", "value"), &VADefaultMaterial::set_transmission_hf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "transmission_hf", PROPERTY_HINT_RANGE, "0.0001,10.0,0.001,or_greater"), "set_transmission_hf", "get_transmission_hf");
 
-    ClassDB::bind_method(D_METHOD("get_plane_transmission_lf"), &VADefaultMaterial::get_plane_transmission_lf);
-    ClassDB::bind_method(D_METHOD("set_plane_transmission_lf", "value"), &VADefaultMaterial::set_plane_transmission_lf);
-    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "plane_transmission_lf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_plane_transmission_lf", "get_plane_transmission_lf");
+    ClassDB::bind_method(D_METHOD("get_flat_transmission_lf"), &VADefaultMaterial::get_flat_transmission_lf);
+    ClassDB::bind_method(D_METHOD("set_flat_transmission_lf", "value"), &VADefaultMaterial::set_flat_transmission_lf);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "flat_transmission_lf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_flat_transmission_lf", "get_flat_transmission_lf");
 
-    ClassDB::bind_method(D_METHOD("get_plane_transmission_hf"), &VADefaultMaterial::get_plane_transmission_hf);
-    ClassDB::bind_method(D_METHOD("set_plane_transmission_hf", "value"), &VADefaultMaterial::set_plane_transmission_hf);
-    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "plane_transmission_hf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_plane_transmission_hf", "get_plane_transmission_hf");
+    ClassDB::bind_method(D_METHOD("get_flat_transmission_hf"), &VADefaultMaterial::get_flat_transmission_hf);
+    ClassDB::bind_method(D_METHOD("set_flat_transmission_hf", "value"), &VADefaultMaterial::set_flat_transmission_hf);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "flat_transmission_hf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_flat_transmission_hf", "get_flat_transmission_hf");
 
     ClassDB::bind_method(D_METHOD("get_color"), &VADefaultMaterial::get_color);
     ClassDB::bind_method(D_METHOD("set_color", "value"), &VADefaultMaterial::set_color);
@@ -153,8 +153,8 @@ void VADefaultMaterial::_enter_tree()
     log_if_material_setter_failed(vaWorldSetMaterialScattering(world, material_type, scattering), "scattering", material_type);
     log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(world, material_type, transmission_lf), "transmission_lf", material_type);
     log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf), "transmission_hf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(world, material_type, plane_transmission_lf), "plane_transmission_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(world, material_type, plane_transmission_hf), "plane_transmission_hf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(world, material_type, flat_transmission_lf), "flat_transmission_lf", material_type);
+    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(world, material_type, flat_transmission_hf), "flat_transmission_hf", material_type);
     log_if_material_setter_failed(vaWorldSetMaterialColor(world, material_type, ToVAudio(color)), "color", material_type);
 
     va_world_handle = world;
@@ -182,8 +182,8 @@ void VADefaultMaterial::reset_properties_to_material_defaults()
     scattering = defaults.scattering;
     transmission_lf = defaults.transmission_lf;
     transmission_hf = defaults.transmission_hf;
-    plane_transmission_lf = defaults.plane_transmission_lf;
-    plane_transmission_hf = defaults.plane_transmission_hf;
+    flat_transmission_lf = defaults.flat_transmission_lf;
+    flat_transmission_hf = defaults.flat_transmission_hf;
     color = defaults.color;
 
     if (registered)
@@ -193,8 +193,8 @@ void VADefaultMaterial::reset_properties_to_material_defaults()
         log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, scattering), "scattering", material_type);
         log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, transmission_lf), "transmission_lf", material_type);
         log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, transmission_hf), "transmission_hf", material_type);
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, plane_transmission_lf), "plane_transmission_lf", material_type);
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, plane_transmission_hf), "plane_transmission_hf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(va_world_handle, material_type, flat_transmission_lf), "flat_transmission_lf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(va_world_handle, material_type, flat_transmission_hf), "flat_transmission_hf", material_type);
         log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(color)), "color", material_type);
     }
 
@@ -276,33 +276,33 @@ void VADefaultMaterial::set_transmission_hf(float value)
     }
 }
 
-float VADefaultMaterial::get_plane_transmission_lf() const
+float VADefaultMaterial::get_flat_transmission_lf() const
 {
-    return plane_transmission_lf;
+    return flat_transmission_lf;
 }
 
-void VADefaultMaterial::set_plane_transmission_lf(float value)
+void VADefaultMaterial::set_flat_transmission_lf(float value)
 {
-    plane_transmission_lf = value;
+    flat_transmission_lf = value;
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, value), "plane_transmission_lf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(va_world_handle, material_type, value), "flat_transmission_lf", material_type);
     }
 }
 
-float VADefaultMaterial::get_plane_transmission_hf() const
+float VADefaultMaterial::get_flat_transmission_hf() const
 {
-    return plane_transmission_hf;
+    return flat_transmission_hf;
 }
 
-void VADefaultMaterial::set_plane_transmission_hf(float value)
+void VADefaultMaterial::set_flat_transmission_hf(float value)
 {
-    plane_transmission_hf = value;
+    flat_transmission_hf = value;
 
     if (registered)
     {
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, value), "plane_transmission_hf", material_type);
+        log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(va_world_handle, material_type, value), "flat_transmission_hf", material_type);
     }
 }
 

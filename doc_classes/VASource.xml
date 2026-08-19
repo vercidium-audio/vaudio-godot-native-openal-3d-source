@@ -11,6 +11,9 @@
 		<member name="play_when_raytracing_completes" type="bool" setter="set_play_when_raytracing_completes" getter="get_play_when_raytracing_completes" default="true">
 			If [code]true[/code] and [method play] is called before this source's emitter has produced any raytracing results yet, playback is deferred and starts automatically as soon as those results are available.
 		</member>
+		<member name="raytrace_once" type="bool" setter="set_raytrace_once" getter="get_raytrace_once" default="true">
+			Raytrace once on playback, then remove the emitter. Recommended for short sounds.
+		</member>
 		<member name="reverb_ray_count" type="int" setter="set_reverb_ray_count" getter="get_reverb_ray_count">
 			The number of reverb rays to cast.
 		</member>

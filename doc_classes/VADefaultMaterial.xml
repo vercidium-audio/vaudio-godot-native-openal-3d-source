@@ -26,10 +26,10 @@
 		<member name="transmission_hf" type="float" setter="set_transmission_hf" getter="get_transmission_hf" default="0.05">
 			How many meters a ray must travel through this material before it loses all high-frequency energy.
 		</member>
-		<member name="plane_transmission_lf" type="float" setter="set_plane_transmission_lf" getter="get_plane_transmission_lf" default="0.1">
+		<member name="flat_transmission_lf" type="float" setter="set_flat_transmission_lf" getter="get_flat_transmission_lf" default="0.1">
 			The percentage of low-frequency energy that is lost when a permeation ray passes through a flat (plane, disk, triangle, or non-watertight mesh) surface using this material.
 		</member>
-		<member name="plane_transmission_hf" type="float" setter="set_plane_transmission_hf" getter="get_plane_transmission_hf" default="0.25">
+		<member name="flat_transmission_hf" type="float" setter="set_flat_transmission_hf" getter="get_flat_transmission_hf" default="0.25">
 			The percentage of high-frequency energy that is lost when a permeation ray passes through a flat (plane, disk, triangle, or non-watertight mesh) surface using this material.
 		</member>
 		<member name="color" type="Color" setter="set_color" getter="get_color" default="Color(1, 1, 1, 1)">

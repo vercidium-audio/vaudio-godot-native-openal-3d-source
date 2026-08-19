@@ -9,7 +9,7 @@
 #include "va_world.h"
 #include "va_world_lookup.h"
 
-// Port of vaudio-godot-openal's VACustomMaterial.cs. Only the material-property
+// Port of vaudio-godot-mono-openal-3d's VACustomMaterial.cs. Only the material-property
 // side is ported here - GetDebugColor/_GetConfigurationWarnings/_ValidateProperty
 // are editor-only visualisation niceties with no SDK-facing behaviour, so they're
 // intentionally left out.
@@ -56,13 +56,13 @@ void VACustomMaterial::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_transmission_hf", "value"), &VACustomMaterial::set_transmission_hf);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "transmission_hf", PROPERTY_HINT_RANGE, "0.0001,10.0,0.1,or_greater"), "set_transmission_hf", "get_transmission_hf");
 
-    ClassDB::bind_method(D_METHOD("get_plane_transmission_lf"), &VACustomMaterial::get_plane_transmission_lf);
-    ClassDB::bind_method(D_METHOD("set_plane_transmission_lf", "value"), &VACustomMaterial::set_plane_transmission_lf);
-    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "plane_transmission_lf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_plane_transmission_lf", "get_plane_transmission_lf");
+    ClassDB::bind_method(D_METHOD("get_flat_transmission_lf"), &VACustomMaterial::get_flat_transmission_lf);
+    ClassDB::bind_method(D_METHOD("set_flat_transmission_lf", "value"), &VACustomMaterial::set_flat_transmission_lf);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "flat_transmission_lf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_flat_transmission_lf", "get_flat_transmission_lf");
 
-    ClassDB::bind_method(D_METHOD("get_plane_transmission_hf"), &VACustomMaterial::get_plane_transmission_hf);
-    ClassDB::bind_method(D_METHOD("set_plane_transmission_hf", "value"), &VACustomMaterial::set_plane_transmission_hf);
-    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "plane_transmission_hf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_plane_transmission_hf", "get_plane_transmission_hf");
+    ClassDB::bind_method(D_METHOD("get_flat_transmission_hf"), &VACustomMaterial::get_flat_transmission_hf);
+    ClassDB::bind_method(D_METHOD("set_flat_transmission_hf", "value"), &VACustomMaterial::set_flat_transmission_hf);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "flat_transmission_hf", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_flat_transmission_hf", "get_flat_transmission_hf");
 
     ClassDB::bind_method(D_METHOD("get_color"), &VACustomMaterial::get_color);
     ClassDB::bind_method(D_METHOD("set_color", "value"), &VACustomMaterial::set_color);
@@ -109,8 +109,8 @@ void VACustomMaterial::_enter_tree()
     log_if_material_setter_failed(vaWorldSetMaterialScattering(world, material_type, scattering), "scattering", material_name);
     log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(world, material_type, transmission_lf), "transmission_lf", material_name);
     log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf), "transmission_hf", material_name);
-    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(world, material_type, plane_transmission_lf), "plane_transmission_lf", material_name);
-    log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(world, material_type, plane_transmission_hf), "plane_transmission_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(world, material_type, flat_transmission_lf), "flat_transmission_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(world, material_type, flat_transmission_hf), "flat_transmission_hf", material_name);
     log_if_material_setter_failed(vaWorldSetMaterialColor(world, material_type, ToVAudio(color)), "color", material_name);
 
     va_world_handle = world;
@@ -208,30 +208,30 @@ void VACustomMaterial::set_transmission_hf(float value)
         log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, value), "transmission_hf", material_name);
 }
 
-float VACustomMaterial::get_plane_transmission_lf() const
+float VACustomMaterial::get_flat_transmission_lf() const
 {
-    return plane_transmission_lf;
+    return flat_transmission_lf;
 }
 
-void VACustomMaterial::set_plane_transmission_lf(float value)
+void VACustomMaterial::set_flat_transmission_lf(float value)
 {
-    plane_transmission_lf = value;
+    flat_transmission_lf = value;
 
     if (registered)
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionLF(va_world_handle, material_type, value), "plane_transmission_lf", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(va_world_handle, material_type, value), "flat_transmission_lf", material_name);
 }
 
-float VACustomMaterial::get_plane_transmission_hf() const
+float VACustomMaterial::get_flat_transmission_hf() const
 {
-    return plane_transmission_hf;
+    return flat_transmission_hf;
 }
 
-void VACustomMaterial::set_plane_transmission_hf(float value)
+void VACustomMaterial::set_flat_transmission_hf(float value)
 {
-    plane_transmission_hf = value;
+    flat_transmission_hf = value;
 
     if (registered)
-        log_if_material_setter_failed(vaWorldSetMaterialPlaneTransmissionHF(va_world_handle, material_type, value), "plane_transmission_hf", material_name);
+        log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(va_world_handle, material_type, value), "flat_transmission_hf", material_name);
 }
 
 Color VACustomMaterial::get_color() const

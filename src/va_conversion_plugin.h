@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 
+#include "va_debugger_plugin.h"
 #include "va_material_inspector_plugin.h"
 #include "va_world_gizmo.h"
 
@@ -57,6 +58,7 @@ private:
     Ref<VAOpenALSettingsInspectorPlugin> openal_settings_inspector_plugin;
     Ref<VAMaterialInspectorPlugin> material_inspector_plugin;
     Ref<VAWorldGizmoPlugin> world_gizmo_plugin;
+    Ref<VADebuggerPlugin> debugger_plugin;
 
 protected:
     static void _bind_methods();

@@ -13,7 +13,7 @@ namespace va_godot
 {
 
 // Global OpenAL device/mixer settings node - the native C++ equivalent of
-// vaudio-godot-openal's ALManager autoload (see todo.md item 1). Unlike
+// vaudio-godot-mono-openal-3d's ALManager autoload (see todo.md item 1). Unlike
 // per-VAWorld settings (VAWorld's own exported properties), master volume,
 // output device, and the auxiliary-send count are properties of the single
 // process-wide OpenAL device (ALManager), so they live here instead of on

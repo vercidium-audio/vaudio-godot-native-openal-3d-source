@@ -27,6 +27,7 @@ private:
 
     bool play_when_raytracing_completes = true;
     bool played = false;
+    bool raytrace_once = true;
 
     int reverb_ray_count = 0;
     int reverb_bounce_count = 0;
@@ -46,10 +47,6 @@ private:
     int ambient_permeation_ray_count = 0;
     int ambient_permeation_bounce_count = 0;
     float ambient_permeation_energy_cap = 0.15f;
-
-    int visualisation_ray_count = 0;
-    int visualisation_bounce_count = 0;
-    int visualisation_update_frequency = 500;
 
     int type = 0;
     int refresh_ray_count = 16;
@@ -82,11 +79,23 @@ public:
 
     bool is_raytraced() const;
 
+    // The internal VAEmitter this source owns (see create_emitter) - lets
+    // VAVisualisation::find_emitter resolve a valid emitter when it's placed
+    // as a direct child of a VASource, since VASource itself is not a
+    // VAEmitter subclass.
+    va_godot::VAEmitter *get_emitter() const
+    {
+        return emitter;
+    }
+
     // If raytracing hasn't produced results yet, arms play_when_raytracing_completes and returns false. Actual playback happens once is_raytraced() is true.
     bool play() override;
 
     bool get_play_when_raytracing_completes() const;
     void set_play_when_raytracing_completes(bool value);
+
+    bool get_raytrace_once() const;
+    void set_raytrace_once(bool value);
 
     // Returns 0.0f until raytracing completes
     float get_muffling_gain_lf() const;

@@ -305,7 +305,11 @@ void VAConversionPlugin::_enter_tree()
     openal_settings_inspector_plugin.instantiate();
     add_inspector_plugin(openal_settings_inspector_plugin);
 
+    debugger_plugin.instantiate();
+    add_debugger_plugin(debugger_plugin);
+
     material_inspector_plugin.instantiate();
+    material_inspector_plugin->set_debugger_plugin(debugger_plugin);
     add_inspector_plugin(material_inspector_plugin);
 
     world_gizmo_plugin.instantiate();
@@ -325,4 +329,7 @@ void VAConversionPlugin::_exit_tree()
 
     remove_node_3d_gizmo_plugin(world_gizmo_plugin);
     world_gizmo_plugin.unref();
+
+    remove_debugger_plugin(debugger_plugin);
+    debugger_plugin.unref();
 }
