@@ -111,6 +111,9 @@ void VAWorld::set_meters_per_unit(float value)
 
     if (result != VA_SUCCESS)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world meters per unit (may be <= 0, NaN or Infinity)");
+
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_meters_per_unit(meters_per_unit);
 }
 
 void VAWorld::set_speed_of_sound(float value)
