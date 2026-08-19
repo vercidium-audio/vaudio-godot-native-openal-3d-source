@@ -134,12 +134,6 @@ String VACustomMaterial::get_material_name() const
 
 void VACustomMaterial::set_material_name(const String &value)
 {
-    if (registered)
-    {
-        VA_WARN("Cannot change the name of VACustomMaterial nodes at runtime. Node: ", get_name());
-        return;
-    }
-
     material_name = value;
 }
 

@@ -1,10 +1,10 @@
 #pragma once
 
+#include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 
-#include "al_source_node3d.h"
-#include "openal/al_capture_device.h"
 #include "openal/al_stream_buffer.h"
+#include "va_raytraced_source_node3d.h"
 
 using namespace godot;
 
@@ -20,14 +20,25 @@ class ALSource;
 // pool at all - open_stream() creates one ALStreamBuffer + one ALSource
 // directly instead of going through ALSourceNode::play()/configure_source().
 //
-// Extends ALSourceNode3D (not ALSourceNode directly) purely to inherit 3D
-// position/max_distance/reference_distance/filter/reverb routing - the
-// `streams`/`autoplay`/`looping`/decode-task machinery ALSourceNode also
-// brings along is simply unused here (open_stream() bypasses play()
-// entirely, so none of it ever runs).
-class VAStreamSource : public ALSourceNode3D
+// Extends VARaytracedSourceNode3D (not ALSourceNode3D directly) to get the
+// same raytraced reverb/muffling/ambience behaviour VASource has, on top of
+// 3D position/max_distance/reference_distance/filter/reverb routing - per
+// user, streaming vs. fixed-buffer playback is purely an AL-layer difference,
+// the VA/raytracing side should be identical between VASource and
+// VAStreamSource. The `streams`/`autoplay`/`looping`/decode-task machinery
+// ALSourceNode also brings along is simply unused here (open_stream()
+// bypasses play() entirely, so none of it ever runs).
+//
+// This base class only knows how to accept already-decoded PCM bytes from
+// wherever they come from - it has no opinion on the source of that data.
+// See VAInputStreamSource (microphone, via ALCaptureDevice) and
+// VANetworkedStreamSource (a network packet handler in a script calling
+// push_audio_data directly - Godot's multiplayer/RPC/ENet/UDP APIs are
+// scripting-only, so there is no C++ binding surface for this class to add)
+// for the two concrete node types a scene actually uses.
+class VAStreamSource : public VARaytracedSourceNode3D
 {
-    GDCLASS(VAStreamSource, ALSourceNode3D);
+    GDCLASS(VAStreamSource, VARaytracedSourceNode3D);
 
 private:
     ALStreamBuffer stream_buffer;
@@ -35,14 +46,6 @@ private:
     // True once open_stream() has created stream_buffer + a live ALSource -
     // guards push_audio_data/close_stream against being called out of order.
     bool stream_open = false;
-
-    // Optional microphone input feeding this stream directly - see
-    // open_capture(). Kept as a convenience so a script doesn't need a
-    // separate node/wiring for the common "play back what the mic just
-    // heard" case (godot_stream_plan.md section 6's SequenceEcho.cs wiring,
-    // folded into this one node rather than left fully decoupled).
-    ALCaptureDevice capture_device;
-    bool capture_open = false;
 
     // Reused across try_get_used_chunk() calls in _process() so drain_chunks()
     // doesn't allocate a new std::vector for every used chunk.
@@ -59,6 +62,14 @@ public:
 
     void _process(double delta) override;
 
+    // Hides ALSourceNode's fixed-buffer-only inspector properties (streams,
+    // looping, autoplay, pitch_randomness, volume_randomness_db,
+    // playback_no_repeat) - none of them apply to a stream source, which
+    // never goes through ALSourceNode::play()/streams/decode-task machinery
+    // at all (see the class comment above). Inherited by VAInputStreamSource
+    // and VANetworkedStreamSource.
+    void _validate_property(PropertyInfo &p_property) const;
+
     // Creates the internal ALStreamBuffer with the given OpenAL format (e.g.
     // AL_FORMAT_MONO16) and frequency, attaches it to a freshly-created
     // ALSource configured the same way ALSourceNode3D::configure_source
@@ -74,8 +85,19 @@ public:
     // decoding happens here, see godot_stream_plan.md section 5.4) into a new
     // chunk and queues it for playback. No-ops with a logged error if
     // open_stream() hasn't been called (or close_stream() already tore the
-    // stream down).
+    // stream down). This is the single entry point every audio source feeds
+    // through - a microphone callback (VAInputStreamSource) or a received
+    // network packet (VANetworkedStreamSource, called directly from a
+    // script's multiplayer/RPC handler) both end up calling this the same
+    // way.
     void push_audio_data(const PackedByteArray &data);
+
+    // Raw-pointer overload for C++-internal callers only (not exposed to
+    // GDScript) - avoids the PackedByteArray copy push_audio_data's Variant
+    // signature otherwise forces, for a hot per-frame path like
+    // VAInputStreamSource's capture-device callback. Same semantics as
+    // push_audio_data(PackedByteArray) otherwise.
+    void push_audio_data(const uint8_t *data, int num_bytes);
 
     // Stops and destroys the underlying ALSource and ALStreamBuffer. Safe to
     // call even if open_stream() was never called or already closed.
@@ -84,30 +106,5 @@ public:
     bool is_stream_open() const
     {
         return stream_open;
-    }
-
-    // Opens a microphone/input device (device_name empty for the driver's
-    // default - see VAOpenALSettings::get_available_capture_devices for
-    // valid names) and, once start_capture() is called, automatically feeds
-    // every captured chunk into this same stream via push_audio_data each
-    // _process - a script only needs open_stream()+open_capture()+
-    // start_capture(), no manual per-frame wiring. format/frequency should
-    // normally match what open_stream() was given, since no resampling
-    // happens between capture and playback. Returns false (with a Godot
-    // error already logged) on failure - e.g. no such capture device, or
-    // ALC_EXT_capture isn't available.
-    bool open_capture(const String &device_name, int format, int frequency, int buffer_size_frames);
-
-    void start_capture();
-    void stop_capture();
-
-    // Closes the capture device (stopping it first if needed). Safe to call
-    // even if open_capture() was never called or already closed. Also called
-    // by close_stream() and the destructor.
-    void close_capture();
-
-    bool is_capture_open() const
-    {
-        return capture_open;
     }
 };

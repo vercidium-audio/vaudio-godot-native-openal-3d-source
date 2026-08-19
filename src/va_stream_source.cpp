@@ -11,22 +11,15 @@ VAStreamSource::VAStreamSource()
 
 VAStreamSource::~VAStreamSource()
 {
-    close_capture();
     close_stream();
 }
 
 void VAStreamSource::_bind_methods()
 {
     ClassDB::bind_method(D_METHOD("open_stream", "format", "frequency"), &VAStreamSource::open_stream);
-    ClassDB::bind_method(D_METHOD("push_audio_data", "data"), &VAStreamSource::push_audio_data);
+    ClassDB::bind_method(D_METHOD("push_audio_data", "data"), static_cast<void (VAStreamSource::*)(const PackedByteArray &)>(&VAStreamSource::push_audio_data));
     ClassDB::bind_method(D_METHOD("close_stream"), &VAStreamSource::close_stream);
     ClassDB::bind_method(D_METHOD("is_stream_open"), &VAStreamSource::is_stream_open);
-
-    ClassDB::bind_method(D_METHOD("open_capture", "device_name", "format", "frequency", "buffer_size_frames"), &VAStreamSource::open_capture);
-    ClassDB::bind_method(D_METHOD("start_capture"), &VAStreamSource::start_capture);
-    ClassDB::bind_method(D_METHOD("stop_capture"), &VAStreamSource::stop_capture);
-    ClassDB::bind_method(D_METHOD("close_capture"), &VAStreamSource::close_capture);
-    ClassDB::bind_method(D_METHOD("is_capture_open"), &VAStreamSource::is_capture_open);
 }
 
 bool VAStreamSource::open_stream(int format, int frequency)
@@ -63,18 +56,23 @@ bool VAStreamSource::open_stream(int format, int frequency)
 
 void VAStreamSource::push_audio_data(const PackedByteArray &data)
 {
+    push_audio_data(data.ptr(), (int)data.size());
+}
+
+void VAStreamSource::push_audio_data(const uint8_t *data, int num_bytes)
+{
     if (!stream_open)
     {
         VA_ERROR_NAMED("push_audio_data called before open_stream (or after close_stream)");
         return;
     }
 
-    if (data.size() == 0)
+    if (num_bytes == 0)
     {
         return;
     }
 
-    stream_buffer.enqueue(data.ptr(), (int)data.size());
+    stream_buffer.enqueue(data, num_bytes);
 }
 
 void VAStreamSource::close_stream()
@@ -89,74 +87,31 @@ void VAStreamSource::close_stream()
     stream_open = false;
 }
 
-bool VAStreamSource::open_capture(const String &device_name, int format, int frequency, int buffer_size_frames)
+void VAStreamSource::_validate_property(PropertyInfo &p_property) const
 {
-    close_capture();
+    static const StringName hidden_properties[] = {
+        "streams",
+        "looping",
+        "autoplay",
+        "pitch_randomness",
+        "volume_randomness_db",
+        "playback_no_repeat",
+    };
 
-    // Bytes are pushed straight into stream_buffer, not through
-    // push_audio_data()'s stream_open check - a script may legitimately call
-    // open_capture()/start_capture() before open_stream(), in which case
-    // captured audio is simply dropped until a stream is opened, rather than
-    // erroring every frame like push_audio_data() would.
-    bool opened = capture_device.open(device_name, (ALenum)format, frequency, buffer_size_frames,
-        [this](const uint8_t *data, int num_bytes)
+    for (const StringName &hidden_property : hidden_properties)
+    {
+        if (p_property.name == hidden_property)
         {
-            if (stream_open)
-            {
-                stream_buffer.enqueue(data, num_bytes);
-            }
-        });
-
-    if (!opened)
-    {
-        // ALCaptureDevice::open already logged the reason for failure.
-        return false;
+            p_property.usage = PROPERTY_USAGE_NONE;
+            return;
+        }
     }
-
-    capture_open = true;
-    return true;
-}
-
-void VAStreamSource::start_capture()
-{
-    if (!capture_open)
-    {
-        VA_ERROR_NAMED("start_capture called before open_capture (or after close_capture)");
-        return;
-    }
-
-    capture_device.start();
-}
-
-void VAStreamSource::stop_capture()
-{
-    if (!capture_open)
-    {
-        return;
-    }
-
-    capture_device.stop();
-}
-
-void VAStreamSource::close_capture()
-{
-    if (!capture_open)
-    {
-        return;
-    }
-
-    capture_device.close();
-    capture_open = false;
 }
 
 void VAStreamSource::_process(double delta)
 {
-    ALSourceNode3D::_process(delta);
-
-    if (capture_open)
-    {
-        capture_device.update();
-    }
+    VARaytracedSourceNode3D::_process(delta);
+    process_raytracing(delta);
 
     drain_used_chunks();
 }
