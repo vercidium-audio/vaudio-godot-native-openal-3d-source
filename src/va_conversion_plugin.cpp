@@ -11,6 +11,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "al_source_node.h"
+#include "register_types.h"
 #include "va_emitter.h"
 #include "va_engine_util.h"
 #include "va_input_stream_source.h"
@@ -308,6 +309,17 @@ void VAConversionPlugin::_bind_methods()
 {
 }
 
+// audio/vaudio/output_device's Project Settings dropdown is built once, at module load, before
+// soft_oal.dll has loaded any devices (see register_project_settings() in register_types.cpp),
+// so it only ever shows "(Default)" until something re-queries ALManager. This tool menu item
+// is that something - same problem, same fix, as VADeviceRefreshInspectorPlugin's per-node
+// button above, just for Project Settings instead of the Inspector, since ProjectSettingsEditor
+// isn't a GDExtension-exposed class an EditorInspectorPlugin can hook into.
+void VAConversionPlugin::refresh_output_device_setting()
+{
+    refresh_output_device_hint();
+}
+
 void VAConversionPlugin::_enter_tree()
 {
     context_menu_plugin.instantiate();
@@ -325,10 +337,14 @@ void VAConversionPlugin::_enter_tree()
 
     world_gizmo_plugin.instantiate();
     add_node_3d_gizmo_plugin(world_gizmo_plugin);
+
+    add_tool_menu_item("Refresh OpenAL Output Devices", callable_mp(this, &VAConversionPlugin::refresh_output_device_setting));
 }
 
 void VAConversionPlugin::_exit_tree()
 {
+    remove_tool_menu_item("Refresh OpenAL Output Devices");
+
     remove_context_menu_plugin(context_menu_plugin);
     context_menu_plugin.unref();
 

@@ -67,6 +67,8 @@ private:
     Ref<VAWorldGizmoPlugin> world_gizmo_plugin;
     Ref<VADebuggerPlugin> debugger_plugin;
 
+    void refresh_output_device_setting();
+
 protected:
     static void _bind_methods();
 

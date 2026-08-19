@@ -145,6 +145,32 @@ static bool on_debugger_message(const String &message, const Array &data)
     return true;
 }
 
+// Rebuilds audio/vaudio/output_device's PROPERTY_HINT_ENUM_SUGGESTION hint_string from
+// ALManager::get_available_devices(). Split out from register_project_settings() below so the
+// "Refresh OpenAL Devices" tool menu item (va_conversion_plugin.cpp) can re-run just this part
+// after soft_oal.dll has loaded, without touching the other three settings or their defaults.
+// Godot's Project Settings dialog reads a property's hint_string when that row is drawn, not
+// continuously - re-running this updates ProjectSettings' stored metadata immediately, but an
+// already-open dialog only shows the new device list after its Output Device row is redrawn
+// (e.g. switching away from and back to the General tab, or reopening the dialog).
+void refresh_output_device_hint()
+{
+    ProjectSettings *settings = ProjectSettings::get_singleton();
+
+    // Suggestion, not a strict enum: the device list can only be queried after soft_oal.dll is
+    // loaded (empty this early), and a strict enum would blank out a saved device name for a
+    // device that's temporarily unplugged.
+    PackedStringArray devices = ALManager::get_singleton() ? ALManager::get_singleton()->get_available_devices() : PackedStringArray();
+    devices.insert(0, DEFAULT_DEVICE_LABEL);
+
+    Dictionary output_device_info;
+    output_device_info["name"] = "audio/vaudio/output_device";
+    output_device_info["type"] = Variant::STRING;
+    output_device_info["hint"] = PROPERTY_HINT_ENUM_SUGGESTION;
+    output_device_info["hint_string"] = String(",").join(devices);
+    settings->add_property_info(output_device_info);
+}
+
 // Registers this plugin's own audio/vaudio/* entries under Project Settings, matched to how
 // Godot's own Project Settings > Audio > Driver > Device is read at startup before any scene
 // loads (see godot_singleton_plan.md, Section 3) - device_name/max_reverb_sends/sample_rate/
@@ -161,18 +187,7 @@ static void register_project_settings()
 
     settings->set_initial_value("audio/vaudio/output_device", "");
 
-    // Suggestion, not a strict enum: the device list can only be queried after soft_oal.dll is
-    // loaded (empty this early), and a strict enum would blank out a saved device name for a
-    // device that's temporarily unplugged.
-    PackedStringArray devices = ALManager::get_singleton() ? ALManager::get_singleton()->get_available_devices() : PackedStringArray();
-    devices.insert(0, DEFAULT_DEVICE_LABEL);
-
-    Dictionary output_device_info;
-    output_device_info["name"] = "audio/vaudio/output_device";
-    output_device_info["type"] = Variant::STRING;
-    output_device_info["hint"] = PROPERTY_HINT_ENUM_SUGGESTION;
-    output_device_info["hint_string"] = String(",").join(devices);
-    settings->add_property_info(output_device_info);
+    refresh_output_device_hint();
 
     // max_reverb_sends: dev-only setting (not end-user-facing), default 1 - see todo.md's
     // "Godot" section, "`Max Reverb Sends` should be 1 by default".
