@@ -125,7 +125,7 @@
 		<member name="master_volume" type="float" setter="set_master_volume" getter="get_master_volume" default="1.0">
 			The overall output volume, as a linear multiplier. 1.0 is unchanged, 0.0 is silent. Forwarded to the process-wide [ALManager] singleton; if multiple [VAWorld]s exist, the last one to set this wins.
 		</member>
-		<member name="distance_model" type="int" setter="set_distance_model" getter="get_distance_model" default="53250">
+		<member name="distance_model" type="int" setter="set_distance_model" getter="get_distance_model" default="53249">
 			How volume attenuates with distance from the listener. One of OpenAL's distance model constants (Inverse Distance Clamped, Inverse Distance, Linear Distance Clamped, Linear Distance, Exponent Distance Clamped, Exponent Distance, or None). Forwarded to the process-wide [ALManager] singleton; if multiple [VAWorld]s exist, the last one to set this wins.
 		</member>
 		<member name="reverb_only" type="bool" setter="set_reverb_only" getter="get_reverb_only" default="false">

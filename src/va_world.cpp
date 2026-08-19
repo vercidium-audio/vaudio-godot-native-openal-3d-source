@@ -51,6 +51,22 @@ void VAWorld::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "epsilon"), "set_epsilon", "get_epsilon");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "world_is_indoors"), "set_world_is_indoors", "get_world_is_indoors");
 
+    ClassDB::bind_method(D_METHOD("get_master_volume"), &VAWorld::get_master_volume);
+    ClassDB::bind_method(D_METHOD("set_master_volume", "value"), &VAWorld::set_master_volume);
+    ClassDB::bind_method(D_METHOD("get_distance_model"), &VAWorld::get_distance_model);
+    ClassDB::bind_method(D_METHOD("set_distance_model", "value"), &VAWorld::set_distance_model);
+    ClassDB::bind_method(D_METHOD("get_reverb_only"), &VAWorld::get_reverb_only);
+    ClassDB::bind_method(D_METHOD("set_reverb_only", "value"), &VAWorld::set_reverb_only);
+
+    // OpenAL settings, forwarded to the ALManager singleton
+    // If multiple VAWorlds exist in a scene, the last write wins
+    ADD_GROUP("OpenAL", "");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "master_volume"), "set_master_volume", "get_master_volume");
+    // Matches vaudio-godot-mono-openal-3d's ALDistanceModel enum order/values (AL/al.h) - see
+    // format's PROPERTY_HINT_ENUM in va_input_stream_source.cpp for the same "Label:value" style.
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "distance_model", PROPERTY_HINT_ENUM, "None:0,InverseDistance:53249,InverseDistanceClamped:53250,LinearDistance:53251,LinearDistanceClamped:53252,ExponentDistance:53253,ExponentDistanceClamped:53254"), "set_distance_model", "get_distance_model");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reverb_only"), "set_reverb_only", "get_reverb_only");
+
     ClassDB::bind_method(D_METHOD("get_maximum_grouped_eax_count"), &VAWorld::get_maximum_grouped_eax_count);
     ClassDB::bind_method(D_METHOD("set_maximum_grouped_eax_count", "value"), &VAWorld::set_maximum_grouped_eax_count);
 
@@ -83,22 +99,6 @@ void VAWorld::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pressure", PROPERTY_HINT_RANGE, "0.0,1000000,1,or_greater"), "set_pressure", "get_pressure");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reference_frequency_lf", PROPERTY_HINT_RANGE, "0.0001,1000,1,or_greater"), "set_reference_frequency_lf", "get_reference_frequency_lf");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reference_frequency_hf", PROPERTY_HINT_RANGE, "0.0001,20000,1,or_greater"), "set_reference_frequency_hf", "get_reference_frequency_hf");
-
-    ClassDB::bind_method(D_METHOD("get_master_volume"), &VAWorld::get_master_volume);
-    ClassDB::bind_method(D_METHOD("set_master_volume", "value"), &VAWorld::set_master_volume);
-    ClassDB::bind_method(D_METHOD("get_distance_model"), &VAWorld::get_distance_model);
-    ClassDB::bind_method(D_METHOD("set_distance_model", "value"), &VAWorld::set_distance_model);
-    ClassDB::bind_method(D_METHOD("get_reverb_only"), &VAWorld::get_reverb_only);
-    ClassDB::bind_method(D_METHOD("set_reverb_only", "value"), &VAWorld::set_reverb_only);
-
-    // AL-only mixer settings - forwarded to the process-wide ALManager singleton (see
-    // set_master_volume/set_distance_model/set_reverb_only in va_world_properties.cpp). If
-    // multiple VAWorlds exist in a scene, last-write-wins on ALManager's actual state, matching
-    // how output_device/sample_rate/etc are already process-wide Project Settings.
-    ADD_GROUP("Mixer", "");
-    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "master_volume"), "set_master_volume", "get_master_volume");
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "distance_model"), "set_distance_model", "get_distance_model");
-    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reverb_only"), "set_reverb_only", "get_reverb_only");
 
     ClassDB::bind_method(D_METHOD("get_emitters_outside_the_world_are_muffled"), &VAWorld::get_emitters_outside_the_world_are_muffled);
     ClassDB::bind_method(D_METHOD("set_emitters_outside_the_world_are_muffled", "value"), &VAWorld::set_emitters_outside_the_world_are_muffled);

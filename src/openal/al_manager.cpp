@@ -31,7 +31,9 @@ void ALManager::_bind_methods()
 
     ClassDB::bind_method(D_METHOD("set_distance_model", "value"), &ALManager::set_distance_model);
     ClassDB::bind_method(D_METHOD("get_distance_model"), &ALManager::get_distance_model);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "distance_model"), "set_distance_model", "get_distance_model");
+    // Matches vaudio-godot-mono-openal-3d's ALDistanceModel enum order/values (AL/al.h) and
+    // VAWorld::distance_model's PROPERTY_HINT_ENUM (va_world.cpp).
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "distance_model", PROPERTY_HINT_ENUM, "None:0,InverseDistance:53249,InverseDistanceClamped:53250,LinearDistance:53251,LinearDistanceClamped:53252,ExponentDistance:53253,ExponentDistanceClamped:53254"), "set_distance_model", "get_distance_model");
 
     ClassDB::bind_method(D_METHOD("set_meters_per_unit", "value"), &ALManager::set_meters_per_unit);
     ClassDB::bind_method(D_METHOD("get_meters_per_unit"), &ALManager::get_meters_per_unit);
