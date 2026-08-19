@@ -328,12 +328,12 @@ void ALManager::read_settings_from_project_settings()
 {
     ProjectSettings *settings = ProjectSettings::get_singleton();
 
-    // PROPERTY_HINT_ENUM_SUGGESTION on a STRING property stores the literal
-    // suggestion text the user picked (there's no "Label:value" mapping like
-    // PROPERTY_HINT_ENUM's hint_string syntax), so the Project Settings UI
-    // writes DEFAULT_DEVICE_LABEL itself into the setting when a user picks
-    // "(Default)" - translate that back to "" (alcOpenDevice's own "use the
-    // driver default" spelling).
+    // PROPERTY_HINT_ENUM on a STRING property stores the literal entry text the
+    // user picked (there's no separate "Label:value" mapping - see hint_string's
+    // format in refresh_output_device_hint(), register_types.cpp), so the
+    // Project Settings UI writes DEFAULT_DEVICE_LABEL itself into the setting
+    // when a user picks "System Default" - translate that back to "" (alcOpenDevice's
+    // own "use the driver default" spelling).
     String device_name_setting = settings->get_setting("audio/vaudio/output_device");
 
     if (device_name_setting == String(DEFAULT_DEVICE_LABEL))

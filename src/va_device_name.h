@@ -9,4 +9,4 @@
 // hint_string). ALCaptureDevice::open still takes "" for "default" - the
 // class's setter translates DEFAULT_DEVICE_LABEL to "" only at that call
 // boundary.
-static const char *DEFAULT_DEVICE_LABEL = "(Default)";
+static const char *DEFAULT_DEVICE_LABEL = "System Default";
