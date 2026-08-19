@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/editor_plugin_registration.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/engine_debugger.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
@@ -20,6 +21,7 @@
 #include "va_conversion_plugin.h"
 #include "va_debugger_plugin.h"
 #include "va_default_material.h"
+#include "va_device_name.h"
 #include "va_emitter.h"
 #include "va_engine_util.h"
 #include "va_input_stream_source.h"
@@ -140,6 +142,71 @@ static bool on_debugger_message(const String &message, const Array &data)
     return true;
 }
 
+// Registers this plugin's own audio/vaudio/* entries under Project Settings, matched to how
+// Godot's own Project Settings > Audio > Driver > Device is read at startup before any scene
+// loads (see godot_singleton_plan.md, Section 3) - device_name/max_reverb_sends/sample_rate/
+// hrtf_enabled must exist here so ALManager::initialize() can read them before it opens the
+// one-and-only device, below.
+static void register_project_settings()
+{
+    ProjectSettings *settings = ProjectSettings::get_singleton();
+
+    // output_device: "" means "driver default" - never shown to the user as "", see
+    // DEFAULT_DEVICE_LABEL's own doc comment in va_device_name.h.
+    if (!settings->has_setting("audio/vaudio/output_device"))
+        settings->set_setting("audio/vaudio/output_device", "");
+
+    settings->set_initial_value("audio/vaudio/output_device", "");
+
+    // Suggestion, not a strict enum: the device list can only be queried after soft_oal.dll is
+    // loaded (empty this early), and a strict enum would blank out a saved device name for a
+    // device that's temporarily unplugged - matches VAOpenALSettings::_validate_property's old
+    // reasoning for device_name/capture_device_name.
+    PackedStringArray devices = ALManager::get_singleton() ? ALManager::get_singleton()->get_available_devices() : PackedStringArray();
+    devices.insert(0, DEFAULT_DEVICE_LABEL);
+
+    Dictionary output_device_info;
+    output_device_info["name"] = "audio/vaudio/output_device";
+    output_device_info["type"] = Variant::STRING;
+    output_device_info["hint"] = PROPERTY_HINT_ENUM_SUGGESTION;
+    output_device_info["hint_string"] = String(",").join(devices);
+    settings->add_property_info(output_device_info);
+
+    // max_reverb_sends: dev-only setting (not end-user-facing), default 1 - see todo.md's
+    // "Godot" section, "`Max Reverb Sends` should be 1 by default".
+    if (!settings->has_setting("audio/vaudio/max_reverb_sends"))
+        settings->set_setting("audio/vaudio/max_reverb_sends", 1);
+
+    settings->set_initial_value("audio/vaudio/max_reverb_sends", 1);
+
+    Dictionary max_reverb_sends_info;
+    max_reverb_sends_info["name"] = "audio/vaudio/max_reverb_sends";
+    max_reverb_sends_info["type"] = Variant::INT;
+    max_reverb_sends_info["hint"] = PROPERTY_HINT_RANGE;
+    max_reverb_sends_info["hint_string"] = "0,16,or_greater";
+    settings->add_property_info(max_reverb_sends_info);
+
+    // sample_rate: 0 means "driver default" - never shown to the user as 0.
+    if (!settings->has_setting("audio/vaudio/sample_rate"))
+        settings->set_setting("audio/vaudio/sample_rate", 0);
+
+    settings->set_initial_value("audio/vaudio/sample_rate", 0);
+
+    Dictionary sample_rate_info;
+    sample_rate_info["name"] = "audio/vaudio/sample_rate";
+    sample_rate_info["type"] = Variant::INT;
+    sample_rate_info["hint"] = PROPERTY_HINT_ENUM;
+    sample_rate_info["hint_string"] = "System Default:0,22050,44100,48000,96000";
+    settings->add_property_info(sample_rate_info);
+
+    // hrtf_enabled: default true - see todo.md's "Godot" section, "`HRTF Enabled` should be
+    // enabled by default".
+    if (!settings->has_setting("audio/vaudio/hrtf_enabled"))
+        settings->set_setting("audio/vaudio/hrtf_enabled", true);
+
+    settings->set_initial_value("audio/vaudio/hrtf_enabled", true);
+}
+
 void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p_level)
 {
     if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR)
@@ -184,6 +251,8 @@ void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p
     // Internal helper classes
     ClassDB::register_class<TransformWatcher>();
     ClassDB::register_class<VAPrimitiveRef>();
+
+    register_project_settings();
 
     al_manager.initialize();
 
