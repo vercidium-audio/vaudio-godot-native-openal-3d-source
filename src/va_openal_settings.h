@@ -37,6 +37,17 @@ private:
     // sessions, but names are stable.
     String device_name;
 
+    // Empty means "let ALCaptureDevice::open() use the driver's default
+    // capture device". Unlike device_name above, this isn't pushed anywhere
+    // automatically by this class - VAOpenALSettings only owns the playback
+    // device/context (ALManager). Capture devices are opened independently
+    // by whatever script/node creates an ALCaptureDevice (see
+    // openal/al_capture_device.h); this property exists purely as an
+    // inspector-discoverable name to pass to ALCaptureDevice::open(),
+    // matching godot_stream_plan.md section 6's "device selection... matched
+    // to the existing get_available_devices()/refresh_devices() pattern".
+    String capture_device_name;
+
     // 0 means "leave ALC_MAX_AUXILIARY_SENDS at the driver default" - see
     // ALManager::open_device_and_context.
     int max_reverb_sends = 0;
@@ -82,6 +93,9 @@ public:
     String get_device_name() const;
     void set_device_name(const String &value);
 
+    String get_capture_device_name() const;
+    void set_capture_device_name(const String &value);
+
     int get_max_reverb_sends() const;
     void set_max_reverb_sends(int value);
 
@@ -111,6 +125,11 @@ public:
     // surfaced as a property hint since the driver's device list is only
     // known at runtime, after ALManager has loaded soft_oal.dll.
     PackedStringArray get_available_devices() const;
+
+    // Same as get_available_devices(), but for capture (microphone/input)
+    // devices - names discovered here are what ALCaptureDevice::open()'s
+    // device_name parameter accepts.
+    PackedStringArray get_available_capture_devices() const;
 
     // Re-queries the driver's device list and re-validates device_name's
     // PROPERTY_HINT_ENUM_SUGGESTION so a device plugged in after this node

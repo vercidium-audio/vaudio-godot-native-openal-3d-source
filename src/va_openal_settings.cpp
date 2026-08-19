@@ -13,6 +13,10 @@ void VAOpenALSettings::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_device_name", "value"), &VAOpenALSettings::set_device_name);
     ADD_PROPERTY(PropertyInfo(Variant::STRING, "device_name"), "set_device_name", "get_device_name");
 
+    ClassDB::bind_method(D_METHOD("get_capture_device_name"), &VAOpenALSettings::get_capture_device_name);
+    ClassDB::bind_method(D_METHOD("set_capture_device_name", "value"), &VAOpenALSettings::set_capture_device_name);
+    ADD_PROPERTY(PropertyInfo(Variant::STRING, "capture_device_name"), "set_capture_device_name", "get_capture_device_name");
+
     ClassDB::bind_method(D_METHOD("get_max_reverb_sends"), &VAOpenALSettings::get_max_reverb_sends);
     ClassDB::bind_method(D_METHOD("set_max_reverb_sends", "value"), &VAOpenALSettings::set_max_reverb_sends);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "max_reverb_sends", PROPERTY_HINT_RANGE, "0,16,or_greater"), "set_max_reverb_sends", "get_max_reverb_sends");
@@ -51,21 +55,26 @@ void VAOpenALSettings::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reverb_only"), "set_reverb_only", "get_reverb_only");
 
     ClassDB::bind_method(D_METHOD("get_available_devices"), &VAOpenALSettings::get_available_devices);
+    ClassDB::bind_method(D_METHOD("get_available_capture_devices"), &VAOpenALSettings::get_available_capture_devices);
 
     ClassDB::bind_method(D_METHOD("refresh_devices"), &VAOpenALSettings::refresh_devices);
 }
 
-// Turns device_name into an editor dropdown of the driver's currently available
-// playback devices, without changing how the value itself is stored (still a
-// plain String, set via set_device_name like any other property) - a
+// Turns device_name/capture_device_name into an editor dropdown of the
+// driver's currently available playback/capture devices, without changing
+// how the value itself is stored (still a plain String, set via
+// set_device_name/set_capture_device_name like any other property) - a
 // suggestion hint rather than a strict enum, since the device list is only
 // known at runtime and can vary between machines/driver sessions: a strict
-// PROPERTY_HINT_ENUM would reject or blank out a saved device_name that isn't
+// PROPERTY_HINT_ENUM would reject or blank out a saved device name that isn't
 // in the list currently being queried (e.g. project opened before drivers
 // finish enumerating, or the device is temporarily unplugged).
 void VAOpenALSettings::_validate_property(PropertyInfo &property) const
 {
-    if (property.name != StringName("device_name"))
+    bool is_playback = property.name == StringName("device_name");
+    bool is_capture = property.name == StringName("capture_device_name");
+
+    if (!is_playback && !is_capture)
         return;
 
     ALManager *manager = ALManager::get_singleton();
@@ -73,7 +82,7 @@ void VAOpenALSettings::_validate_property(PropertyInfo &property) const
     if (!manager)
         return;
 
-    PackedStringArray devices = manager->get_available_devices();
+    PackedStringArray devices = is_playback ? manager->get_available_devices() : manager->get_available_capture_devices();
 
     if (devices.is_empty())
         return;
@@ -114,6 +123,18 @@ void VAOpenALSettings::set_device_name(const String &value)
     {
         manager->reinitialize(device_name, max_reverb_sends, sample_rate, hrtf_enabled);
     }
+}
+
+String VAOpenALSettings::get_capture_device_name() const
+{
+    return capture_device_name;
+}
+
+void VAOpenALSettings::set_capture_device_name(const String &value)
+{
+    // Just stored - see capture_device_name's doc comment in
+    // va_openal_settings.h for why nothing needs pushing to ALManager here.
+    capture_device_name = value;
 }
 
 int VAOpenALSettings::get_max_reverb_sends() const
@@ -262,6 +283,18 @@ PackedStringArray VAOpenALSettings::get_available_devices() const
     }
 
     return manager->get_available_devices();
+}
+
+PackedStringArray VAOpenALSettings::get_available_capture_devices() const
+{
+    ALManager *manager = ALManager::get_singleton();
+
+    if (!manager)
+    {
+        return PackedStringArray();
+    }
+
+    return manager->get_available_capture_devices();
 }
 
 void VAOpenALSettings::refresh_devices()

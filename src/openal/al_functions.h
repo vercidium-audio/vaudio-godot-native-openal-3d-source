@@ -26,6 +26,15 @@ using alcGetStringFn = const ALCchar *(ALC_APIENTRY *)(ALCdevice *, ALCenum);
 using alcGetIntegervFn = void(ALC_APIENTRY *)(ALCdevice *, ALCenum, ALCsizei, ALCint *);
 using alcIsExtensionPresentFn = ALCboolean(ALC_APIENTRY *)(ALCdevice *, const ALCchar *);
 
+// ALC_EXT_capture (core in the ALC API since OpenAL 1.1, not looked up via
+// alGetProcAddress) - resolved the same way as the other alc* entry points
+// above, for ALCaptureDevice (src/openal/al_capture_device.h).
+using alcCaptureOpenDeviceFn = ALCdevice *(ALC_APIENTRY *)(const ALCchar *, ALCuint, ALCenum, ALCsizei);
+using alcCaptureCloseDeviceFn = ALCboolean(ALC_APIENTRY *)(ALCdevice *);
+using alcCaptureStartFn = void(ALC_APIENTRY *)(ALCdevice *);
+using alcCaptureStopFn = void(ALC_APIENTRY *)(ALCdevice *);
+using alcCaptureSamplesFn = void(ALC_APIENTRY *)(ALCdevice *, ALCvoid *, ALCsizei);
+
 using alGetErrorFn = ALenum(AL_APIENTRY *)(void);
 using alGetStringFn = const ALchar *(AL_APIENTRY *)(ALenum);
 
@@ -85,3 +94,8 @@ using alGenAuxiliaryEffectSlotsFn = LPALGENAUXILIARYEFFECTSLOTS;
 using alDeleteAuxiliaryEffectSlotsFn = LPALDELETEAUXILIARYEFFECTSLOTS;
 using alAuxiliaryEffectSlotiFn = LPALAUXILIARYEFFECTSLOTI;
 using alAuxiliaryEffectSlotfFn = LPALAUXILIARYEFFECTSLOTF;
+
+// AL_SOFT_callback_buffer extension - lets a buffer pull its samples from a
+// callback instead of a fixed alBufferData upload, the basis for
+// ALStreamBuffer's streaming playback (godot_stream_plan.md section 5.1).
+using alBufferCallbackSOFTFn = LPALBUFFERCALLBACKSOFT;

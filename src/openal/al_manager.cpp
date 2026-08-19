@@ -115,6 +115,12 @@ bool ALManager::resolve_functions()
     ok &= resolve(library, "alcGetIntegerv", alcGetIntegerv_);
     ok &= resolve(library, "alcIsExtensionPresent", alcIsExtensionPresent_);
 
+    ok &= resolve(library, "alcCaptureOpenDevice", alcCaptureOpenDevice_);
+    ok &= resolve(library, "alcCaptureCloseDevice", alcCaptureCloseDevice_);
+    ok &= resolve(library, "alcCaptureStart", alcCaptureStart_);
+    ok &= resolve(library, "alcCaptureStop", alcCaptureStop_);
+    ok &= resolve(library, "alcCaptureSamples", alcCaptureSamples_);
+
     ok &= resolve(library, "alGetError", alGetError_);
     ok &= resolve(library, "alGetString", alGetString_);
     ok &= resolve(library, "alDistanceModel", alDistanceModel_);
@@ -173,6 +179,17 @@ bool ALManager::resolve_efx_functions()
     ok &= resolve_ext(alGetProcAddress_, "alDeleteAuxiliaryEffectSlots", alDeleteAuxiliaryEffectSlots_);
     ok &= resolve_ext(alGetProcAddress_, "alAuxiliaryEffectSloti", alAuxiliaryEffectSloti_);
     ok &= resolve_ext(alGetProcAddress_, "alAuxiliaryEffectSlotf", alAuxiliaryEffectSlotf_);
+
+    // AL_SOFT_callback_buffer isn't part of ALC_EXT_EFX - it's a separate AL
+    // extension - but it's resolved here too since both are looked up via
+    // alGetProcAddress_ only after a device/context exist. Not folded into
+    // `ok`: a driver without this extension should still get EFX (filters/
+    // reverb), it just won't get streaming buffers (ALStreamBuffer checks
+    // al_buffer_callback_soft() for null before use).
+    if (!resolve_ext(alGetProcAddress_, "alBufferCallbackSOFT", alBufferCallbackSOFT_))
+    {
+        VA_WARN("AL_SOFT_callback_buffer not present on this device - streaming source support disabled");
+    }
 
     return ok;
 }
@@ -369,6 +386,34 @@ PackedStringArray ALManager::get_available_devices()
     // itself terminated by an extra empty string (i.e. two consecutive
     // nulls mark the end) - standard ALC enumeration string convention.
     const ALCchar *list = alcGetString_(nullptr, specifier);
+
+    if (!list)
+    {
+        return devices;
+    }
+
+    while (*list)
+    {
+        devices.push_back(String::utf8(list));
+        list += strlen(list) + 1;
+    }
+
+    return devices;
+}
+
+PackedStringArray ALManager::get_available_capture_devices()
+{
+    PackedStringArray devices;
+
+    if (!alcGetString_)
+    {
+        return devices;
+    }
+
+    // Same null-terminated-list-of-null-terminated-strings convention as
+    // get_available_devices() above, just for ALC_CAPTURE_DEVICE_SPECIFIER
+    // instead of ALC_(ALL_)DEVICE_SPECIFIER.
+    const ALCchar *list = alcGetString_(nullptr, ALC_CAPTURE_DEVICE_SPECIFIER);
 
     if (!list)
     {

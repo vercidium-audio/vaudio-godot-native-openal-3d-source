@@ -43,6 +43,16 @@ private:
     alcGetIntegervFn alcGetIntegerv_ = nullptr;
     alcIsExtensionPresentFn alcIsExtensionPresent_ = nullptr;
 
+    // ALC_EXT_capture entry points - resolved alongside the other core alc*
+    // functions in resolve_functions() (a core soft_oal.dll export, not an
+    // AL/ALC extension looked up via alGetProcAddress). Used by
+    // ALCaptureDevice (src/openal/al_capture_device.cpp).
+    alcCaptureOpenDeviceFn alcCaptureOpenDevice_ = nullptr;
+    alcCaptureCloseDeviceFn alcCaptureCloseDevice_ = nullptr;
+    alcCaptureStartFn alcCaptureStart_ = nullptr;
+    alcCaptureStopFn alcCaptureStop_ = nullptr;
+    alcCaptureSamplesFn alcCaptureSamples_ = nullptr;
+
     alGetErrorFn alGetError_ = nullptr;
     alGetStringFn alGetString_ = nullptr;
     alDistanceModelFn alDistanceModel_ = nullptr;
@@ -83,6 +93,13 @@ private:
     alDeleteAuxiliaryEffectSlotsFn alDeleteAuxiliaryEffectSlots_ = nullptr;
     alAuxiliaryEffectSlotiFn alAuxiliaryEffectSloti_ = nullptr;
     alAuxiliaryEffectSlotfFn alAuxiliaryEffectSlotf_ = nullptr;
+
+    // AL_SOFT_callback_buffer entry point - resolved alongside the EFX
+    // functions in resolve_efx_functions() (both are extensions looked up
+    // via alGetProcAddress_, not core soft_oal.dll exports). Missing this
+    // extension isn't a hard failure, same as missing EFX; ALStreamBuffer is
+    // expected to check al_buffer_callback_soft() for null before using it.
+    alBufferCallbackSOFTFn alBufferCallbackSOFT_ = nullptr;
 
     bool efx_present = false;
 
@@ -268,6 +285,16 @@ public:
     // device itself, just queries alcGetString(nullptr, ...).
     PackedStringArray get_available_devices();
 
+    // Lists every capture (input/microphone) device name the current driver
+    // reports via ALC_CAPTURE_DEVICE_SPECIFIER - exposed as
+    // VAOpenALSettings::get_available_capture_devices for discovering valid
+    // device names to pass to ALCaptureDevice::open(). Can be called before
+    // initialize() - opens no device itself, just queries alcGetString(nullptr, ...).
+    // Unlike get_available_devices(), there's no ALC_CAPTURE_ALL_DEVICES_SPECIFIER
+    // "enumerate all" variant to fall back to - ALC_CAPTURE_DEVICE_SPECIFIER
+    // is the only list ALC_EXT_capture defines.
+    PackedStringArray get_available_capture_devices();
+
     // Destroys the context and closes the device, if open. Safe to call more
     // than once and safe to call even if initialize() was never called or
     // failed partway through.
@@ -309,6 +336,46 @@ public:
     alGetErrorFn al_get_error() const
     {
         return alGetError_;
+    }
+
+    // ALC_EXT_capture entry points - exposed for ALCaptureDevice
+    // (src/openal/al_capture_device.cpp), same "no further wrapping"
+    // rationale as the buffer/source accessors elsewhere in this class.
+    // Unlike every other accessor here, these don't require is_initialized()
+    // (a playback device/context) - capture devices are independent ALC
+    // devices of their own, opened/closed separately from the one
+    // device/context this class owns.
+    alcCaptureOpenDeviceFn alc_capture_open_device() const
+    {
+        return alcCaptureOpenDevice_;
+    }
+
+    alcCaptureCloseDeviceFn alc_capture_close_device() const
+    {
+        return alcCaptureCloseDevice_;
+    }
+
+    alcCaptureStartFn alc_capture_start() const
+    {
+        return alcCaptureStart_;
+    }
+
+    alcCaptureStopFn alc_capture_stop() const
+    {
+        return alcCaptureStop_;
+    }
+
+    alcCaptureSamplesFn alc_capture_samples() const
+    {
+        return alcCaptureSamples_;
+    }
+
+    // Exposed for ALCaptureDevice::update() to query ALC_CAPTURE_SAMPLES
+    // (how many frames are currently ready to read) before calling
+    // alc_capture_samples().
+    alcGetIntegervFn alc_get_integerv() const
+    {
+        return alcGetIntegerv_;
     }
 
     // Source entry points - exposed for ALSource (src/openal/al_source.cpp),
@@ -435,6 +502,17 @@ public:
     alAuxiliaryEffectSlotfFn al_auxiliary_effect_slotf() const
     {
         return alAuxiliaryEffectSlotf_;
+    }
+
+    // AL_SOFT_callback_buffer entry point - exposed for ALStreamBuffer
+    // (src/openal/al_stream_buffer.cpp), same "no further wrapping"
+    // rationale as the filter/effect accessors above. Null if
+    // AL_SOFT_callback_buffer wasn't resolved (see has_efx()'s doc comment -
+    // this extension is resolved alongside EFX, so it's absent under the
+    // same conditions).
+    alBufferCallbackSOFTFn al_buffer_callback_soft() const
+    {
+        return alBufferCallbackSOFT_;
     }
 
     // Pushes the AL listener's position/orientation - called once per frame
