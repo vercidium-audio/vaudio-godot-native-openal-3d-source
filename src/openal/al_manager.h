@@ -202,13 +202,10 @@ public:
 
     // Tears down the current device/context (if any) and reopens them using
     // device_name/max_auxiliary_sends/new_sample_rate/new_hrtf_enabled,
-    // leaving the resolved function pointers and loaded library alone.
-    // Called by VAOpenALSettings::_ready when its exported device/reverb-send
-    // settings differ from the defaults initialize() already applied at
-    // module load - see register_types.cpp. Every existing AL object
-    // (sources, buffers, filters, effects) is invalidated by this - safe only
-    // because it's expected to run once, early, before any VASource/VAEmitter
-    // has created OpenAL objects against the old device.
+    // leaving the resolved function pointers and loaded library alone. Every
+    // existing AL object (sources, buffers, filters, effects) is invalidated
+    // by this - see set_output_device() below for the runtime-switching
+    // entry point that calls this after boot.
     bool reinitialize(const String &new_device_name, int new_max_auxiliary_sends, int new_sample_rate, bool new_hrtf_enabled);
 
     // Runtime device-switching entry point for a shipped game's audio
@@ -314,20 +311,20 @@ public:
 
     // Lists every playback device name the current driver reports via the
     // ALC_ENUMERATE_ALL_EXT extension (falls back to the basic
-    // ALC_ENUMERATION_EXT list if that's unavailable) - exposed as
-    // VAOpenALSettings::get_available_devices for discovering valid
-    // device_name values. Can be called before initialize() - opens no
-    // device itself, just queries alcGetString(nullptr, ...).
+    // ALC_ENUMERATION_EXT list if that's unavailable) - bound for scripts to
+    // discover valid device names to pass to set_output_device(). Can be
+    // called before initialize() - opens no device itself, just queries
+    // alcGetString(nullptr, ...).
     PackedStringArray get_available_devices();
 
     // Lists every capture (input/microphone) device name the current driver
-    // reports via ALC_CAPTURE_DEVICE_SPECIFIER - exposed as
-    // VAOpenALSettings::get_available_capture_devices for discovering valid
-    // device names to pass to ALCaptureDevice::open(). Can be called before
-    // initialize() - opens no device itself, just queries alcGetString(nullptr, ...).
-    // Unlike get_available_devices(), there's no ALC_CAPTURE_ALL_DEVICES_SPECIFIER
-    // "enumerate all" variant to fall back to - ALC_CAPTURE_DEVICE_SPECIFIER
-    // is the only list ALC_EXT_capture defines.
+    // reports via ALC_CAPTURE_DEVICE_SPECIFIER - bound for scripts to
+    // discover valid device names to pass to ALCaptureDevice::open(). Can be
+    // called before initialize() - opens no device itself, just queries
+    // alcGetString(nullptr, ...). Unlike get_available_devices(), there's no
+    // ALC_CAPTURE_ALL_DEVICES_SPECIFIER "enumerate all" variant to fall back
+    // to - ALC_CAPTURE_DEVICE_SPECIFIER is the only list ALC_EXT_capture
+    // defines.
     PackedStringArray get_available_capture_devices();
 
     // Destroys the context and closes the device, if open. Safe to call more

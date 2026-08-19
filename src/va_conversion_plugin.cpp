@@ -14,7 +14,6 @@
 #include "va_emitter.h"
 #include "va_engine_util.h"
 #include "va_input_stream_source.h"
-#include "va_openal_settings.h"
 #include "va_source.h"
 #include "va_source_ambient.h"
 #include "va_source_leech.h"
@@ -278,7 +277,7 @@ void VADeviceRefreshInspectorPlugin::_bind_methods()
 
 bool VADeviceRefreshInspectorPlugin::_can_handle(Object *object) const
 {
-    return Object::cast_to<VAOpenALSettings>(object) != nullptr || Object::cast_to<VAInputStreamSource>(object) != nullptr;
+    return Object::cast_to<VAInputStreamSource>(object) != nullptr;
 }
 
 bool VADeviceRefreshInspectorPlugin::_parse_property(Object *object, Variant::Type type, const String &name, PropertyHint hint_type,
@@ -288,19 +287,13 @@ bool VADeviceRefreshInspectorPlugin::_parse_property(Object *object, Variant::Ty
     // inserts the control just before the current property's own row is
     // drawn (see EditorInspector::update_tree's per-property parse_property
     // loop in editor/inspector/editor_inspector.cpp), not after it - so to
-    // land the button visually below capture_device_name/device_name, this
-    // has to match on the NEXT property in each class's _bind_methods order
-    // (max_reverb_sends after capture_device_name for VAOpenALSettings,
-    // buffer_size_frames after device_name for VAInputStreamSource) rather
-    // than the device property itself. Both classes expose a
-    // refresh_devices() method with the same no-argument signature (see
-    // their own doc comments) - Callable(object, "refresh_devices") doesn't
-    // care which concrete type object is, so no per-class branch is needed
-    // here beyond picking the right "next property" name.
-    bool is_settings_target = Object::cast_to<VAOpenALSettings>(object) && name == StringName("max_reverb_sends");
+    // land the button visually below device_name, this has to match on the
+    // NEXT property in VAInputStreamSource's _bind_methods order
+    // (buffer_size_frames after device_name) rather than the device property
+    // itself.
     bool is_input_stream_target = Object::cast_to<VAInputStreamSource>(object) && name == StringName("buffer_size_frames");
 
-    if (!is_settings_target && !is_input_stream_target)
+    if (!is_input_stream_target)
         return false;
 
     Button *refresh_button = memnew(Button);

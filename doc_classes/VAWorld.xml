@@ -87,10 +87,10 @@
 			The maximum number of grouped EAX reverb properties shared across all emitters that affect grouped EAX. Higher values increase accuracy but are more expensive to run.
 		</member>
 		<member name="meters_per_unit" type="float" setter="set_meters_per_unit" getter="get_meters_per_unit" default="1.0">
-			How many meters one world unit represents. Affects air absorption and reverb. This is separate from [member VAOpenALSettings.meters_per_unit], which only affects OpenAL's own air-absorption and reverb decay math.
+			How many meters one world unit represents. Affects air absorption and reverb. This is separate from [member ALManager.meters_per_unit], which only affects OpenAL's own air-absorption and reverb decay math.
 		</member>
 		<member name="speed_of_sound" type="float" setter="set_speed_of_sound" getter="get_speed_of_sound" default="343.0">
-			The speed of sound, in meters per second. Affects air absorption and reverb. This is separate from [member VAOpenALSettings.speed_of_sound], which only affects OpenAL's own Doppler calculation.
+			The speed of sound, in meters per second. Affects air absorption and reverb. This is separate from [member ALManager.speed_of_sound], which only affects OpenAL's own Doppler calculation.
 		</member>
 		<member name="humidity" type="float" setter="set_humidity" getter="get_humidity" default="0.1">
 			The air humidity percentage, from 0.0 to 1.0. Affects air absorption.

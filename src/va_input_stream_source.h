@@ -50,16 +50,14 @@ public:
     void _process(double delta) override;
 
     // Turns device_name into an editor dropdown of the driver's currently
-    // available capture devices - matches VAOpenALSettings::device_name's
-    // identical PROPERTY_HINT_ENUM pattern.
+    // available capture devices.
     void _validate_property(PropertyInfo &p_property) const;
 
     // Re-queries the driver's capture device list and re-validates
     // device_name's PROPERTY_HINT_ENUM so a device plugged in after this
     // node was selected shows up without reselecting the node - see
     // VADeviceRefreshInspectorPlugin (va_conversion_plugin.h) for the
-    // Inspector button that calls this. Matches
-    // VAOpenALSettings::refresh_devices.
+    // Inspector button that calls this.
     void refresh_devices();
 
     int get_format() const
@@ -106,8 +104,8 @@ public:
     }
 
     // Opens a microphone/input device (device_name empty for the driver's
-    // default - see VAOpenALSettings::get_available_capture_devices for
-    // valid names) and, once start_capture() is called, automatically feeds
+    // default - see ALManager::get_available_capture_devices for valid
+    // names) and, once start_capture() is called, automatically feeds
     // every captured chunk into this same stream via push_audio_data each
     // _process - a script only needs open_stream()+open_capture()+
     // start_capture(), no manual per-frame wiring. format/frequency should

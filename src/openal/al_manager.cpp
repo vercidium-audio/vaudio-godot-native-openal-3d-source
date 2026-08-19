@@ -333,8 +333,7 @@ void ALManager::read_settings_from_project_settings()
     // PROPERTY_HINT_ENUM's hint_string syntax), so the Project Settings UI
     // writes DEFAULT_DEVICE_LABEL itself into the setting when a user picks
     // "(Default)" - translate that back to "" (alcOpenDevice's own "use the
-    // driver default" spelling), matching VAOpenALSettings::set_device_name's
-    // identical translation for its analogous property.
+    // driver default" spelling).
     String device_name_setting = settings->get_setting("audio/vaudio/output_device");
 
     if (device_name_setting == String(DEFAULT_DEVICE_LABEL))

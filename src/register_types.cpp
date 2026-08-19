@@ -28,7 +28,6 @@
 #include "va_listener.h"
 #include "va_custom_material.h"
 #include "va_networked_stream_source.h"
-#include "va_openal_settings.h"
 #include "va_primitive_ref.h"
 #include "va_raytraced_source_node3d.h"
 #include "va_source.h"
@@ -164,8 +163,7 @@ static void register_project_settings()
 
     // Suggestion, not a strict enum: the device list can only be queried after soft_oal.dll is
     // loaded (empty this early), and a strict enum would blank out a saved device name for a
-    // device that's temporarily unplugged - matches VAOpenALSettings::_validate_property's old
-    // reasoning for device_name/capture_device_name.
+    // device that's temporarily unplugged.
     PackedStringArray devices = ALManager::get_singleton() ? ALManager::get_singleton()->get_available_devices() : PackedStringArray();
     devices.insert(0, DEFAULT_DEVICE_LABEL);
 
@@ -240,7 +238,6 @@ void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p
     ClassDB::register_class<va_godot::VAEmitter>();
     ClassDB::register_class<va_godot::VAListener>();
     ClassDB::register_class<va_godot::VACustomMaterial>();
-    ClassDB::register_class<va_godot::VAOpenALSettings>();
     ClassDB::register_class<VADefaultMaterial>();
     ClassDB::register_abstract_class<VARaytracedSourceNode3D>();
     ClassDB::register_class<VASource>();

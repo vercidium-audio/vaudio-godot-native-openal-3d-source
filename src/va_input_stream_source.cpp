@@ -23,10 +23,11 @@ void VAInputStreamSource::_bind_methods()
 
     ClassDB::bind_method(D_METHOD("get_sample_rate"), &VAInputStreamSource::get_sample_rate);
     ClassDB::bind_method(D_METHOD("set_sample_rate", "value"), &VAInputStreamSource::set_sample_rate);
-    // Matches VAOpenALSettings::sample_rate's enum hint (same common rates),
-    // minus its "Driver Default:0" entry - unlike ALManager's playback
-    // device, ALCaptureDevice::open() has no "use the driver's default rate"
-    // concept, every capture open() call needs an explicit frequency.
+    // Similar common-rates enum hint to the audio/vaudio/sample_rate Project
+    // Setting, minus its "System Default:0" entry - unlike ALManager's
+    // playback device, ALCaptureDevice::open() has no "use the driver's
+    // default rate" concept, every capture open() call needs an explicit
+    // frequency.
     ADD_PROPERTY(PropertyInfo(Variant::INT, "sample_rate", PROPERTY_HINT_ENUM, "22050,44100,48000,96000"), "set_sample_rate", "get_sample_rate");
 
     ClassDB::bind_method(D_METHOD("get_device_name"), &VAInputStreamSource::get_device_name);
@@ -46,14 +47,12 @@ void VAInputStreamSource::_bind_methods()
     ClassDB::bind_method(D_METHOD("is_capture_open"), &VAInputStreamSource::is_capture_open);
 }
 
-// Matches VAOpenALSettings::_validate_property's identical device_name
-// dropdown pattern - see that class's doc comment for why a strict
-// PROPERTY_HINT_ENUM is used (Godot's editor unconditionally injects a
-// blank entry into a Variant::STRING PROPERTY_HINT_ENUM_SUGGESTION dropdown,
-// with no way to suppress it) and why that's safe despite device_name being
-// runtime-dependent (an unrecognized saved value is shown as-is, not
-// blanked out - just not pre-selected until refresh_devices() re-queries
-// the driver).
+// Turns device_name into a strict PROPERTY_HINT_ENUM dropdown (Godot's
+// editor unconditionally injects a blank entry into a Variant::STRING
+// PROPERTY_HINT_ENUM_SUGGESTION dropdown, with no way to suppress it) - safe
+// despite device_name being runtime-dependent (an unrecognized saved value
+// is shown as-is, not blanked out - just not pre-selected until
+// refresh_devices() re-queries the driver).
 void VAInputStreamSource::_validate_property(PropertyInfo &p_property) const
 {
     if (p_property.name != StringName("device_name"))
