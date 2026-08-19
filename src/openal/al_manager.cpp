@@ -1,7 +1,9 @@
 #include "al_manager.h"
 
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include "../va_device_name.h"
 #include "../va_engine_util.h"
 
 #include <cstring>
@@ -286,12 +288,46 @@ bool ALManager::open_device_and_context()
     return true;
 }
 
+// Reads device_name/max_auxiliary_sends/sample_rate/hrtf_enabled from the
+// audio/vaudio/* Project Settings registered by register_project_settings()
+// (register_types.cpp), so the one-and-only device open below already uses
+// the user's real settings instead of hard-coded defaults - see
+// godot_singleton_plan.md, Section 4.2. Assumes register_project_settings()
+// already ran (it's called before al_manager.initialize() in
+// initialize_vaudio_godot_native_openal_3d_module), so every setting already
+// exists with its registered default.
+void ALManager::read_settings_from_project_settings()
+{
+    ProjectSettings *settings = ProjectSettings::get_singleton();
+
+    // PROPERTY_HINT_ENUM_SUGGESTION on a STRING property stores the literal
+    // suggestion text the user picked (there's no "Label:value" mapping like
+    // PROPERTY_HINT_ENUM's hint_string syntax), so the Project Settings UI
+    // writes DEFAULT_DEVICE_LABEL itself into the setting when a user picks
+    // "(Default)" - translate that back to "" (alcOpenDevice's own "use the
+    // driver default" spelling), matching VAOpenALSettings::set_device_name's
+    // identical translation for its analogous property.
+    String device_name_setting = settings->get_setting("audio/vaudio/output_device");
+
+    if (device_name_setting == String(DEFAULT_DEVICE_LABEL))
+        device_name_setting = String();
+
+    CharString device_name_utf8 = device_name_setting.utf8();
+    device_name = device_name_utf8.get_data();
+
+    max_auxiliary_sends = settings->get_setting("audio/vaudio/max_reverb_sends");
+    sample_rate = settings->get_setting("audio/vaudio/sample_rate");
+    hrtf_enabled = settings->get_setting("audio/vaudio/hrtf_enabled");
+}
+
 bool ALManager::initialize()
 {
     if (is_initialized())
     {
         return true;
     }
+
+    read_settings_from_project_settings();
 
     if (!load_library())
     {
@@ -309,6 +345,9 @@ bool ALManager::initialize()
         unload_library();
         return false;
     }
+
+    VA_LOG("ALManager initialized - device '", device_name.empty() ? "(default)" : device_name.c_str(),
+        "', max_reverb_sends ", max_auxiliary_sends, ", sample_rate ", sample_rate, ", hrtf_enabled ", hrtf_enabled);
 
     singleton = this;
     return true;

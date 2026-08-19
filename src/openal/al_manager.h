@@ -169,6 +169,11 @@ private:
     void unload_library();
     void close_device();
 
+    // Reads device_name/max_auxiliary_sends/sample_rate/hrtf_enabled from the
+    // audio/vaudio/* Project Settings, before the first open_device_and_context()
+    // call in initialize() - see godot_singleton_plan.md, Section 4.2.
+    void read_settings_from_project_settings();
+
 public:
     static ALManager *get_singleton();
 
