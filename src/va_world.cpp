@@ -72,6 +72,9 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_reference_frequency_hf"), &VAWorld::get_reference_frequency_hf);
     ClassDB::bind_method(D_METHOD("set_reference_frequency_hf", "value"), &VAWorld::set_reference_frequency_hf);
 
+    // meters_per_unit/speed_of_sound are also forwarded to the process-wide ALManager singleton
+    // (see set_meters_per_unit/set_speed_of_sound in va_world_properties.cpp), on top of their
+    // vaudio SDK usage below - same last-write-wins caveat as the Mixer group properties below.
     ADD_GROUP("AirAbsorption", "");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "meters_per_unit", PROPERTY_HINT_RANGE, "0.0001,1.0,or_greater"), "set_meters_per_unit", "get_meters_per_unit");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "speed_of_sound", PROPERTY_HINT_RANGE, "0.0001,1000.0,1,or_greater"), "set_speed_of_sound", "get_speed_of_sound");

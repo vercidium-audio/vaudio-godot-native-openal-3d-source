@@ -102,15 +102,13 @@ void VAWorld::set_meters_per_unit(float value)
     // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     meters_per_unit = std::max(0.0001f, value);
 
-    if (!world)
+    if (world)
     {
-        return;
+        VAResult result = vaWorldSetMetersPerUnit(world, meters_per_unit);
+
+        if (result != VA_SUCCESS)
+            VA_ERROR_NAMED_RESULT(result, "Failed to set world meters per unit (may be <= 0, NaN or Infinity)");
     }
-
-    VAResult result = vaWorldSetMetersPerUnit(world, meters_per_unit);
-
-    if (result != VA_SUCCESS)
-        VA_ERROR_NAMED_RESULT(result, "Failed to set world meters per unit (may be <= 0, NaN or Infinity)");
 
     if (ALManager::get_singleton())
         ALManager::get_singleton()->set_meters_per_unit(meters_per_unit);
@@ -121,13 +119,17 @@ void VAWorld::set_speed_of_sound(float value)
     // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     speed_of_sound = std::max(0.0001f, value);
 
-    if (!world)
-        return;
+    if (world)
+    {
+        VAResult result = vaWorldSetInverseSpeedOfSound(world, 1.0f / speed_of_sound);
 
-    VAResult result = vaWorldSetInverseSpeedOfSound(world, 1.0f / speed_of_sound);
+        if (result != VA_SUCCESS)
+            VA_ERROR_NAMED_RESULT(result, "Failed to set world speed of sound (may be <= 0, NaN or Infinity)");
+    }
 
-    if (result != VA_SUCCESS)
-        VA_ERROR_NAMED_RESULT(result, "Failed to set world speed of sound (may be <= 0, NaN or Infinity)");
+    // AL's set_speed_of_sound takes the direct value, not the inverse that vaWorldSetInverseSpeedOfSound takes.
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_speed_of_sound(speed_of_sound);
 }
 
 // AL-only settings (no vaudio SDK equivalent) - forwarded straight to ALManager. Guarded since
