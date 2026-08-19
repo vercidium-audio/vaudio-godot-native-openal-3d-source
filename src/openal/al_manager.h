@@ -211,6 +211,21 @@ public:
     // has created OpenAL objects against the old device.
     bool reinitialize(const String &new_device_name, int new_max_auxiliary_sends, int new_sample_rate, bool new_hrtf_enabled);
 
+    // Runtime device-switching entry point for a shipped game's audio
+    // settings menu (godot_singleton_plan.md, Section 4.4) - a thin wrapper
+    // around reinitialize() that reuses the manager's own currently-stored
+    // max_auxiliary_sends/sample_rate/hrtf_enabled, so a caller only needs to
+    // pass the one thing they're changing. Per that plan's Section 7 answer,
+    // max_reverb_sends stays a dev-only Project Settings value, while the
+    // output device and sample rate are the two settings meant to be
+    // end-user-customisable - sample rate has no separate runtime setter
+    // since a device's supported rates aren't independently discoverable
+    // here; pass a new device_name to also pick up a different rate.
+    bool set_output_device(const String &new_device_name)
+    {
+        return reinitialize(new_device_name, max_auxiliary_sends, sample_rate, hrtf_enabled);
+    }
+
     // Thin forward to alListenerf(AL_GAIN, ...) - the process-wide master
     // volume multiplier applied on top of every source's own gain. Safe to
     // call at any time after initialize() (no context recreation needed).

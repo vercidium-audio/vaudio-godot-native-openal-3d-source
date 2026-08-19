@@ -18,14 +18,32 @@ ALManager *ALManager::get_singleton()
     return singleton;
 }
 
-// Only the calls a script needs are bound here - get_available_devices()/
-// get_available_capture_devices() first (godot_singleton_plan.md, Section
-// 4.3's test item), with the runtime device-switching and mixer-property
-// methods (Section 4.4) added in a later pass of that plan.
+// get_available_devices()/get_available_capture_devices() (Section 4.3's
+// test item) plus the runtime device-switching and mixer-property methods
+// (Section 4.4) of godot_singleton_plan.md.
 void ALManager::_bind_methods()
 {
     ClassDB::bind_method(D_METHOD("get_available_devices"), &ALManager::get_available_devices);
     ClassDB::bind_method(D_METHOD("get_available_capture_devices"), &ALManager::get_available_capture_devices);
+    ClassDB::bind_method(D_METHOD("set_output_device", "device_name"), &ALManager::set_output_device);
+
+    ClassDB::bind_method(D_METHOD("set_master_volume", "value"), &ALManager::set_master_volume);
+
+    ClassDB::bind_method(D_METHOD("set_distance_model", "value"), &ALManager::set_distance_model);
+    ClassDB::bind_method(D_METHOD("get_distance_model"), &ALManager::get_distance_model);
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "distance_model"), "set_distance_model", "get_distance_model");
+
+    ClassDB::bind_method(D_METHOD("set_meters_per_unit", "value"), &ALManager::set_meters_per_unit);
+    ClassDB::bind_method(D_METHOD("get_meters_per_unit"), &ALManager::get_meters_per_unit);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "meters_per_unit"), "set_meters_per_unit", "get_meters_per_unit");
+
+    ClassDB::bind_method(D_METHOD("set_speed_of_sound", "value"), &ALManager::set_speed_of_sound);
+    ClassDB::bind_method(D_METHOD("get_speed_of_sound"), &ALManager::get_speed_of_sound);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "speed_of_sound"), "set_speed_of_sound", "get_speed_of_sound");
+
+    ClassDB::bind_method(D_METHOD("set_reverb_only", "value"), &ALManager::set_reverb_only);
+    ClassDB::bind_method(D_METHOD("get_reverb_only"), &ALManager::get_reverb_only);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reverb_only"), "set_reverb_only", "get_reverb_only");
 }
 
 ALManager::~ALManager()
