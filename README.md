@@ -5,8 +5,7 @@ Raytraced audio GDExtension with realistic muffling, reverb, ambience and visual
 > [!WARNING]
 > This repository contains the source code for the plugin. For releases, see [vaudio-godot-native-openal-3d-release](https://github.com/vercidium-audio/vaudio-godot-native-openal-3d-release).
 
-> [!WARNING]
-> This plugin is experimental and requires testing and feedback
+For Mono Godot (C#), please use [this plugin](https://github.com/vercidium-audio/vaudio-godot-mono-openal-3d/releases).
 
 This repository requires Vercidium Audio v1.7.0 and OpenAL Soft to run:
 - Download the Vercidium Audio SDK from [vercidium.com](https://vercidium.com)
