@@ -18,6 +18,16 @@ ALManager *ALManager::get_singleton()
     return singleton;
 }
 
+// Only the calls a script needs are bound here - get_available_devices()/
+// get_available_capture_devices() first (godot_singleton_plan.md, Section
+// 4.3's test item), with the runtime device-switching and mixer-property
+// methods (Section 4.4) added in a later pass of that plan.
+void ALManager::_bind_methods()
+{
+    ClassDB::bind_method(D_METHOD("get_available_devices"), &ALManager::get_available_devices);
+    ClassDB::bind_method(D_METHOD("get_available_capture_devices"), &ALManager::get_available_capture_devices);
+}
+
 ALManager::~ALManager()
 {
     shutdown();

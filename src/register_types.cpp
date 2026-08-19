@@ -43,8 +43,12 @@
 
 using namespace godot;
 
-// Process-wide OpenAL device/context owner. Constructed/destroyed alongside the module rather than tied to any single node's lifetime, since there's only ever one OpenAL device for the whole plugin (see al_manager.h).
-static ALManager al_manager;
+// Process-wide OpenAL device/context owner, registered as the "ALManager" Engine singleton so any
+// script can call it directly (godot_singleton_plan.md, Section 4.3). Heap-allocated with `memnew`
+// inside initialize_vaudio_godot_native_openal_3d_module rather than a plain `static ALManager`,
+// since ALManager is now a GDCLASS Object - see al_manager.h's class doc comment for why
+// constructing one at CRT static-init time (before GDExtensionBinding exists) would crash.
+static ALManager *al_manager = nullptr;
 
 // Depth-first search for a descendant named scene_root_name - used instead of
 // SceneTree::get_current_scene() below, which isn't reliable in a game that manually adds a scene
@@ -254,7 +258,12 @@ void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p
 
     register_project_settings();
 
-    al_manager.initialize();
+    ClassDB::register_class<ALManager>();
+
+    al_manager = memnew(ALManager);
+
+    if (al_manager->initialize())
+        Engine::get_singleton()->register_singleton("ALManager", al_manager);
 
     // Only the running game needs to receive VADebuggerPlugin's messages - EngineDebugger only
     // exists at all when running under the editor's debugger (see is_active()), and there's no
@@ -276,7 +285,12 @@ void uninitialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel
         return;
     }
 
-    al_manager.shutdown();
+    if (Engine::get_singleton()->has_singleton("ALManager"))
+        Engine::get_singleton()->unregister_singleton("ALManager");
+
+    al_manager->shutdown();
+    memdelete(al_manager);
+    al_manager = nullptr;
 
     if (EngineDebugger::get_singleton() && EngineDebugger::get_singleton()->has_capture("vaudio"))
         EngineDebugger::get_singleton()->unregister_message_capture("vaudio");

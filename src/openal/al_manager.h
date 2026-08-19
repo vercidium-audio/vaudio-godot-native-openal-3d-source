@@ -5,6 +5,8 @@
 // APIs rather than through an import .lib, since none is vendored.
 #include <windows.h>
 
+#include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -21,12 +23,23 @@ using namespace godot;
 // device, no per-listener property plumbing yet - those are separate,
 // not-yet-done checklist items in native_godot_plan.md).
 //
-// Not a Node - there's only ever one OpenAL device for the whole process, so
-// this is a plain singleton constructed/destroyed from register_types.cpp's
-// module init/uninit hooks, matching architectural decision #5 (build the
-// OpenAL layer directly in this plugin's C++, incrementally).
-class ALManager
+// A GDCLASS Object (not a Node - there's only ever one OpenAL device for the
+// whole process, matching how Godot's own AudioServer/Input are also plain
+// Object singletons, not nodes) registered with Engine::register_singleton
+// in register_types.cpp, so any script can call it directly - see
+// godot_singleton_plan.md, Section 4.3.
+//
+// Heap-allocated with `memnew` from inside
+// initialize_vaudio_godot_native_openal_3d_module (register_types.cpp), not
+// a `static ALManager` global - unlike this class's std::string member
+// (see device_name's doc comment below), the Object/Wrapped base class
+// constructor calls into GDExtension binding functions, which aren't bound
+// yet at CRT static-init time, so constructing one as a global would crash
+// the same way a godot::String member once did.
+class ALManager : public Object
 {
+    GDCLASS(ALManager, Object);
+
 private:
     HMODULE library = nullptr;
 
@@ -109,14 +122,13 @@ private:
     // max_auxiliary_sends of 0 means "leave it to the driver default" (no
     // ALC_MAX_AUXILIARY_SENDS attribute is passed to alcCreateContext).
     //
-    // std::string, not godot::String: ALManager's the process-wide global
-    // (see register_types.cpp's `static ALManager al_manager`), so this
-    // member's default constructor runs at CRT static-init time, before
-    // GDExtensionBinding has bound Godot's API (the string/ctor/dtor
-    // function pointers godot::String's own constructor calls through
-    // aren't populated yet then) - a godot::String member here crashed the
-    // DLL's init routine (Win32 error 1114) before any of our own code,
-    // even DllMain, ever ran.
+    // std::string, not godot::String: even though ALManager is now
+    // heap-allocated after GDExtensionBinding is bound (see the class doc
+    // comment above) rather than a CRT-static-init global, this stays
+    // std::string - a godot::String member here once crashed the DLL's init
+    // routine (Win32 error 1114) back when ALManager *was* a static global
+    // constructed before GDExtensionBinding existed, and there's no reason
+    // to reintroduce that risk for a field with no Godot-specific behaviour.
     std::string device_name;
     int max_auxiliary_sends = 0;
 
@@ -173,6 +185,9 @@ private:
     // audio/vaudio/* Project Settings, before the first open_device_and_context()
     // call in initialize() - see godot_singleton_plan.md, Section 4.2.
     void read_settings_from_project_settings();
+
+protected:
+    static void _bind_methods();
 
 public:
     static ALManager *get_singleton();
