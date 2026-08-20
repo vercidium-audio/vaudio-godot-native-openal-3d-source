@@ -11,12 +11,11 @@ using namespace godot;
 class ALSource;
 
 // A source that plays live, caller-pushed PCM data instead of a fixed
-// AudioStream resource - godot_stream_plan.md section 5.3. The native C++
+// AudioStream resource. The native C++
 // equivalent of openal_soft_bindings's managed/ALStreamSource.cs, for use
 // cases like microphone/VOIP audio where the full sound isn't known/decodable
 // up front. Kept as its own class rather than folded into VASource/
-// ALSourceNode (see godot_stream_plan.md section 8's "keep them separate"
-// answer) since it doesn't use ALSourceNode's decode-then-upload ALBuffer
+// ALSourceNode since it doesn't use ALSourceNode's decode-then-upload ALBuffer
 // pool at all - open_stream() creates one ALStreamBuffer + one ALSource
 // directly instead of going through ALSourceNode::play()/configure_source().
 //
@@ -82,7 +81,7 @@ public:
     bool open_stream(int format, int frequency);
 
     // Copies data's bytes (raw PCM, in the format passed to open_stream - no
-    // decoding happens here, see godot_stream_plan.md section 5.4) into a new
+    // decoding happens here) into a new
     // chunk and queues it for playback. No-ops with a logged error if
     // open_stream() hasn't been called (or close_stream() already tore the
     // stream down). This is the single entry point every audio source feeds

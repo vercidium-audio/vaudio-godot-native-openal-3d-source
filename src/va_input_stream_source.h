@@ -12,15 +12,12 @@ using namespace godot;
 // A VAStreamSource fed automatically by a local input (microphone) capture
 // device, instead of a script manually calling push_audio_data(). Split out
 // of what used to be VAStreamSource's own capture_device/open_capture/
-// start_capture/stop_capture/close_capture members (see
-// godot_stream_plan.md section 9) so the base class stays agnostic about
+// start_capture/stop_capture/close_capture members so the base class stays agnostic about
 // where its audio comes from - VANetworkedStreamSource is the sibling for
 // audio arriving over the network instead.
 //
 // Besides feeding its own playback (the "hear your own mic" case), this node
-// also emits the "audio_captured" signal with every chunk it captures - see
-// todo.md's "Godot" section ("need a way to give the user the [microphone]
-// data stream ... so they can send it over VOIP"). A script connects to that
+// also emits the "audio_captured" signal with every chunk it captures. A script connects to that
 // signal and forwards the PackedByteArray over the network itself (ENet/RPC/
 // PacketPeerUDP etc. are scripting-only, same reasoning as
 // VANetworkedStreamSource not wrapping them) - this node has no opinion on
@@ -32,9 +29,7 @@ class VAInputStreamSource : public VAStreamSource
 private:
     // Feeds this stream directly - see open_capture(). Kept as a convenience
     // so a script doesn't need a separate node/wiring for the common "play
-    // back what the mic just heard" case (godot_stream_plan.md section 6's
-    // SequenceEcho.cs wiring, folded into this one node rather than left
-    // fully decoupled).
+    // back what the mic just heard" case
     ALCaptureDevice capture_device;
     bool capture_open = false;
 
@@ -51,9 +46,7 @@ private:
     // Minimum peak sample amplitude (0-32767, matching a 16-bit PCM sample's
     // range regardless of the capture format actually in use - 8-bit samples
     // are scaled up before comparing) a captured chunk must reach before it's
-    // forwarded to push_audio_data() - see todo.md's "Godot" section:
-    // "microphone threshold should be a setting on the node that accepts
-    // microphone input from the user's capture device". 0 (the default)
+    // forwarded to push_audio_data(). 0 (the default)
     // forwards every chunk, matching the C# reference's MicrophoneThreshold
     // defaulting to 0 (ALManager.cs, vaudio-godot-mono-openal-3d) before this
     // was wired up to anything there.

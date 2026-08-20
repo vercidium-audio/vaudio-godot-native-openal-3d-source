@@ -26,8 +26,7 @@ using namespace godot;
 // A GDCLASS Object (not a Node - there's only ever one OpenAL device for the
 // whole process, matching how Godot's own AudioServer/Input are also plain
 // Object singletons, not nodes) registered with Engine::register_singleton
-// in register_types.cpp, so any script can call it directly - see
-// godot_singleton_plan.md, Section 4.3.
+// in register_types.cpp, so any script can call it directly
 //
 // Heap-allocated with `memnew` from inside
 // initialize_vaudio_godot_native_openal_3d_module (register_types.cpp), not
@@ -203,7 +202,7 @@ private:
 
     // Reads device_name/max_auxiliary_sends/sample_rate/hrtf_enabled from the
     // audio/vaudio/* Project Settings, before the first open_device_and_context()
-    // call in initialize() - see godot_singleton_plan.md, Section 4.2.
+    // call in initialize()
     void read_settings_from_project_settings();
 
 protected:
@@ -232,16 +231,7 @@ public:
     // runtime-switching entry point that calls this after boot.
     bool reinitialize(const String &new_device_name, int new_max_auxiliary_sends, int new_sample_rate, bool new_hrtf_enabled);
 
-    // Runtime device-switching entry point for a shipped game's audio
-    // settings menu (godot_singleton_plan.md, Section 4.4) - a thin wrapper
-    // around reinitialize() that reuses the manager's own currently-stored
-    // max_auxiliary_sends/sample_rate/hrtf_enabled, so a caller only needs to
-    // pass the one thing they're changing. Per that plan's Section 7 answer,
-    // max_reverb_sends stays a dev-only Project Settings value, while the
-    // output device and sample rate are the two settings meant to be
-    // end-user-customisable - sample rate has no separate runtime setter
-    // since a device's supported rates aren't independently discoverable
-    // here; pass a new device_name to also pick up a different rate.
+    // Runtime device-switching entry point for a shipped game's audio settings menu
     bool set_output_device(const String &new_device_name)
     {
         return reinitialize(new_device_name, max_auxiliary_sends, sample_rate, hrtf_enabled);

@@ -43,7 +43,7 @@
 using namespace godot;
 
 // Process-wide OpenAL device/context owner, registered as the "ALManager" Engine singleton so any
-// script can call it directly (godot_singleton_plan.md, Section 4.3). Heap-allocated with `memnew`
+// script can call it directly. Heap-allocated with `memnew`
 // inside initialize_vaudio_godot_native_openal_3d_module rather than a plain `static ALManager`,
 // since ALManager is now a GDCLASS Object - see al_manager.h's class doc comment for why
 // constructing one at CRT static-init time (before GDExtensionBinding exists) would crash.
@@ -179,9 +179,8 @@ void refresh_output_device_hint()
 
 // Registers this plugin's own audio/vaudio/* entries under Project Settings, matched to how
 // Godot's own Project Settings > Audio > Driver > Device is read at startup before any scene
-// loads (see godot_singleton_plan.md, Section 3) - device_name/max_reverb_sends/sample_rate/
-// hrtf_enabled must exist here so ALManager::initialize() can read them before it opens the
-// one-and-only device, below.
+// loads - device_name/max_reverb_sends/sample_rate/ hrtf_enabled must exist here so ALManager::initialize()
+// can read them before it opens the one-and-only device, below.
 static void register_project_settings()
 {
     ProjectSettings *settings = ProjectSettings::get_singleton();
@@ -211,8 +210,8 @@ static void register_project_settings()
     settings->add_property_info(max_reverb_sends_info);
 
     // max_mono_sources/max_stereo_sources: project-level settings set by the developer, matching
-    // vaudio-godot-mono-openal-3d's ALManager.cs MaximumMonoSources/MaximumStereoSources (todo.md's
-    // "Godot" section) - defaults match that C# reference's own field initialisers (16/240).
+    // vaudio-godot-mono-openal-3d's ALManager.cs MaximumMonoSources/MaximumStereoSources -
+    // defaults match that C# reference's own field initialisers (16/240).
     // Read once by ALManager::read_settings_from_project_settings() before the one-and-only device
     // open, same "not settable at runtime" shape as that C# reference (see MaximumMonoSources'
     // doc comment in ALManager.cs).

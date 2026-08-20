@@ -9,7 +9,7 @@
 // Owns one OpenAL buffer whose samples are pulled from a callback instead of
 // a fixed alBufferData upload - the native C++ equivalent of
 // openal_soft_bindings's managed/ALStreamSource.cs's ALStreamSourceBuffer +
-// OnBufferCallback pattern (godot_stream_plan.md section 5.2). Used by
+// OnBufferCallback pattern. Used by
 // VAStreamSource (src/va_stream_source.h) to let a script push live PCM
 // chunks (e.g. microphone/VOIP audio) into a source while it plays, instead
 // of decoding one fixed-length AudioStream up front like ALBuffer does.

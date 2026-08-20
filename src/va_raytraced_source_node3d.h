@@ -18,8 +18,7 @@ class VAEmitter;
 // Shared raytracing surface for any spatialised source that casts its own
 // reverb/ambience/visualisation rays, regardless of how it gets audio into
 // OpenAL (a fixed decoded buffer for VASource, a live pushed/callback buffer
-// for VAStreamSource - see godot_stream_plan.md's "give VAStreamSource
-// raytracing" follow-up). Factored out of what used to be VASource's own
+// for VAStreamSource. Factored out of what used to be VASource's own
 // private child-VAEmitter machinery so both classes get identical
 // reverb/muffling/ambience behaviour instead of duplicating ~25 properties -
 // per user: "like an ALSource and an ALStreamSource has all the AL stuff,

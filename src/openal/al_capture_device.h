@@ -11,7 +11,7 @@ using namespace godot;
 
 // Opens an OpenAL input (microphone) capture device and polls it for new
 // samples - the native C++ equivalent of openal_soft_bindings's
-// managed/ALCaptureDevice.cs (godot_stream_plan.md section 6). Deliberately
+// managed/ALCaptureDevice.cs. Deliberately
 // not a Godot Node: it's a plain object owned by whichever script/node wants
 // microphone input, matching ALCaptureDevice.cs's own design (a plain class
 // constructed/updated/closed by the caller, e.g. SequenceEcho.cs).

@@ -11,7 +11,7 @@ using namespace godot;
 // PacketPeerUDP, etc.) with no native C++ binding surface this class needs
 // to wrap, so this adds no methods beyond what VAStreamSource already
 // exposes - it exists purely as a distinctly-named/documented node type
-// (godot_stream_plan.md section 9), so a scene tree reads as "this source is
+// so a scene tree reads as "this source is
 // fed by network code" at a glance, and so its own doc_classes XML can spell
 // out the intended wiring. A script's multiplayer packet handler (e.g. an
 // @rpc-annotated method, or a PacketPeerUDP read loop) should call

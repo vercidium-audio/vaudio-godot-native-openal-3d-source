@@ -317,8 +317,7 @@ void VAConversionPlugin::_bind_methods()
 // the Inspector, since ProjectSettingsEditor isn't a GDExtension-exposed class an
 // EditorInspectorPlugin can hook into. Named "Devices" (not "Output Devices") since capture
 // devices are still refreshed via VAInputStreamSource's own per-node button - there is no
-// project-wide input device setting (capture device selection is entirely per-node, see
-// godot_singleton_plan.md).
+// project-wide input device setting (capture device selection is entirely per-node)
 void VAConversionPlugin::refresh_output_device_setting()
 {
     refresh_output_device_hint();

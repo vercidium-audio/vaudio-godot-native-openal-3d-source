@@ -55,8 +55,7 @@ void VAInputStreamSource::_bind_methods()
     ClassDB::bind_method(D_METHOD("is_capture_open"), &VAInputStreamSource::is_capture_open);
 
     // Lets a script get at the raw microphone data (e.g. to send it over VOIP) without having to
-    // duplicate this node's own capture device - see the class doc comment and todo.md's "Godot"
-    // section.
+    // duplicate this node's own capture device
     ADD_SIGNAL(MethodInfo("audio_captured", PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
 }
 
@@ -100,8 +99,7 @@ void VAInputStreamSource::refresh_devices()
 // Matches ALSourceNode::_ready()'s autoplay pattern: only runs in a live
 // (non-editor) tree, and only needs to happen once when this node first
 // becomes ready. Replaces what used to be a user script's manual
-// open_stream()/open_capture()/start_capture() call sequence (see
-// godot_stream_plan.md section 9/stream_test.gd) with the equivalent
+// open_stream()/open_capture()/start_capture() call sequence with the equivalent
 // sequence driven by this node's own exported format/sample_rate/
 // device_name/buffer_size_frames properties.
 void VAInputStreamSource::_ready()

@@ -104,7 +104,5 @@ using alDeleteAuxiliaryEffectSlotsFn = LPALDELETEAUXILIARYEFFECTSLOTS;
 using alAuxiliaryEffectSlotiFn = LPALAUXILIARYEFFECTSLOTI;
 using alAuxiliaryEffectSlotfFn = LPALAUXILIARYEFFECTSLOTF;
 
-// AL_SOFT_callback_buffer extension - lets a buffer pull its samples from a
-// callback instead of a fixed alBufferData upload, the basis for
-// ALStreamBuffer's streaming playback (godot_stream_plan.md section 5.1).
+// AL_SOFT_callback_buffer extension - lets a buffer pull its samples from a callback instead of a fixed alBufferData upload, the basis for ALStreamBuffer's streaming playback.
 using alBufferCallbackSOFTFn = LPALBUFFERCALLBACKSOFT;

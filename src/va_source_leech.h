@@ -16,7 +16,7 @@ class VAEmitter;
 }
 
 // A VASource that leeches raytracing results off a parent VAEmitter instead
-// of owning/casting its own rays - see todo.md: an enemy might have a
+// of owning/casting its own rays - an enemy might have a
 // VAEmitter constantly raytraced, and multiple VASourceLeech children (
 // footsteps, gunshots, etc.) can be heard through it without each casting
 // their own rays or being individually registered as a target of the

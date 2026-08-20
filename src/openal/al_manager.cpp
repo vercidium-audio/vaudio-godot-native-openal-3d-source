@@ -18,9 +18,7 @@ ALManager *ALManager::get_singleton()
     return singleton;
 }
 
-// get_available_devices()/get_available_capture_devices() (Section 4.3's
-// test item) plus the runtime device-switching and mixer-property methods
-// (Section 4.4) of godot_singleton_plan.md.
+// get_available_devices()/get_available_capture_devices() plus the runtime device-switching and mixer-property methods
 void ALManager::_bind_methods()
 {
     ClassDB::bind_method(D_METHOD("get_available_devices"), &ALManager::get_available_devices);
@@ -348,7 +346,7 @@ bool ALManager::open_device_and_context()
 // sample_rate/hrtf_enabled from the audio/vaudio/* Project Settings
 // registered by register_project_settings() (register_types.cpp), so the
 // one-and-only device open below already uses the user's real settings
-// instead of hard-coded defaults - see godot_singleton_plan.md, Section 4.2.
+// instead of hard-coded defaults.
 // Assumes register_project_settings() already ran (it's called before
 // al_manager.initialize() in initialize_vaudio_godot_native_openal_3d_module),
 // so every setting already exists with its registered default.
