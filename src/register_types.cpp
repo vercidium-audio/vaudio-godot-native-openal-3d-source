@@ -197,8 +197,7 @@ static void register_project_settings()
 
     refresh_output_device_hint();
 
-    // max_reverb_sends: dev-only setting (not end-user-facing), default 1 - see todo.md's
-    // "Godot" section, "`Max Reverb Sends` should be 1 by default".
+    // max_reverb_sends: dev-only setting (not end-user-facing), default 1
     if (!settings->has_setting("audio/vaudio/max_reverb_sends"))
         settings->set_setting("audio/vaudio/max_reverb_sends", 1);
 
@@ -254,8 +253,7 @@ static void register_project_settings()
     sample_rate_info["hint_string"] = "System Default:0,22050,44100,48000,96000";
     settings->add_property_info(sample_rate_info);
 
-    // hrtf_enabled: default true - see todo.md's "Godot" section, "`HRTF Enabled` should be
-    // enabled by default".
+    // hrtf_enabled: default true
     if (!settings->has_setting("audio/vaudio/hrtf_enabled"))
         settings->set_setting("audio/vaudio/hrtf_enabled", true);
 

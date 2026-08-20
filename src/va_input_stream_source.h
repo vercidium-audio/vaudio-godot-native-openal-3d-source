@@ -16,6 +16,15 @@ using namespace godot;
 // godot_stream_plan.md section 9) so the base class stays agnostic about
 // where its audio comes from - VANetworkedStreamSource is the sibling for
 // audio arriving over the network instead.
+//
+// Besides feeding its own playback (the "hear your own mic" case), this node
+// also emits the "audio_captured" signal with every chunk it captures - see
+// todo.md's "Godot" section ("need a way to give the user the [microphone]
+// data stream ... so they can send it over VOIP"). A script connects to that
+// signal and forwards the PackedByteArray over the network itself (ENet/RPC/
+// PacketPeerUDP etc. are scripting-only, same reasoning as
+// VANetworkedStreamSource not wrapping them) - this node has no opinion on
+// how the data is transmitted, only on capturing it and handing it out.
 class VAInputStreamSource : public VAStreamSource
 {
     GDCLASS(VAInputStreamSource, VAStreamSource);
@@ -53,7 +62,8 @@ private:
     // Returns the greatest absolute sample amplitude in a chunk of format-
     // encoded PCM data, scaled to a 16-bit range so microphone_threshold
     // means the same thing regardless of format. Used by the open_capture()
-    // data callback to gate push_audio_data() on microphone_threshold.
+    // data callback to gate push_audio_data() and the "audio_captured"
+    // signal on microphone_threshold.
     static int peak_amplitude(const uint8_t *data, int num_bytes, int format);
 
 protected:

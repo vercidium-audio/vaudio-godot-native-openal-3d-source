@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 
 VAInputStreamSource::VAInputStreamSource()
 {
@@ -52,6 +53,11 @@ void VAInputStreamSource::_bind_methods()
     ClassDB::bind_method(D_METHOD("stop_capture"), &VAInputStreamSource::stop_capture);
     ClassDB::bind_method(D_METHOD("close_capture"), &VAInputStreamSource::close_capture);
     ClassDB::bind_method(D_METHOD("is_capture_open"), &VAInputStreamSource::is_capture_open);
+
+    // Lets a script get at the raw microphone data (e.g. to send it over VOIP) without having to
+    // duplicate this node's own capture device - see the class doc comment and todo.md's "Godot"
+    // section.
+    ADD_SIGNAL(MethodInfo("audio_captured", PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
 }
 
 // Turns device_name into a strict PROPERTY_HINT_ENUM dropdown (Godot's
@@ -163,13 +169,29 @@ bool VAInputStreamSource::open_capture(const String &device_name, int format, in
     // than erroring every single captured chunk. Chunks that don't reach
     // microphone_threshold's peak amplitude are dropped instead of forwarded -
     // see microphone_threshold's doc comment (va_input_stream_source.h).
+    //
+    // "audio_captured" is emitted independently of is_stream_open(), so a
+    // script can use this node purely to get at the microphone (e.g. for
+    // VOIP) without ever calling open_stream() at all - it's still gated on
+    // microphone_threshold, so a VOIP consumer gets the same silence-gating
+    // as local playback rather than needing to re-implement it.
     bool opened = capture_device.open(device_name, (ALenum)format, frequency, buffer_size_frames,
         [this, format](const uint8_t *data, int num_bytes)
         {
-            if (is_stream_open() && peak_amplitude(data, num_bytes, format) >= microphone_threshold)
+            if (peak_amplitude(data, num_bytes, format) < microphone_threshold)
+            {
+                return;
+            }
+
+            if (is_stream_open())
             {
                 push_audio_data(data, num_bytes);
             }
+
+            PackedByteArray packed;
+            packed.resize(num_bytes);
+            memcpy(packed.ptrw(), data, num_bytes);
+            emit_signal("audio_captured", packed);
         });
 
     if (!opened)

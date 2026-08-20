@@ -5,6 +5,7 @@
 	<description>
 		A [VAStreamSource] fed automatically by a local input (microphone) capture device, instead of a script manually calling [method VAStreamSource.push_audio_data].
 		No script is required for the common case: as soon as this node enters a running (non-editor) scene tree, it automatically calls [method VAStreamSource.open_stream], [method open_capture], and [method start_capture] itself, using the [member format]/[member sample_rate]/[member device_name]/[member buffer_size_frames] properties below. Every frame after that, captured audio is automatically pushed into the stream. Call [method open_capture]/[method start_capture] manually instead if a script needs to defer capture, switch devices at runtime, or otherwise not use the automatic startup sequence. See [VANetworkedStreamSource] for the equivalent node type meant to be fed from a network connection instead of a local input device.
+		Every captured chunk is also broadcast via the [signal audio_captured] signal, independently of local playback - connect to it to send the microphone data elsewhere, e.g. over the network for VOIP. This node has no networking code of its own (Godot's multiplayer/RPC/ENet/UDP APIs are scripting-only), so a script's job is just to take the [PackedByteArray] each signal emission provides and transmit it however it likes.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -62,4 +63,12 @@
 			</description>
 		</method>
 	</methods>
+	<signals>
+		<signal name="audio_captured">
+			<param index="0" name="data" type="PackedByteArray" />
+			<description>
+				Emitted from [method VAStreamSource._process] whenever this node's capture device (opened via [method open_capture]) produces a new chunk of PCM data, in [member format] at [member sample_rate]. Emitted regardless of whether [method VAStreamSource.open_stream] has been called or the stream is being used for local playback - connect to this signal to get the microphone data itself, e.g. to send it over the network for VOIP. Like local playback, chunks quieter than [member microphone_threshold] are not emitted.
+			</description>
+		</signal>
+	</signals>
 </class>
