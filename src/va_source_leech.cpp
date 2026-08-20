@@ -90,14 +90,14 @@ bool VASourceLeech::play()
         return false;
     }
 
-    played = ALSourceNode3D::play();
+    played = ALSource3D::play();
 
     return played;
 }
 
 void VASourceLeech::_process(double delta)
 {
-    ALSourceNode3D::_process(delta);
+    ALSource3D::_process(delta);
 
     if (!is_raytraced())
     {

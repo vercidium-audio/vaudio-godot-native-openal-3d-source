@@ -1,6 +1,6 @@
 #pragma once
 
-#include "al_source_node3d.h"
+#include "al_source3d.h"
 
 extern "C"
 {
@@ -21,9 +21,9 @@ class VAEmitter;
 // footsteps, gunshots, etc.) can be heard through it without each casting
 // their own rays or being individually registered as a target of the
 // listener (see the unreal plugin's equivalent leech pattern).
-class VASourceLeech : public ALSourceNode3D
+class VASourceLeech : public ALSource3D
 {
-    GDCLASS(VASourceLeech, ALSourceNode3D);
+    GDCLASS(VASourceLeech, ALSource3D);
 
 private:
     va_godot::VAWorld *va_world = nullptr;

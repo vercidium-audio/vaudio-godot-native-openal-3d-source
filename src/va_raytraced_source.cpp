@@ -1,4 +1,4 @@
-#include "va_raytraced_source_node3d.h"
+#include "va_raytraced_source.h"
 
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -10,16 +10,16 @@
 #include "va_world.h"
 #include "va_world_lookup.h"
 
-void VARaytracedSourceNode3D::_bind_methods()
+void VARaytracedSource::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("get_raytrace_once"), &VARaytracedSourceNode3D::get_raytrace_once);
-    ClassDB::bind_method(D_METHOD("set_raytrace_once", "value"), &VARaytracedSourceNode3D::set_raytrace_once);
+    ClassDB::bind_method(D_METHOD("get_raytrace_once"), &VARaytracedSource::get_raytrace_once);
+    ClassDB::bind_method(D_METHOD("set_raytrace_once", "value"), &VARaytracedSource::set_raytrace_once);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "raytrace_once"), "set_raytrace_once", "get_raytrace_once");
 
     // Read-only muffling stats
-    ClassDB::bind_method(D_METHOD("get_muffling_gain_lf"), &VARaytracedSourceNode3D::get_muffling_gain_lf);
-    ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VARaytracedSourceNode3D::get_muffling_gain_hf);
-    ClassDB::bind_method(D_METHOD("is_raytraced"), &VARaytracedSourceNode3D::is_raytraced);
+    ClassDB::bind_method(D_METHOD("get_muffling_gain_lf"), &VARaytracedSource::get_muffling_gain_lf);
+    ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VARaytracedSource::get_muffling_gain_hf);
+    ClassDB::bind_method(D_METHOD("is_raytraced"), &VARaytracedSource::is_raytraced);
 
     // Direct port of vaudio-godot-mono-openal-3d's VASourceProperties.cs groups
     // (Reverb/Muffling/Ambience/Advanced) - see the header for why this is a
@@ -27,94 +27,94 @@ void VARaytracedSourceNode3D::_bind_methods()
     // not ported, same rationale as VAEmitter.
     ADD_GROUP("Reverb", "");
 
-    ClassDB::bind_method(D_METHOD("get_reverb_ray_count"), &VARaytracedSourceNode3D::get_reverb_ray_count);
-    ClassDB::bind_method(D_METHOD("set_reverb_ray_count", "value"), &VARaytracedSourceNode3D::set_reverb_ray_count);
+    ClassDB::bind_method(D_METHOD("get_reverb_ray_count"), &VARaytracedSource::get_reverb_ray_count);
+    ClassDB::bind_method(D_METHOD("set_reverb_ray_count", "value"), &VARaytracedSource::set_reverb_ray_count);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "reverb_ray_count"), "set_reverb_ray_count", "get_reverb_ray_count");
 
-    ClassDB::bind_method(D_METHOD("get_reverb_bounce_count"), &VARaytracedSourceNode3D::get_reverb_bounce_count);
-    ClassDB::bind_method(D_METHOD("set_reverb_bounce_count", "value"), &VARaytracedSourceNode3D::set_reverb_bounce_count);
+    ClassDB::bind_method(D_METHOD("get_reverb_bounce_count"), &VARaytracedSource::get_reverb_bounce_count);
+    ClassDB::bind_method(D_METHOD("set_reverb_bounce_count", "value"), &VARaytracedSource::set_reverb_bounce_count);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "reverb_bounce_count"), "set_reverb_bounce_count", "get_reverb_bounce_count");
 
-    ClassDB::bind_method(D_METHOD("get_reverb_energy_cap"), &VARaytracedSourceNode3D::get_reverb_energy_cap);
-    ClassDB::bind_method(D_METHOD("set_reverb_energy_cap", "value"), &VARaytracedSourceNode3D::set_reverb_energy_cap);
+    ClassDB::bind_method(D_METHOD("get_reverb_energy_cap"), &VARaytracedSource::get_reverb_energy_cap);
+    ClassDB::bind_method(D_METHOD("set_reverb_energy_cap", "value"), &VARaytracedSource::set_reverb_energy_cap);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reverb_energy_cap", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_reverb_energy_cap", "get_reverb_energy_cap");
 
-    ClassDB::bind_method(D_METHOD("get_max_volume"), &VARaytracedSourceNode3D::get_max_volume);
-    ClassDB::bind_method(D_METHOD("set_max_volume", "value"), &VARaytracedSourceNode3D::set_max_volume);
+    ClassDB::bind_method(D_METHOD("get_max_volume"), &VARaytracedSource::get_max_volume);
+    ClassDB::bind_method(D_METHOD("set_max_volume", "value"), &VARaytracedSource::set_max_volume);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "max_volume", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_max_volume", "get_max_volume");
 
-    ClassDB::bind_method(D_METHOD("get_max_echogram_time"), &VARaytracedSourceNode3D::get_max_echogram_time);
-    ClassDB::bind_method(D_METHOD("set_max_echogram_time", "value"), &VARaytracedSourceNode3D::set_max_echogram_time);
+    ClassDB::bind_method(D_METHOD("get_max_echogram_time"), &VARaytracedSource::get_max_echogram_time);
+    ClassDB::bind_method(D_METHOD("set_max_echogram_time", "value"), &VARaytracedSource::set_max_echogram_time);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "max_echogram_time"), "set_max_echogram_time", "get_max_echogram_time");
 
-    ClassDB::bind_method(D_METHOD("get_echogram_granularity"), &VARaytracedSourceNode3D::get_echogram_granularity);
-    ClassDB::bind_method(D_METHOD("set_echogram_granularity", "value"), &VARaytracedSourceNode3D::set_echogram_granularity);
+    ClassDB::bind_method(D_METHOD("get_echogram_granularity"), &VARaytracedSource::get_echogram_granularity);
+    ClassDB::bind_method(D_METHOD("set_echogram_granularity", "value"), &VARaytracedSource::set_echogram_granularity);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "echogram_granularity"), "set_echogram_granularity", "get_echogram_granularity");
 
-    ClassDB::bind_method(D_METHOD("get_affects_grouped_eax"), &VARaytracedSourceNode3D::get_affects_grouped_eax);
-    ClassDB::bind_method(D_METHOD("set_affects_grouped_eax", "value"), &VARaytracedSourceNode3D::set_affects_grouped_eax);
+    ClassDB::bind_method(D_METHOD("get_affects_grouped_eax"), &VARaytracedSource::get_affects_grouped_eax);
+    ClassDB::bind_method(D_METHOD("set_affects_grouped_eax", "value"), &VARaytracedSource::set_affects_grouped_eax);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "affects_grouped_eax"), "set_affects_grouped_eax", "get_affects_grouped_eax");
 
-    ClassDB::bind_method(D_METHOD("get_use_listener_reverb"), &VARaytracedSourceNode3D::get_use_listener_reverb);
-    ClassDB::bind_method(D_METHOD("set_use_listener_reverb", "value"), &VARaytracedSourceNode3D::set_use_listener_reverb);
+    ClassDB::bind_method(D_METHOD("get_use_listener_reverb"), &VARaytracedSource::get_use_listener_reverb);
+    ClassDB::bind_method(D_METHOD("set_use_listener_reverb", "value"), &VARaytracedSource::set_use_listener_reverb);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_listener_reverb"), "set_use_listener_reverb", "get_use_listener_reverb");
 
     ADD_GROUP("Muffling", "");
 
-    ClassDB::bind_method(D_METHOD("get_occlusion_energy_cap"), &VARaytracedSourceNode3D::get_occlusion_energy_cap);
-    ClassDB::bind_method(D_METHOD("set_occlusion_energy_cap", "value"), &VARaytracedSourceNode3D::set_occlusion_energy_cap);
+    ClassDB::bind_method(D_METHOD("get_occlusion_energy_cap"), &VARaytracedSource::get_occlusion_energy_cap);
+    ClassDB::bind_method(D_METHOD("set_occlusion_energy_cap", "value"), &VARaytracedSource::set_occlusion_energy_cap);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "occlusion_energy_cap", PROPERTY_HINT_RANGE, "0.0,1.0,0.001,or_greater"), "set_occlusion_energy_cap", "get_occlusion_energy_cap");
 
-    ClassDB::bind_method(D_METHOD("get_permeation_energy_cap"), &VARaytracedSourceNode3D::get_permeation_energy_cap);
-    ClassDB::bind_method(D_METHOD("set_permeation_energy_cap", "value"), &VARaytracedSourceNode3D::set_permeation_energy_cap);
+    ClassDB::bind_method(D_METHOD("get_permeation_energy_cap"), &VARaytracedSource::get_permeation_energy_cap);
+    ClassDB::bind_method(D_METHOD("set_permeation_energy_cap", "value"), &VARaytracedSource::set_permeation_energy_cap);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "permeation_energy_cap", PROPERTY_HINT_RANGE, "0.0,1.0,0.001,or_greater"), "set_permeation_energy_cap", "get_permeation_energy_cap");
 
     ADD_GROUP("Ambience", "");
 
-    ClassDB::bind_method(D_METHOD("get_ambient_occlusion_ray_count"), &VARaytracedSourceNode3D::get_ambient_occlusion_ray_count);
-    ClassDB::bind_method(D_METHOD("set_ambient_occlusion_ray_count", "value"), &VARaytracedSourceNode3D::set_ambient_occlusion_ray_count);
+    ClassDB::bind_method(D_METHOD("get_ambient_occlusion_ray_count"), &VARaytracedSource::get_ambient_occlusion_ray_count);
+    ClassDB::bind_method(D_METHOD("set_ambient_occlusion_ray_count", "value"), &VARaytracedSource::set_ambient_occlusion_ray_count);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "ambient_occlusion_ray_count"), "set_ambient_occlusion_ray_count", "get_ambient_occlusion_ray_count");
 
-    ClassDB::bind_method(D_METHOD("get_ambient_occlusion_bounce_count"), &VARaytracedSourceNode3D::get_ambient_occlusion_bounce_count);
-    ClassDB::bind_method(D_METHOD("set_ambient_occlusion_bounce_count", "value"), &VARaytracedSourceNode3D::set_ambient_occlusion_bounce_count);
+    ClassDB::bind_method(D_METHOD("get_ambient_occlusion_bounce_count"), &VARaytracedSource::get_ambient_occlusion_bounce_count);
+    ClassDB::bind_method(D_METHOD("set_ambient_occlusion_bounce_count", "value"), &VARaytracedSource::set_ambient_occlusion_bounce_count);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "ambient_occlusion_bounce_count"), "set_ambient_occlusion_bounce_count", "get_ambient_occlusion_bounce_count");
 
-    ClassDB::bind_method(D_METHOD("get_ambient_occlusion_energy_cap"), &VARaytracedSourceNode3D::get_ambient_occlusion_energy_cap);
-    ClassDB::bind_method(D_METHOD("set_ambient_occlusion_energy_cap", "value"), &VARaytracedSourceNode3D::set_ambient_occlusion_energy_cap);
+    ClassDB::bind_method(D_METHOD("get_ambient_occlusion_energy_cap"), &VARaytracedSource::get_ambient_occlusion_energy_cap);
+    ClassDB::bind_method(D_METHOD("set_ambient_occlusion_energy_cap", "value"), &VARaytracedSource::set_ambient_occlusion_energy_cap);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "ambient_occlusion_energy_cap", PROPERTY_HINT_RANGE, "0.0,1.0,0.001,or_greater"), "set_ambient_occlusion_energy_cap", "get_ambient_occlusion_energy_cap");
 
-    ClassDB::bind_method(D_METHOD("get_ambient_permeation_ray_count"), &VARaytracedSourceNode3D::get_ambient_permeation_ray_count);
-    ClassDB::bind_method(D_METHOD("set_ambient_permeation_ray_count", "value"), &VARaytracedSourceNode3D::set_ambient_permeation_ray_count);
+    ClassDB::bind_method(D_METHOD("get_ambient_permeation_ray_count"), &VARaytracedSource::get_ambient_permeation_ray_count);
+    ClassDB::bind_method(D_METHOD("set_ambient_permeation_ray_count", "value"), &VARaytracedSource::set_ambient_permeation_ray_count);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "ambient_permeation_ray_count"), "set_ambient_permeation_ray_count", "get_ambient_permeation_ray_count");
 
-    ClassDB::bind_method(D_METHOD("get_ambient_permeation_bounce_count"), &VARaytracedSourceNode3D::get_ambient_permeation_bounce_count);
-    ClassDB::bind_method(D_METHOD("set_ambient_permeation_bounce_count", "value"), &VARaytracedSourceNode3D::set_ambient_permeation_bounce_count);
+    ClassDB::bind_method(D_METHOD("get_ambient_permeation_bounce_count"), &VARaytracedSource::get_ambient_permeation_bounce_count);
+    ClassDB::bind_method(D_METHOD("set_ambient_permeation_bounce_count", "value"), &VARaytracedSource::set_ambient_permeation_bounce_count);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "ambient_permeation_bounce_count"), "set_ambient_permeation_bounce_count", "get_ambient_permeation_bounce_count");
 
-    ClassDB::bind_method(D_METHOD("get_ambient_permeation_energy_cap"), &VARaytracedSourceNode3D::get_ambient_permeation_energy_cap);
-    ClassDB::bind_method(D_METHOD("set_ambient_permeation_energy_cap", "value"), &VARaytracedSourceNode3D::set_ambient_permeation_energy_cap);
+    ClassDB::bind_method(D_METHOD("get_ambient_permeation_energy_cap"), &VARaytracedSource::get_ambient_permeation_energy_cap);
+    ClassDB::bind_method(D_METHOD("set_ambient_permeation_energy_cap", "value"), &VARaytracedSource::set_ambient_permeation_energy_cap);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "ambient_permeation_energy_cap", PROPERTY_HINT_RANGE, "0.0,1.0,0.001,or_greater"), "set_ambient_permeation_energy_cap", "get_ambient_permeation_energy_cap");
 
     ADD_GROUP("Advanced", "");
 
-    ClassDB::bind_method(D_METHOD("get_type"), &VARaytracedSourceNode3D::get_type);
-    ClassDB::bind_method(D_METHOD("set_type", "value"), &VARaytracedSourceNode3D::set_type);
+    ClassDB::bind_method(D_METHOD("get_type"), &VARaytracedSource::get_type);
+    ClassDB::bind_method(D_METHOD("set_type", "value"), &VARaytracedSource::set_type);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "type"), "set_type", "get_type");
 
-    ClassDB::bind_method(D_METHOD("get_refresh_ray_count"), &VARaytracedSourceNode3D::get_refresh_ray_count);
-    ClassDB::bind_method(D_METHOD("set_refresh_ray_count", "value"), &VARaytracedSourceNode3D::set_refresh_ray_count);
+    ClassDB::bind_method(D_METHOD("get_refresh_ray_count"), &VARaytracedSource::get_refresh_ray_count);
+    ClassDB::bind_method(D_METHOD("set_refresh_ray_count", "value"), &VARaytracedSource::set_refresh_ray_count);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "refresh_ray_count"), "set_refresh_ray_count", "get_refresh_ray_count");
 
-    ClassDB::bind_method(D_METHOD("get_refresh_distance_threshold"), &VARaytracedSourceNode3D::get_refresh_distance_threshold);
-    ClassDB::bind_method(D_METHOD("set_refresh_distance_threshold", "value"), &VARaytracedSourceNode3D::set_refresh_distance_threshold);
+    ClassDB::bind_method(D_METHOD("get_refresh_distance_threshold"), &VARaytracedSource::get_refresh_distance_threshold);
+    ClassDB::bind_method(D_METHOD("set_refresh_distance_threshold", "value"), &VARaytracedSource::set_refresh_distance_threshold);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "refresh_distance_threshold"), "set_refresh_distance_threshold", "get_refresh_distance_threshold");
 
-    ClassDB::bind_method(D_METHOD("get_scattering_seed"), &VARaytracedSourceNode3D::get_scattering_seed);
-    ClassDB::bind_method(D_METHOD("set_scattering_seed", "value"), &VARaytracedSourceNode3D::set_scattering_seed);
+    ClassDB::bind_method(D_METHOD("get_scattering_seed"), &VARaytracedSource::get_scattering_seed);
+    ClassDB::bind_method(D_METHOD("set_scattering_seed", "value"), &VARaytracedSource::set_scattering_seed);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "scattering_seed"), "set_scattering_seed", "get_scattering_seed");
 }
 
-VARaytracedSourceNode3D::VARaytracedSourceNode3D()
+VARaytracedSource::VARaytracedSource()
 {
     // Matches VASourceProperties.cs's `Random.Shared.Next()` field
     // initializer (this omits the int.MaxValue upper bound
@@ -123,16 +123,16 @@ VARaytracedSourceNode3D::VARaytracedSourceNode3D()
     scattering_seed = (int)(UtilityFunctions::randi() & 0x7fffffff);
 }
 
-VARaytracedSourceNode3D::~VARaytracedSourceNode3D()
+VARaytracedSource::~VARaytracedSource()
 {
 }
 
-bool VARaytracedSourceNode3D::get_raytrace_once() const
+bool VARaytracedSource::get_raytrace_once() const
 {
     return raytrace_once;
 }
 
-void VARaytracedSourceNode3D::set_raytrace_once(bool value)
+void VARaytracedSource::set_raytrace_once(bool value)
 {
     raytrace_once = value;
 
@@ -142,17 +142,17 @@ void VARaytracedSourceNode3D::set_raytrace_once(bool value)
     }
 }
 
-float VARaytracedSourceNode3D::get_muffling_gain_lf() const
+float VARaytracedSource::get_muffling_gain_lf() const
 {
     return filter.get_gain();
 }
 
-float VARaytracedSourceNode3D::get_muffling_gain_hf() const
+float VARaytracedSource::get_muffling_gain_hf() const
 {
     return filter.get_gain_hf();
 }
 
-void VARaytracedSourceNode3D::_enter_tree()
+void VARaytracedSource::_enter_tree()
 {
     if (IS_EDITOR_HINT())
     {
@@ -167,20 +167,20 @@ void VARaytracedSourceNode3D::_enter_tree()
         // every future node addition instead of erroring out permanently -
         // see VAEmitter::_enter_tree's identical pattern for the rationale.
         waiting_for_world = true;
-        get_tree()->connect("node_added", callable_mp(this, &VARaytracedSourceNode3D::retry_find_va_world));
+        get_tree()->connect("node_added", callable_mp(this, &VARaytracedSource::retry_find_va_world));
         return;
     }
 
     create_emitter();
 }
 
-void VARaytracedSourceNode3D::_exit_tree()
+void VARaytracedSource::_exit_tree()
 {
     if (waiting_for_world)
     {
-        if (get_tree() && get_tree()->is_connected("node_added", callable_mp(this, &VARaytracedSourceNode3D::retry_find_va_world)))
+        if (get_tree() && get_tree()->is_connected("node_added", callable_mp(this, &VARaytracedSource::retry_find_va_world)))
         {
-            get_tree()->disconnect("node_added", callable_mp(this, &VARaytracedSourceNode3D::retry_find_va_world));
+            get_tree()->disconnect("node_added", callable_mp(this, &VARaytracedSource::retry_find_va_world));
         }
 
         waiting_for_world = false;
@@ -208,7 +208,7 @@ void VARaytracedSourceNode3D::_exit_tree()
 
 // Re-attempts find_va_world each time a node is added anywhere in the tree -
 // see VAEmitter::retry_find_va_world's identical pattern.
-void VARaytracedSourceNode3D::retry_find_va_world(Node *node)
+void VARaytracedSource::retry_find_va_world(Node *node)
 {
     va_world = va_godot::find_va_world(this);
 
@@ -217,7 +217,7 @@ void VARaytracedSourceNode3D::retry_find_va_world(Node *node)
         return;
     }
 
-    get_tree()->disconnect("node_added", callable_mp(this, &VARaytracedSourceNode3D::retry_find_va_world));
+    get_tree()->disconnect("node_added", callable_mp(this, &VARaytracedSource::retry_find_va_world));
     waiting_for_world = false;
 
     create_emitter();
@@ -227,7 +227,7 @@ void VARaytracedSourceNode3D::retry_find_va_world(Node *node)
 // listener, that never casts its own occlusion/permeation rays (only reverb
 // rays) - this node is heard via the listener's rays targeting it, not by
 // casting its own muffling rays.
-void VARaytracedSourceNode3D::create_emitter()
+void VARaytracedSource::create_emitter()
 {
     emitter = memnew(va_godot::VAEmitter);
     emitter->set_name(String(get_name()) + "-Emitter");
@@ -250,7 +250,7 @@ void VARaytracedSourceNode3D::create_emitter()
     apply_properties_to_emitter();
 }
 
-void VARaytracedSourceNode3D::apply_properties_to_emitter()
+void VARaytracedSource::apply_properties_to_emitter()
 {
     emitter->set_reverb_ray_count(reverb_ray_count);
     emitter->set_reverb_bounce_count(reverb_bounce_count);
@@ -277,12 +277,12 @@ void VARaytracedSourceNode3D::apply_properties_to_emitter()
     emitter->set_scattering_seed(scattering_seed);
 }
 
-bool VARaytracedSourceNode3D::is_raytraced() const
+bool VARaytracedSource::is_raytraced() const
 {
     return emitter && emitter->is_raytraced();
 }
 
-void VARaytracedSourceNode3D::process_raytracing(double delta)
+void VARaytracedSource::process_raytracing(double delta)
 {
     if (!is_raytraced())
     {
@@ -304,7 +304,7 @@ void VARaytracedSourceNode3D::process_raytracing(double delta)
 // then - if the listener has raytraced this node's emitter as a target -
 // pushes the resulting muffling gain with fullReverb=true (reverb send
 // always gets the clean/unfiltered signal; only the direct path is muffled).
-void VARaytracedSourceNode3D::apply_raytracing_results(va_godot::VAEmitter *other)
+void VARaytracedSource::apply_raytracing_results(va_godot::VAEmitter *other)
 {
     effect = va_world->get_reverb_effect(emitter->get_handle());
 
@@ -321,12 +321,12 @@ void VARaytracedSourceNode3D::apply_raytracing_results(va_godot::VAEmitter *othe
 // runs) and forwards to the child VAEmitter's own setter once it exists,
 // mirroring VAEmitter's own "if (emitter != null)" guard pattern.
 
-int VARaytracedSourceNode3D::get_reverb_ray_count() const
+int VARaytracedSource::get_reverb_ray_count() const
 {
     return reverb_ray_count;
 }
 
-void VARaytracedSourceNode3D::set_reverb_ray_count(int value)
+void VARaytracedSource::set_reverb_ray_count(int value)
 {
     reverb_ray_count = MAX(0, value);
 
@@ -336,12 +336,12 @@ void VARaytracedSourceNode3D::set_reverb_ray_count(int value)
     }
 }
 
-int VARaytracedSourceNode3D::get_reverb_bounce_count() const
+int VARaytracedSource::get_reverb_bounce_count() const
 {
     return reverb_bounce_count;
 }
 
-void VARaytracedSourceNode3D::set_reverb_bounce_count(int value)
+void VARaytracedSource::set_reverb_bounce_count(int value)
 {
     reverb_bounce_count = MAX(0, value);
 
@@ -351,12 +351,12 @@ void VARaytracedSourceNode3D::set_reverb_bounce_count(int value)
     }
 }
 
-float VARaytracedSourceNode3D::get_reverb_energy_cap() const
+float VARaytracedSource::get_reverb_energy_cap() const
 {
     return reverb_energy_cap;
 }
 
-void VARaytracedSourceNode3D::set_reverb_energy_cap(float value)
+void VARaytracedSource::set_reverb_energy_cap(float value)
 {
     reverb_energy_cap = value;
 
@@ -366,12 +366,12 @@ void VARaytracedSourceNode3D::set_reverb_energy_cap(float value)
     }
 }
 
-float VARaytracedSourceNode3D::get_max_volume() const
+float VARaytracedSource::get_max_volume() const
 {
     return max_volume;
 }
 
-void VARaytracedSourceNode3D::set_max_volume(float value)
+void VARaytracedSource::set_max_volume(float value)
 {
     max_volume = value;
 
@@ -381,12 +381,12 @@ void VARaytracedSourceNode3D::set_max_volume(float value)
     }
 }
 
-int VARaytracedSourceNode3D::get_max_echogram_time() const
+int VARaytracedSource::get_max_echogram_time() const
 {
     return max_echogram_time;
 }
 
-void VARaytracedSourceNode3D::set_max_echogram_time(int value)
+void VARaytracedSource::set_max_echogram_time(int value)
 {
     max_echogram_time = MAX(0, value);
 
@@ -396,12 +396,12 @@ void VARaytracedSourceNode3D::set_max_echogram_time(int value)
     }
 }
 
-int VARaytracedSourceNode3D::get_echogram_granularity() const
+int VARaytracedSource::get_echogram_granularity() const
 {
     return echogram_granularity;
 }
 
-void VARaytracedSourceNode3D::set_echogram_granularity(int value)
+void VARaytracedSource::set_echogram_granularity(int value)
 {
     echogram_granularity = MAX(0, value);
 
@@ -411,12 +411,12 @@ void VARaytracedSourceNode3D::set_echogram_granularity(int value)
     }
 }
 
-bool VARaytracedSourceNode3D::get_affects_grouped_eax() const
+bool VARaytracedSource::get_affects_grouped_eax() const
 {
     return affects_grouped_eax;
 }
 
-void VARaytracedSourceNode3D::set_affects_grouped_eax(bool value)
+void VARaytracedSource::set_affects_grouped_eax(bool value)
 {
     affects_grouped_eax = value;
 
@@ -426,12 +426,12 @@ void VARaytracedSourceNode3D::set_affects_grouped_eax(bool value)
     }
 }
 
-bool VARaytracedSourceNode3D::get_use_listener_reverb() const
+bool VARaytracedSource::get_use_listener_reverb() const
 {
     return use_listener_reverb;
 }
 
-void VARaytracedSourceNode3D::set_use_listener_reverb(bool value)
+void VARaytracedSource::set_use_listener_reverb(bool value)
 {
     use_listener_reverb = value;
 
@@ -441,12 +441,12 @@ void VARaytracedSourceNode3D::set_use_listener_reverb(bool value)
     }
 }
 
-float VARaytracedSourceNode3D::get_occlusion_energy_cap() const
+float VARaytracedSource::get_occlusion_energy_cap() const
 {
     return occlusion_energy_cap;
 }
 
-void VARaytracedSourceNode3D::set_occlusion_energy_cap(float value)
+void VARaytracedSource::set_occlusion_energy_cap(float value)
 {
     occlusion_energy_cap = MAX(0.0f, value);
 
@@ -456,12 +456,12 @@ void VARaytracedSourceNode3D::set_occlusion_energy_cap(float value)
     }
 }
 
-float VARaytracedSourceNode3D::get_permeation_energy_cap() const
+float VARaytracedSource::get_permeation_energy_cap() const
 {
     return permeation_energy_cap;
 }
 
-void VARaytracedSourceNode3D::set_permeation_energy_cap(float value)
+void VARaytracedSource::set_permeation_energy_cap(float value)
 {
     permeation_energy_cap = MAX(0.0f, value);
 
@@ -471,12 +471,12 @@ void VARaytracedSourceNode3D::set_permeation_energy_cap(float value)
     }
 }
 
-int VARaytracedSourceNode3D::get_ambient_occlusion_ray_count() const
+int VARaytracedSource::get_ambient_occlusion_ray_count() const
 {
     return ambient_occlusion_ray_count;
 }
 
-void VARaytracedSourceNode3D::set_ambient_occlusion_ray_count(int value)
+void VARaytracedSource::set_ambient_occlusion_ray_count(int value)
 {
     ambient_occlusion_ray_count = MAX(0, value);
 
@@ -486,12 +486,12 @@ void VARaytracedSourceNode3D::set_ambient_occlusion_ray_count(int value)
     }
 }
 
-int VARaytracedSourceNode3D::get_ambient_occlusion_bounce_count() const
+int VARaytracedSource::get_ambient_occlusion_bounce_count() const
 {
     return ambient_occlusion_bounce_count;
 }
 
-void VARaytracedSourceNode3D::set_ambient_occlusion_bounce_count(int value)
+void VARaytracedSource::set_ambient_occlusion_bounce_count(int value)
 {
     ambient_occlusion_bounce_count = MAX(0, value);
 
@@ -501,12 +501,12 @@ void VARaytracedSourceNode3D::set_ambient_occlusion_bounce_count(int value)
     }
 }
 
-float VARaytracedSourceNode3D::get_ambient_occlusion_energy_cap() const
+float VARaytracedSource::get_ambient_occlusion_energy_cap() const
 {
     return ambient_occlusion_energy_cap;
 }
 
-void VARaytracedSourceNode3D::set_ambient_occlusion_energy_cap(float value)
+void VARaytracedSource::set_ambient_occlusion_energy_cap(float value)
 {
     ambient_occlusion_energy_cap = MAX(0.0f, value);
 
@@ -516,12 +516,12 @@ void VARaytracedSourceNode3D::set_ambient_occlusion_energy_cap(float value)
     }
 }
 
-int VARaytracedSourceNode3D::get_ambient_permeation_ray_count() const
+int VARaytracedSource::get_ambient_permeation_ray_count() const
 {
     return ambient_permeation_ray_count;
 }
 
-void VARaytracedSourceNode3D::set_ambient_permeation_ray_count(int value)
+void VARaytracedSource::set_ambient_permeation_ray_count(int value)
 {
     ambient_permeation_ray_count = MAX(0, value);
 
@@ -531,12 +531,12 @@ void VARaytracedSourceNode3D::set_ambient_permeation_ray_count(int value)
     }
 }
 
-int VARaytracedSourceNode3D::get_ambient_permeation_bounce_count() const
+int VARaytracedSource::get_ambient_permeation_bounce_count() const
 {
     return ambient_permeation_bounce_count;
 }
 
-void VARaytracedSourceNode3D::set_ambient_permeation_bounce_count(int value)
+void VARaytracedSource::set_ambient_permeation_bounce_count(int value)
 {
     ambient_permeation_bounce_count = MAX(0, value);
 
@@ -546,12 +546,12 @@ void VARaytracedSourceNode3D::set_ambient_permeation_bounce_count(int value)
     }
 }
 
-float VARaytracedSourceNode3D::get_ambient_permeation_energy_cap() const
+float VARaytracedSource::get_ambient_permeation_energy_cap() const
 {
     return ambient_permeation_energy_cap;
 }
 
-void VARaytracedSourceNode3D::set_ambient_permeation_energy_cap(float value)
+void VARaytracedSource::set_ambient_permeation_energy_cap(float value)
 {
     ambient_permeation_energy_cap = MAX(0.0f, value);
 
@@ -561,12 +561,12 @@ void VARaytracedSourceNode3D::set_ambient_permeation_energy_cap(float value)
     }
 }
 
-int VARaytracedSourceNode3D::get_type() const
+int VARaytracedSource::get_type() const
 {
     return type;
 }
 
-void VARaytracedSourceNode3D::set_type(int value)
+void VARaytracedSource::set_type(int value)
 {
     type = value;
 
@@ -576,12 +576,12 @@ void VARaytracedSourceNode3D::set_type(int value)
     }
 }
 
-int VARaytracedSourceNode3D::get_refresh_ray_count() const
+int VARaytracedSource::get_refresh_ray_count() const
 {
     return refresh_ray_count;
 }
 
-void VARaytracedSourceNode3D::set_refresh_ray_count(int value)
+void VARaytracedSource::set_refresh_ray_count(int value)
 {
     refresh_ray_count = value;
 
@@ -591,12 +591,12 @@ void VARaytracedSourceNode3D::set_refresh_ray_count(int value)
     }
 }
 
-float VARaytracedSourceNode3D::get_refresh_distance_threshold() const
+float VARaytracedSource::get_refresh_distance_threshold() const
 {
     return refresh_distance_threshold;
 }
 
-void VARaytracedSourceNode3D::set_refresh_distance_threshold(float value)
+void VARaytracedSource::set_refresh_distance_threshold(float value)
 {
     refresh_distance_threshold = value;
 
@@ -606,12 +606,12 @@ void VARaytracedSourceNode3D::set_refresh_distance_threshold(float value)
     }
 }
 
-int VARaytracedSourceNode3D::get_scattering_seed() const
+int VARaytracedSource::get_scattering_seed() const
 {
     return scattering_seed;
 }
 
-void VARaytracedSourceNode3D::set_scattering_seed(int value)
+void VARaytracedSource::set_scattering_seed(int value)
 {
     scattering_seed = value;
 

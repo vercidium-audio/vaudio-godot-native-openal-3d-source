@@ -14,20 +14,20 @@
 
 using namespace godot;
 
-class ALSource;
+class ALSourceHandle;
 
 // Shared base class for spatialised and relative OpenAL sources
-class ALSourceNode : public Node3D
+class ALSource : public Node3D
 {
-    GDCLASS(ALSourceNode, Node3D);
+    GDCLASS(ALSource, Node3D);
 
 private:
-    std::vector<std::unique_ptr<ALSource>> sources;
+    std::vector<std::unique_ptr<ALSourceHandle>> sources;
 
 protected:
     static void _bind_methods();
 
-    // The buffer every new ALSource created by play() uploads/attaches -
+    // The buffer every new ALSourceHandle created by play() uploads/attaches -
     // subclasses (VASource) set this before calling play(). Mirrors
     // ALSource3D.cs's Play() calling ALManager.instance.TryCreateSource(
     // SoundName, ...) - this native port has no sound-name/resource-loading
@@ -88,7 +88,7 @@ protected:
     // choice). Returns -1 if decoded_buffers is empty.
     int pick_stream_index() const;
 
-    // Actually creates and starts an ALSource against a randomly-picked
+    // Actually creates and starts an ALSourceHandle against a randomly-picked
     // decoded buffer, applying pitch_randomness/volume_randomness_db on top
     // of pitch/gain - the part of play() that used to run right after a
     // (blocking) decode, now also called from poll_decode_task() once a
@@ -117,12 +117,12 @@ protected:
     // same entry is never picked twice in a row.
     bool playback_no_repeat = true;
 
-    // Hook for subclasses to configure a freshly-created ALSource before it starts playing
-    virtual void configure_source(ALSource &source) = 0;
+    // Hook for subclasses to configure a freshly-created ALSourceHandle before it starts playing
+    virtual void configure_source(ALSourceHandle &source) = 0;
 
 public:
-    ALSourceNode();
-    ~ALSourceNode();
+    ALSource();
+    ~ALSource();
 
     // Matches AudioStreamPlayer3D's Autoplay: play() is called once when this
     // node first becomes ready in a running (non-editor) scene tree. Virtual
@@ -132,7 +132,7 @@ public:
     void _ready() override;
 
     // Polls decode_task_id for completion - see poll_decode_task(). Subclasses
-    // overriding _process (e.g. ALSourceNode3D) must call this base version.
+    // overriding _process (e.g. ALSource3D) must call this base version.
     void _process(double delta) override;
 
     // Low pass filter,  lazily created on first UpdateFilter/Play call
@@ -258,7 +258,7 @@ public:
     void set_volume_db(float value);
 
 protected:
-    std::vector<std::unique_ptr<ALSource>> &get_sources()
+    std::vector<std::unique_ptr<ALSourceHandle>> &get_sources()
     {
         return sources;
     }

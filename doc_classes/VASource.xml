@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="VASource" inherits="VARaytracedSourceNode3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+<class name="VASource" inherits="VARaytracedSource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
-		A spatialised 3D sound source that casts its own raytracing rays for reverb, ambience, and visualisation (see [VARaytracedSourceNode3D]), and plays a fixed [AudioStream] resource decoded once up front. Muffling (occlusion/permeation) is applied to it by the listener's own rays, so this node never casts occlusion or permeation rays itself - use [VAEmitter]'s occlusion/permeation settings on the listener to control muffling.
+		A spatialised 3D sound source that casts its own raytracing rays for reverb, ambience, and visualisation (see [VARaytracedSource]), and plays a fixed [AudioStream] resource decoded once up front. Muffling (occlusion/permeation) is applied to it by the listener's own rays, so this node never casts occlusion or permeation rays itself - use [VAEmitter]'s occlusion/permeation settings on the listener to control muffling.
 	</description>
 	<tutorials>
 	</tutorials>

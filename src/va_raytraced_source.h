@@ -1,6 +1,6 @@
 #pragma once
 
-#include "al_source_node3d.h"
+#include "al_source3d.h"
 
 extern "C"
 {
@@ -30,10 +30,10 @@ class VAEmitter;
 // each subclass's own play()/open_stream() override) - only the emitter
 // lifecycle, its exported tuning-knob property surface, and per-frame
 // application of the listener's raytracing results onto this node's filter/
-// reverb slot (inherited from ALSourceNode).
-class VARaytracedSourceNode3D : public ALSourceNode3D
+// reverb slot (inherited from ALSource).
+class VARaytracedSource : public ALSource3D
 {
-    GDCLASS(VARaytracedSourceNode3D, ALSourceNode3D);
+    GDCLASS(VARaytracedSource, ALSource3D);
 
 private:
     va_godot::VAWorld *va_world = nullptr;
@@ -83,15 +83,15 @@ protected:
     static void _bind_methods();
 
 public:
-    VARaytracedSourceNode3D();
-    ~VARaytracedSourceNode3D();
+    VARaytracedSource();
+    ~VARaytracedSource();
 
     void _enter_tree() override;
     void _exit_tree() override;
 
     // Not overriding _process here (unlike VAEmitter/VASourceLeech) - each
     // subclass's own _process calls this directly after
-    // ALSourceNode3D::_process, since VAStreamSource also needs its own
+    // ALSource3D::_process, since VAStreamSource also needs its own
     // per-frame stream-drain work interleaved (see its _process).
     void process_raytracing(double delta);
 

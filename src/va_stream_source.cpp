@@ -2,7 +2,7 @@
 
 #include <godot_cpp/core/class_db.hpp>
 
-#include "openal/al_source.h"
+#include "openal/al_source_handle.h"
 #include "va_engine_util.h"
 
 VAStreamSource::VAStreamSource()
@@ -32,11 +32,11 @@ bool VAStreamSource::open_stream(int format, int frequency)
         return false;
     }
 
-    auto source = std::make_unique<ALSource>();
+    auto source = std::make_unique<ALSourceHandle>();
 
     if (!source->create())
     {
-        // ALSource::create already logged the reason for failure.
+        // ALSourceHandle::create already logged the reason for failure.
         stream_buffer.destroy();
         return false;
     }
@@ -110,7 +110,7 @@ void VAStreamSource::_validate_property(PropertyInfo &p_property) const
 
 void VAStreamSource::_process(double delta)
 {
-    VARaytracedSourceNode3D::_process(delta);
+    VARaytracedSource::_process(delta);
     process_raytracing(delta);
 
     drain_used_chunks();

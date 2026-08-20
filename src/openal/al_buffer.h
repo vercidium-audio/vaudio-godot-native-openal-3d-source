@@ -23,7 +23,7 @@ using namespace godot;
 // format, streaming needs).
 //
 // decode()/upload() are split so a long stream's decode can run on a
-// WorkerThreadPool task (see ALSourceNode::play()) without touching OpenAL
+// WorkerThreadPool task (see ALSource::play()) without touching OpenAL
 // off the main thread: decode() only pulls PCM via Godot's playback API
 // (thread-safe, no AL calls), upload() does the alGenBuffers/alBufferData
 // call and must run on the same thread as the rest of this plugin's AL
@@ -46,7 +46,7 @@ public:
     ALBuffer &operator=(const ALBuffer &) = delete;
 
     // Movable so a decoded ALBuffer can be stored directly in a
-    // std::vector<ALBuffer> (see ALSourceNode::decoded_buffers) - moving
+    // std::vector<ALBuffer> (see ALSource::decoded_buffers) - moving
     // leaves the source with handle 0 so its destructor doesn't also delete
     // the AL buffer the moved-to instance now owns.
     ALBuffer(ALBuffer &&other) noexcept
@@ -76,7 +76,7 @@ public:
     // stays 0 in that case, safe to check before use. If this ALBuffer
     // already held a previously-loaded buffer, that one is deleted first
     // (load() may be called more than once on the same instance, e.g.
-    // ALSourceNode3D re-decoding after `stream` is reassigned at runtime).
+    // ALSource3D re-decoding after `stream` is reassigned at runtime).
     // Equivalent to calling decode() then upload() - kept for callers that
     // don't need the two steps split across threads.
     bool load(const Ref<AudioStream> &p_stream);

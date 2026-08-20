@@ -87,14 +87,14 @@ bool VASourceAmbient::play()
         return false;
     }
 
-    played = ALSourceNodeRelative::play();
+    played = ALSourceRelative::play();
 
     return played;
 }
 
 void VASourceAmbient::_process(double delta)
 {
-    ALSourceNodeRelative::_process(delta);
+    ALSourceRelative::_process(delta);
 
     if (IS_EDITOR_HINT())
     {

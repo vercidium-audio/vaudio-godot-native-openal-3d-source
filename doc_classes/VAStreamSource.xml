@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="VAStreamSource" inherits="VARaytracedSourceNode3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+<class name="VAStreamSource" inherits="VARaytracedSource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
-		A spatialised 3D source that casts its own raytracing rays for reverb and ambience (see [VARaytracedSourceNode3D]), and plays live audio pushed to it at runtime instead of a fixed [AudioStream] resource. Useful for audio whose full length isn't known up front, like a microphone feed or a VOIP network stream.
+		A spatialised 3D source that casts its own raytracing rays for reverb and ambience (see [VARaytracedSource]), and plays live audio pushed to it at runtime instead of a fixed [AudioStream] resource. Useful for audio whose full length isn't known up front, like a microphone feed or a VOIP network stream.
 		Call [method open_stream] once to start playback, then call [method push_audio_data] each time a new chunk of raw PCM audio is ready. The source plays chunks in the order they were pushed, and plays silence whenever no new chunk has arrived yet, so it never stops on its own. Call [method close_stream] when done.
-		This node does not decode compressed audio (MP3, Ogg, etc). Only raw PCM data is accepted - use [VASource] or [ALSourceNode3D] instead for fixed sound files.
+		This node does not decode compressed audio (MP3, Ogg, etc). Only raw PCM data is accepted - use [VASource] or [ALSource3D] instead for fixed sound files.
 		This base class has no opinion on where its pushed audio comes from - see [VAInputStreamSource] for a subclass that feeds itself automatically from a local microphone, and [VANetworkedStreamSource] for the equivalent node type meant to be fed from a script's networking code (e.g. an RPC or [PacketPeerUDP] packet handler calling [method push_audio_data] directly). Using this base class directly is also valid for any other custom audio source.
 	</description>
 	<tutorials>

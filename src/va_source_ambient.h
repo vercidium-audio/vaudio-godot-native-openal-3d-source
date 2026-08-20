@@ -1,6 +1,6 @@
 #pragma once
 
-#include "al_source_node_relative.h"
+#include "al_source_relative.h"
 
 using namespace godot;
 
@@ -16,13 +16,13 @@ class VAWorld;
 // raytraced/positioned relative to any specific source location. Waits for
 // the listener's first ambient filter result before playing, then re-applies
 // the (possibly-changing) ambient gain every frame. Extends
-// ALSourceNodeRelative (not ALSourceNode3D) so its sources are always
+// ALSourceRelative (not ALSource3D) so its sources are always
 // AL_SOURCE_RELATIVE with a pinned origin position - see that class's doc
-// comment for why this used to be a `relative` bool on ALSourceNode3D and
+// comment for why this used to be a `relative` bool on ALSource3D and
 // caused mispositioned/panned audio.
-class VASourceAmbient : public ALSourceNodeRelative
+class VASourceAmbient : public ALSourceRelative
 {
-    GDCLASS(VASourceAmbient, ALSourceNodeRelative);
+    GDCLASS(VASourceAmbient, ALSourceRelative);
 
 private:
     va_godot::VAWorld *va_world = nullptr;

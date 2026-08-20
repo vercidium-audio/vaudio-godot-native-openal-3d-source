@@ -1,22 +1,22 @@
 #pragma once
 
-#include "al_source_node.h"
+#include "al_source.h"
 
 using namespace godot;
 
-class ALSource;
+class ALSourceHandle;
 
 // Sounds that are relative to the listener, e.g. footsteps, ambience, music
-class ALSourceNodeRelative : public ALSourceNode
+class ALSourceRelative : public ALSource
 {
-    GDCLASS(ALSourceNodeRelative, ALSourceNode);
+    GDCLASS(ALSourceRelative, ALSource);
 
 protected:
     static void _bind_methods();
 
-    void configure_source(ALSource &source) override;
+    void configure_source(ALSourceHandle &source) override;
 
 public:
-    ALSourceNodeRelative();
-    ~ALSourceNodeRelative();
+    ALSourceRelative();
+    ~ALSourceRelative();
 };

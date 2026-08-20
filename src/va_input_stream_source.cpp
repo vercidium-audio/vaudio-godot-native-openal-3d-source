@@ -96,7 +96,7 @@ void VAInputStreamSource::refresh_devices()
     notify_property_list_changed();
 }
 
-// Matches ALSourceNode::_ready()'s autoplay pattern: only runs in a live
+// Matches ALSource::_ready()'s autoplay pattern: only runs in a live
 // (non-editor) tree, and only needs to happen once when this node first
 // becomes ready. Replaces what used to be a user script's manual
 // open_stream()/open_capture()/start_capture() call sequence with the equivalent

@@ -1,18 +1,18 @@
 #pragma once
 
-#include "va_raytraced_source_node3d.h"
+#include "va_raytraced_source.h"
 
 using namespace godot;
 
 // A spatialised 3D sound that casts its own rays and plays a fixed,
-// decoded-once AudioStream (see ALSourceNode's streams/play() machinery).
+// decoded-once AudioStream (see ALSource's streams/play() machinery).
 // All raytracing/reverb/muffling/ambience behaviour lives on
-// VARaytracedSourceNode3D - this class only adds the "defer play() until
+// VARaytracedSource - this class only adds the "defer play() until
 // raytracing has produced results" behaviour specific to fixed-buffer
 // playback.
-class VASource : public VARaytracedSourceNode3D
+class VASource : public VARaytracedSource
 {
-    GDCLASS(VASource, VARaytracedSourceNode3D);
+    GDCLASS(VASource, VARaytracedSource);
 
 private:
     bool play_when_raytracing_completes = true;

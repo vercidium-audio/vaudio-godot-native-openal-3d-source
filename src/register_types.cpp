@@ -13,9 +13,9 @@
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/node_path.hpp>
 
-#include "al_source_node.h"
-#include "al_source_node3d.h"
-#include "al_source_node_relative.h"
+#include "al_source.h"
+#include "al_source3d.h"
+#include "al_source_relative.h"
 #include "openal/al_manager.h"
 #include "transform_watcher.h"
 #include "va_conversion_plugin.h"
@@ -29,7 +29,7 @@
 #include "va_custom_material.h"
 #include "va_networked_stream_source.h"
 #include "va_primitive_ref.h"
-#include "va_raytraced_source_node3d.h"
+#include "va_raytraced_source.h"
 #include "va_source.h"
 #include "va_source_ambient.h"
 #include "va_source_leech.h"
@@ -280,16 +280,16 @@ void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p
     }
 
     // AL* nodes must be registered before VA* nodes
-    ClassDB::register_abstract_class<ALSourceNode>();
-    ClassDB::register_class<ALSourceNode3D>();
-    ClassDB::register_class<ALSourceNodeRelative>();
+    ClassDB::register_abstract_class<ALSource>();
+    ClassDB::register_class<ALSource3D>();
+    ClassDB::register_class<ALSourceRelative>();
 
     ClassDB::register_class<va_godot::VAWorld>();
     ClassDB::register_class<va_godot::VAEmitter>();
     ClassDB::register_class<va_godot::VAListener>();
     ClassDB::register_class<va_godot::VACustomMaterial>();
     ClassDB::register_class<VADefaultMaterial>();
-    ClassDB::register_abstract_class<VARaytracedSourceNode3D>();
+    ClassDB::register_abstract_class<VARaytracedSource>();
     ClassDB::register_class<VASource>();
     ClassDB::register_class<VASourceRelative>();
     ClassDB::register_class<VASourceAmbient>();

@@ -12,18 +12,18 @@ using namespace godot;
 // "Build per-source playback"). Filter/reverb send plumbing (ALSource.SetFilter
 // in the C# reference) is deliberately left for the separate,
 // not-yet-done EFX checklist items.
-class ALSource
+class ALSourceHandle
 {
 private:
     ALuint handle = 0;
     bool looping = false;
 
 public:
-    ALSource() = default;
-    ~ALSource();
+    ALSourceHandle() = default;
+    ~ALSourceHandle();
 
-    ALSource(const ALSource &) = delete;
-    ALSource &operator=(const ALSource &) = delete;
+    ALSourceHandle(const ALSourceHandle &) = delete;
+    ALSourceHandle &operator=(const ALSourceHandle &) = delete;
 
     // Allocates a new OpenAL source via alGenSources. Returns false (with a
     // Godot error already logged) on failure - handle() stays 0 in that case.

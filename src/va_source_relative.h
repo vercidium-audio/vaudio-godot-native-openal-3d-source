@@ -1,6 +1,6 @@
 #pragma once
 
-#include "al_source_node_relative.h"
+#include "al_source_relative.h"
 
 using namespace godot;
 
@@ -14,13 +14,13 @@ class VAWorld;
 // "relative" source is meant to sound the same regardless of where the
 // listener actually is (e.g. UI/footstep-style sounds attached to the
 // player), so it skips muffling (full/unfiltered gain) and only sends into
-// the listener's single global reverb slot. Extends ALSourceNodeRelative (not
-// ALSourceNode3D) so its sources are always AL_SOURCE_RELATIVE with a pinned
+// the listener's single global reverb slot. Extends ALSourceRelative (not
+// ALSource3D) so its sources are always AL_SOURCE_RELATIVE with a pinned
 // origin position - see that class's doc comment for why this used to be a
-// `relative` bool on ALSourceNode3D and caused mispositioned/panned audio.
-class VASourceRelative : public ALSourceNodeRelative
+// `relative` bool on ALSource3D and caused mispositioned/panned audio.
+class VASourceRelative : public ALSourceRelative
 {
-    GDCLASS(VASourceRelative, ALSourceNodeRelative);
+    GDCLASS(VASourceRelative, ALSourceRelative);
 
 private:
     va_godot::VAWorld *va_world = nullptr;
@@ -43,6 +43,6 @@ public:
 
     // Matches VASourceRelative.cs's Play() override: routes into the
     // listener's reverb effect with a full (unfiltered) direct+reverb gain,
-    // then defers to ALSourceNodeRelative::play().
+    // then defers to ALSourceRelative::play().
     bool play() override;
 };

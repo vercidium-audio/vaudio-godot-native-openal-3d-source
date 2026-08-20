@@ -35,14 +35,14 @@ bool VASource::play()
         return false;
     }
 
-    played = VARaytracedSourceNode3D::play();
+    played = VARaytracedSource::play();
 
     return played;
 }
 
 void VASource::_process(double delta)
 {
-    VARaytracedSourceNode3D::_process(delta);
+    VARaytracedSource::_process(delta);
     process_raytracing(delta);
 
     if (!is_raytraced())

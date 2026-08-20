@@ -1,76 +1,76 @@
-#include "al_source_node.h"
+#include "al_source.h"
 
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "openal/al_manager.h"
-#include "openal/al_source.h"
+#include "openal/al_source_handle.h"
 #include "va_engine_util.h"
 
 #include <algorithm>
 
-void ALSourceNode::_bind_methods()
+void ALSource::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("get_streams"), &ALSourceNode::get_streams);
-    ClassDB::bind_method(D_METHOD("set_streams", "value"), &ALSourceNode::set_streams);
+    ClassDB::bind_method(D_METHOD("get_streams"), &ALSource::get_streams);
+    ClassDB::bind_method(D_METHOD("set_streams", "value"), &ALSource::set_streams);
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "streams", PROPERTY_HINT_TYPE_STRING, String::num(Variant::OBJECT) + "/" + String::num(PROPERTY_HINT_RESOURCE_TYPE) + ":AudioStream"), "set_streams", "get_streams");
 
     // Script-only alias for `streams` - not exposed in the inspector, see
-    // get_stream()/set_stream()'s comment in al_source_node.h for why this exists.
-    ClassDB::bind_method(D_METHOD("get_stream"), &ALSourceNode::get_stream);
-    ClassDB::bind_method(D_METHOD("set_stream", "value"), &ALSourceNode::set_stream);
+    // get_stream()/set_stream()'s comment in al_source.h for why this exists.
+    ClassDB::bind_method(D_METHOD("get_stream"), &ALSource::get_stream);
+    ClassDB::bind_method(D_METHOD("set_stream", "value"), &ALSource::set_stream);
     ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "stream", PROPERTY_HINT_RESOURCE_TYPE, "AudioStream", PROPERTY_USAGE_NONE), "set_stream", "get_stream");
 
-    ClassDB::bind_method(D_METHOD("get_gain"), &ALSourceNode::get_gain);
-    ClassDB::bind_method(D_METHOD("set_gain", "value"), &ALSourceNode::set_gain);
+    ClassDB::bind_method(D_METHOD("get_gain"), &ALSource::get_gain);
+    ClassDB::bind_method(D_METHOD("set_gain", "value"), &ALSource::set_gain);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "gain", PROPERTY_HINT_RANGE, "0.0,1.0,0.01,or_greater"), "set_gain", "get_gain");
 
-    ClassDB::bind_method(D_METHOD("get_pitch"), &ALSourceNode::get_pitch);
-    ClassDB::bind_method(D_METHOD("set_pitch", "value"), &ALSourceNode::set_pitch);
+    ClassDB::bind_method(D_METHOD("get_pitch"), &ALSource::get_pitch);
+    ClassDB::bind_method(D_METHOD("set_pitch", "value"), &ALSource::set_pitch);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pitch", PROPERTY_HINT_RANGE, "0.01,4.0,0.01"), "set_pitch", "get_pitch");
 
     // Script-only alias for `pitch` - not exposed in the inspector, see
-    // get_pitch_scale()/set_pitch_scale()'s comment in al_source_node.h for why this exists.
-    ClassDB::bind_method(D_METHOD("get_pitch_scale"), &ALSourceNode::get_pitch_scale);
-    ClassDB::bind_method(D_METHOD("set_pitch_scale", "value"), &ALSourceNode::set_pitch_scale);
+    // get_pitch_scale()/set_pitch_scale()'s comment in al_source.h for why this exists.
+    ClassDB::bind_method(D_METHOD("get_pitch_scale"), &ALSource::get_pitch_scale);
+    ClassDB::bind_method(D_METHOD("set_pitch_scale", "value"), &ALSource::set_pitch_scale);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pitch_scale", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_pitch_scale", "get_pitch_scale");
 
     // Script-only alias for `gain` - not exposed in the inspector, see
-    // get_volume_db()'s comment in al_source_node.h for why this exists.
-    ClassDB::bind_method(D_METHOD("get_volume_db"), &ALSourceNode::get_volume_db);
-    ClassDB::bind_method(D_METHOD("set_volume_db", "value"), &ALSourceNode::set_volume_db);
+    // get_volume_db()'s comment in al_source.h for why this exists.
+    ClassDB::bind_method(D_METHOD("get_volume_db"), &ALSource::get_volume_db);
+    ClassDB::bind_method(D_METHOD("set_volume_db", "value"), &ALSource::set_volume_db);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "volume_db", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_volume_db", "get_volume_db");
 
-    ClassDB::bind_method(D_METHOD("get_pitch_randomness"), &ALSourceNode::get_pitch_randomness);
-    ClassDB::bind_method(D_METHOD("set_pitch_randomness", "value"), &ALSourceNode::set_pitch_randomness);
+    ClassDB::bind_method(D_METHOD("get_pitch_randomness"), &ALSource::get_pitch_randomness);
+    ClassDB::bind_method(D_METHOD("set_pitch_randomness", "value"), &ALSource::set_pitch_randomness);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pitch_randomness", PROPERTY_HINT_RANGE, "1.0,4.0,0.01"), "set_pitch_randomness", "get_pitch_randomness");
 
-    ClassDB::bind_method(D_METHOD("get_volume_randomness_db"), &ALSourceNode::get_volume_randomness_db);
-    ClassDB::bind_method(D_METHOD("set_volume_randomness_db", "value"), &ALSourceNode::set_volume_randomness_db);
+    ClassDB::bind_method(D_METHOD("get_volume_randomness_db"), &ALSource::get_volume_randomness_db);
+    ClassDB::bind_method(D_METHOD("set_volume_randomness_db", "value"), &ALSource::set_volume_randomness_db);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "volume_randomness_db", PROPERTY_HINT_RANGE, "0.0,24.0,0.1"), "set_volume_randomness_db", "get_volume_randomness_db");
 
-    ClassDB::bind_method(D_METHOD("get_playback_no_repeat"), &ALSourceNode::get_playback_no_repeat);
-    ClassDB::bind_method(D_METHOD("set_playback_no_repeat", "value"), &ALSourceNode::set_playback_no_repeat);
+    ClassDB::bind_method(D_METHOD("get_playback_no_repeat"), &ALSource::get_playback_no_repeat);
+    ClassDB::bind_method(D_METHOD("set_playback_no_repeat", "value"), &ALSource::set_playback_no_repeat);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "playback_no_repeat"), "set_playback_no_repeat", "get_playback_no_repeat");
 
-    ClassDB::bind_method(D_METHOD("get_looping"), &ALSourceNode::get_looping);
-    ClassDB::bind_method(D_METHOD("set_looping", "value"), &ALSourceNode::set_looping);
+    ClassDB::bind_method(D_METHOD("get_looping"), &ALSource::get_looping);
+    ClassDB::bind_method(D_METHOD("set_looping", "value"), &ALSource::set_looping);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "looping"), "set_looping", "get_looping");
 
-    ClassDB::bind_method(D_METHOD("get_autoplay"), &ALSourceNode::get_autoplay);
-    ClassDB::bind_method(D_METHOD("set_autoplay", "value"), &ALSourceNode::set_autoplay);
+    ClassDB::bind_method(D_METHOD("get_autoplay"), &ALSource::get_autoplay);
+    ClassDB::bind_method(D_METHOD("set_autoplay", "value"), &ALSource::set_autoplay);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autoplay"), "set_autoplay", "get_autoplay");
 
-    ClassDB::bind_method(D_METHOD("play"), &ALSourceNode::play);
-    ClassDB::bind_method(D_METHOD("stop"), &ALSourceNode::stop);
-    ClassDB::bind_method(D_METHOD("is_playing"), &ALSourceNode::is_playing);
+    ClassDB::bind_method(D_METHOD("play"), &ALSource::play);
+    ClassDB::bind_method(D_METHOD("stop"), &ALSource::stop);
+    ClassDB::bind_method(D_METHOD("is_playing"), &ALSource::is_playing);
 }
 
-ALSourceNode::ALSourceNode()
+ALSource::ALSource()
 {
 }
 
-ALSourceNode::~ALSourceNode()
+ALSource::~ALSource()
 {
     // A decode task holds a raw pointer to decoding_buffer via userdata (see
     // ensure_stream_decode_started()) - must not let it run after this node
@@ -79,7 +79,7 @@ ALSourceNode::~ALSourceNode()
         WorkerThreadPool::get_singleton()->wait_for_task_completion(decode_task_id);
 }
 
-void ALSourceNode::_ready()
+void ALSource::_ready()
 {
     if (autoplay && !IS_EDITOR_HINT())
     {
@@ -87,7 +87,7 @@ void ALSourceNode::_ready()
     }
 }
 
-void ALSourceNode::_process(double delta)
+void ALSource::_process(double delta)
 {
     poll_decode_task();
 
@@ -96,18 +96,18 @@ void ALSourceNode::_process(double delta)
     // play() call permanently leaks a handle until alGenSources starts
     // failing once the device's source limit is reached.
     sources.erase(
-        std::remove_if(sources.begin(), sources.end(), [](const std::unique_ptr<ALSource> &source)
+        std::remove_if(sources.begin(), sources.end(), [](const std::unique_ptr<ALSourceHandle> &source)
                         { return source->is_finished(); }),
         sources.end());
 }
 
-void ALSourceNode::decode_stream_task(void *userdata)
+void ALSource::decode_stream_task(void *userdata)
 {
-    ALSourceNode *node = static_cast<ALSourceNode *>(userdata);
+    ALSource *node = static_cast<ALSource *>(userdata);
     node->decode_succeeded = node->decoding_buffer.decode(node->decoding_stream);
 }
 
-bool ALSourceNode::ensure_stream_decode_started()
+bool ALSource::ensure_stream_decode_started()
 {
     if (streams.is_empty())
     {
@@ -192,12 +192,12 @@ bool ALSourceNode::ensure_stream_decode_started()
     decoding_stream = pending_streams.front();
     pending_streams.erase(pending_streams.begin());
     decode_task_id = WorkerThreadPool::get_singleton()->add_native_task(
-        &ALSourceNode::decode_stream_task, this, false, "vaudio stream decode");
+        &ALSource::decode_stream_task, this, false, "vaudio stream decode");
 
     return true;
 }
 
-void ALSourceNode::poll_decode_task()
+void ALSource::poll_decode_task()
 {
     if (decode_task_id == WorkerThreadPool::INVALID_TASK_ID)
         return;
@@ -236,7 +236,7 @@ void ALSourceNode::poll_decode_task()
         decoding_stream = pending_streams.front();
         pending_streams.erase(pending_streams.begin());
         decode_task_id = WorkerThreadPool::get_singleton()->add_native_task(
-            &ALSourceNode::decode_stream_task, this, false, "vaudio stream decode");
+            &ALSource::decode_stream_task, this, false, "vaudio stream decode");
         return;
     }
 
@@ -247,7 +247,7 @@ void ALSourceNode::poll_decode_task()
     }
 }
 
-int ALSourceNode::pick_stream_index() const
+int ALSource::pick_stream_index() const
 {
     if (decoded_buffers.empty())
         return -1;
@@ -263,7 +263,7 @@ int ALSourceNode::pick_stream_index() const
     return index;
 }
 
-bool ALSourceNode::start_playing()
+bool ALSource::start_playing()
 {
     int index = pick_stream_index();
 
@@ -278,9 +278,9 @@ bool ALSourceNode::start_playing()
     if (buffer_handle == 0)
         return false;
 
-    auto source = std::make_unique<ALSource>();
+    auto source = std::make_unique<ALSourceHandle>();
 
-    // ALSource::create() already logs the reason for failure (e.g. the
+    // ALSourceHandle::create() already logs the reason for failure (e.g. the
     // OpenAL source limit has been reached).
     if (!source->create())
         return false;
@@ -312,7 +312,7 @@ bool ALSourceNode::start_playing()
     return true;
 }
 
-bool ALSourceNode::play()
+bool ALSource::play()
 {
     bool need_decode = !ensure_stream_decode_started();
 
@@ -328,7 +328,7 @@ bool ALSourceNode::play()
     return true;
 }
 
-void ALSourceNode::stop()
+void ALSource::stop()
 {
     play_requested = false;
 
@@ -336,7 +336,7 @@ void ALSourceNode::stop()
         source->stop();
 }
 
-bool ALSourceNode::is_playing() const
+bool ALSource::is_playing() const
 {
     for (auto &source : sources)
         if (!source->is_finished())
@@ -345,7 +345,7 @@ bool ALSourceNode::is_playing() const
     return true;
 }
 
-void ALSourceNode::update_filter(float new_gain, float new_gain_hf, bool fullReverb)
+void ALSource::update_filter(float new_gain, float new_gain_hf, bool fullReverb)
 {
     if (!filter.is_valid())
         filter.create(new_gain, new_gain_hf);
@@ -368,7 +368,7 @@ void ALSourceNode::update_filter(float new_gain, float new_gain_hf, bool fullRev
     }
 }
 
-void ALSourceNode::set_gain(float value)
+void ALSource::set_gain(float value)
 {
     gain = value;
 
@@ -376,7 +376,7 @@ void ALSourceNode::set_gain(float value)
         source->set_gain(value);
 }
 
-void ALSourceNode::set_pitch(float value)
+void ALSource::set_pitch(float value)
 {
     pitch = value;
 
@@ -384,7 +384,7 @@ void ALSourceNode::set_pitch(float value)
         source->set_pitch(value);
 }
 
-void ALSourceNode::set_looping(bool value)
+void ALSource::set_looping(bool value)
 {
     looping = value;
 
@@ -392,17 +392,17 @@ void ALSourceNode::set_looping(bool value)
         source->set_looping(value);
 }
 
-void ALSourceNode::set_autoplay(bool value)
+void ALSource::set_autoplay(bool value)
 {
     autoplay = value;
 }
 
-float ALSourceNode::get_volume_db() const
+float ALSource::get_volume_db() const
 {
     return (float)UtilityFunctions::linear_to_db(gain);
 }
 
-void ALSourceNode::set_volume_db(float value)
+void ALSource::set_volume_db(float value)
 {
     set_gain((float)UtilityFunctions::db_to_linear(value));
 }

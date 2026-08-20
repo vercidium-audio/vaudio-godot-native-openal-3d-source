@@ -97,5 +97,5 @@ bool VASourceRelative::play()
 
     update_filter(1.0f, 1.0f);
 
-    return ALSourceNodeRelative::play();
+    return ALSourceRelative::play();
 }

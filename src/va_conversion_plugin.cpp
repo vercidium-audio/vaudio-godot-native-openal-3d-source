@@ -10,7 +10,7 @@
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include "al_source_node.h"
+#include "al_source.h"
 #include "register_types.h"
 #include "va_emitter.h"
 #include "va_engine_util.h"
@@ -146,7 +146,7 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
         return;
     }
 
-    ALSourceNode *new_node = nullptr;
+    ALSource *new_node = nullptr;
 
     if (target_class == "VASource")
         new_node = memnew(VASource);
@@ -174,11 +174,11 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
     copy_property(old_node, new_base_node, "pitch_scale", "pitch");
     copy_property(old_node, new_base_node, "autoplay", "autoplay");
 
-    // AudioStreamPlayer3D (and old scenes' ALSourceNode `stream`, before it
-    // was replaced by `streams`) has a single `stream` property - ALSourceNode
+    // AudioStreamPlayer3D (and old scenes' ALSource `stream`, before it
+    // was replaced by `streams`) has a single `stream` property - ALSource
     // only has `streams` now, so wrap it as a one-entry array. AudioStreamRandomizer
     // picks a random sub-stream/pitch/volume at playback time, which
-    // ALSourceNode has no equivalent resource for - instead, expand its
+    // ALSource has no equivalent resource for - instead, expand its
     // sub-streams into `streams` directly and copy its randomisation settings
     // into pitch_randomness/volume_randomness_db, so an existing scene using
     // it keeps the same behaviour (minus re-decoding a fresh pick on every
@@ -228,7 +228,7 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
         copy_property(old_node, new_base_node, "looping", "looping");
         copy_property(old_node, new_base_node, "autoplay", "autoplay");
 
-        // Only relevant when old_node is itself an ALSourceNode (e.g.
+        // Only relevant when old_node is itself an ALSource (e.g.
         // VASource -> VASourceRelative) - has_property() skips these
         // silently for a plain AudioStreamPlayer3D, which has none of them.
         copy_property(old_node, new_base_node, "streams", "streams");

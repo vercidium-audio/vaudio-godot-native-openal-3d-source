@@ -180,7 +180,7 @@ private:
     // feeds vaudio's raytracing/acoustics model. Also per-context state.
     float speed_of_sound = 343.0f;
 
-    // When true, every ALSourceNode's direct/dry path is routed through a
+    // When true, every ALSource's direct/dry path is routed through a
     // gain-0 lowpass filter (silence_filter below) instead of its own muffle
     // filter, so only each source's reverb send is audible - a diagnostic
     // toggle for tuning reverb in isolation. Matches ALManager.cs's
@@ -298,7 +298,7 @@ public:
 
     // Enables/disables reverb-only mode - see reverb_only's doc comment.
     // Takes effect the next time a source's direct filter is (re)applied
-    // (ALSourceNode::start_playing/update_filter), not retroactively on
+    // (ALSource::start_playing/update_filter), not retroactively on
     // sources already playing with their normal filter attached.
     void set_reverb_only(bool value)
     {
@@ -424,7 +424,7 @@ public:
         return alcGetIntegerv_;
     }
 
-    // Source entry points - exposed for ALSource (src/openal/al_source.cpp),
+    // Source entry points - exposed for ALSourceHandle (src/openal/al_source_handle.cpp),
     // same "no further wrapping" rationale as the buffer accessors above.
     alGenSourcesFn al_gen_sources() const
     {
@@ -566,7 +566,7 @@ public:
     // vaudio-godot-mono-openal-3d's VAWorldGodot.cs._Process
     // (ALManager.instance.ListenerPosition/Pitch/Yaw = listener.GlobalPosition/
     // Pitch/Yaw). No coordinate remap needed (architectural decision #7 in
-    // native_godot_plan.md - same as ALSource::set_position). forward/up are
+    // native_godot_plan.md - same as ALSourceHandle::set_position). forward/up are
     // AL_ORIENTATION's two 3-float vectors, matching OpenAL's convention
     // (forward = "at", up = "up").
     void set_listener_position(const Vector3 &position)

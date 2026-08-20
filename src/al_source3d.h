@@ -1,15 +1,15 @@
 #pragma once
 
-#include "al_source_node.h"
+#include "al_source.h"
 
 using namespace godot;
 
-class ALSource;
+class ALSourceHandle;
 
 // Spatialised AL source
-class ALSourceNode3D : public ALSourceNode
+class ALSource3D : public ALSource
 {
-    GDCLASS(ALSourceNode3D, ALSourceNode);
+    GDCLASS(ALSource3D, ALSource);
 
 private:
     float max_distance = 100.0f;
@@ -18,11 +18,11 @@ private:
 protected:
     static void _bind_methods();
 
-    void configure_source(ALSource &source) override;
+    void configure_source(ALSourceHandle &source) override;
 
 public:
-    ALSourceNode3D();
-    ~ALSourceNode3D();
+    ALSource3D();
+    ~ALSource3D();
 
     void _process(double delta) override;
 

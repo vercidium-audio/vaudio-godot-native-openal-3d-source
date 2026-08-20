@@ -1,20 +1,20 @@
-#include "al_source_node_relative.h"
+#include "al_source_relative.h"
 
-#include "openal/al_source.h"
+#include "openal/al_source_handle.h"
 
-void ALSourceNodeRelative::_bind_methods()
+void ALSourceRelative::_bind_methods()
 {
 }
 
-ALSourceNodeRelative::ALSourceNodeRelative()
+ALSourceRelative::ALSourceRelative()
 {
 }
 
-ALSourceNodeRelative::~ALSourceNodeRelative()
+ALSourceRelative::~ALSourceRelative()
 {
 }
 
-void ALSourceNodeRelative::configure_source(ALSource &source)
+void ALSourceRelative::configure_source(ALSourceHandle &source)
 {
     // Relative to the listener with zero offset
     source.set_relative(true);
