@@ -324,7 +324,12 @@ void ALManager::read_settings_from_project_settings()
     CharString device_name_utf8 = device_name_setting.utf8();
     device_name = device_name_utf8.get_data();
 
-    max_auxiliary_sends = settings->get_setting("audio/vaudio/max_reverb_sends");
+    // Floored at 1, unlike max_mono_sources/max_stereo_sources/sample_rate below - 0 auxiliary
+    // sends makes every AL_AUXILIARY_SEND_FILTER call on any source fail with "Invalid send 0",
+    // since a source created under a context with zero granted sends has no send slot 0 at all to
+    // target. Matches the Mono plugin's ALManagerDevice.cs (godot-mono-openal), which clamps the
+    // same way at read time.
+    max_auxiliary_sends = MAX(1, (int)settings->get_setting("audio/vaudio/max_reverb_sends"));
     max_mono_sources = settings->get_setting("audio/vaudio/max_mono_sources");
     max_stereo_sources = settings->get_setting("audio/vaudio/max_stereo_sources");
     sample_rate = settings->get_setting("audio/vaudio/sample_rate");

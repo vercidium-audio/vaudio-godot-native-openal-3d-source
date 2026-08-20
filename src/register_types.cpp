@@ -170,7 +170,12 @@ static void register_project_settings()
 
     refresh_output_device_hint();
 
-    // max_reverb_sends: dev-only setting (not end-user-facing), default 1
+    // max_reverb_sends: dev-only setting (not end-user-facing), default 1. Floor of 1, not 0 - a
+    // value of 0 requests zero auxiliary sends from the driver, which makes every
+    // AL_AUXILIARY_SEND_FILTER call on any source fail with "Invalid send 0"
+    // (al_manager.cpp's read_settings_from_project_settings() clamps this the same way at read
+    // time, in case an existing project.godot already has an explicit 0 saved from before this
+    // floor existed).
     if (!settings->has_setting("audio/vaudio/max_reverb_sends"))
         settings->set_setting("audio/vaudio/max_reverb_sends", 1);
 
@@ -180,7 +185,7 @@ static void register_project_settings()
     max_reverb_sends_info["name"] = "audio/vaudio/max_reverb_sends";
     max_reverb_sends_info["type"] = Variant::INT;
     max_reverb_sends_info["hint"] = PROPERTY_HINT_RANGE;
-    max_reverb_sends_info["hint_string"] = "0,16,or_greater";
+    max_reverb_sends_info["hint_string"] = "1,16,or_greater";
     settings->add_property_info(max_reverb_sends_info);
 
     // max_mono_sources/max_stereo_sources: project-level settings set by the developer, matching ALManager.cs's
