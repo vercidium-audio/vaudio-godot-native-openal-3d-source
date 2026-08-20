@@ -3,7 +3,7 @@
 	<brief_description>
 	</brief_description>
 	<description>
-		Global OpenAL device and mixer control, registered as an [Engine] singleton - reach it from any script as [code]ALManager[/code], at any time, with no scene-tree node required. The output device, sample rate, HRTF, and max reverb sends used for the one device open at game start come from Project Settings ([code]audio/vaudio/output_device[/code], [code]audio/vaudio/sample_rate[/code], [code]audio/vaudio/hrtf_enabled[/code], [code]audio/vaudio/max_reverb_sends[/code]), not from this singleton - [method set_output_device] is the one exception, letting a shipped game's audio settings menu switch the output device at runtime.
+		Global OpenAL device and mixer control, registered as an [Engine] singleton - reach it from any script as [code]ALManager[/code], at any time, with no scene-tree node required. The output device, sample rate, HRTF, max reverb sends, and max mono/stereo sources used for the one device open at game start come from Project Settings ([code]audio/vaudio/output_device[/code], [code]audio/vaudio/sample_rate[/code], [code]audio/vaudio/hrtf_enabled[/code], [code]audio/vaudio/max_reverb_sends[/code], [code]audio/vaudio/max_mono_sources[/code], [code]audio/vaudio/max_stereo_sources[/code]), not from this singleton - [method set_output_device] is the one exception, letting a shipped game's audio settings menu switch the output device at runtime.
 	</description>
 	<tutorials>
 	</tutorials>

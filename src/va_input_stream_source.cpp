@@ -6,6 +6,9 @@
 #include "openal/al_manager.h"
 #include "va_engine_util.h"
 
+#include <cstdint>
+#include <cstdlib>
+
 VAInputStreamSource::VAInputStreamSource()
 {
 }
@@ -37,6 +40,10 @@ void VAInputStreamSource::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_buffer_size_frames"), &VAInputStreamSource::get_buffer_size_frames);
     ClassDB::bind_method(D_METHOD("set_buffer_size_frames", "value"), &VAInputStreamSource::set_buffer_size_frames);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "buffer_size_frames", PROPERTY_HINT_RANGE, "1,65536,1,or_greater"), "set_buffer_size_frames", "get_buffer_size_frames");
+
+    ClassDB::bind_method(D_METHOD("get_microphone_threshold"), &VAInputStreamSource::get_microphone_threshold);
+    ClassDB::bind_method(D_METHOD("set_microphone_threshold", "value"), &VAInputStreamSource::set_microphone_threshold);
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "microphone_threshold", PROPERTY_HINT_RANGE, "0,32767,or_greater"), "set_microphone_threshold", "get_microphone_threshold");
 
     ClassDB::bind_method(D_METHOD("open_capture", "device_name", "format", "frequency", "buffer_size_frames"), &VAInputStreamSource::open_capture);
 
@@ -113,6 +120,38 @@ void VAInputStreamSource::_ready()
     start_capture();
 }
 
+// AL_FORMAT_MONO8/STEREO8 samples are unsigned (silence = 128), everything
+// else this class supports (MONO16/STEREO16) is signed 16-bit (silence = 0) -
+// see bytes_per_frame_for_format() in al_capture_device.cpp for the same
+// format set. 8-bit amplitudes are scaled up by 256 so microphone_threshold
+// means the same thing regardless of which format is captured in.
+int VAInputStreamSource::peak_amplitude(const uint8_t *data, int num_bytes, int format)
+{
+    int peak = 0;
+
+    if (format == AL_FORMAT_MONO8 || format == AL_FORMAT_STEREO8)
+    {
+        for (int i = 0; i < num_bytes; i++)
+        {
+            int amplitude = abs((int)data[i] - 128) * 256;
+            peak = amplitude > peak ? amplitude : peak;
+        }
+    }
+    else
+    {
+        const int16_t *samples = reinterpret_cast<const int16_t *>(data);
+        int sample_count = num_bytes / 2;
+
+        for (int i = 0; i < sample_count; i++)
+        {
+            int amplitude = abs((int)samples[i]);
+            peak = amplitude > peak ? amplitude : peak;
+        }
+    }
+
+    return peak;
+}
+
 bool VAInputStreamSource::open_capture(const String &device_name, int format, int frequency, int buffer_size_frames)
 {
     close_capture();
@@ -121,11 +160,13 @@ bool VAInputStreamSource::open_capture(const String &device_name, int format, in
     // legitimately call open_capture()/start_capture() before open_stream(),
     // in which case captured audio is simply dropped until a stream is
     // opened (push_audio_data() no-ops with a logged error otherwise), rather
-    // than erroring every single captured chunk.
+    // than erroring every single captured chunk. Chunks that don't reach
+    // microphone_threshold's peak amplitude are dropped instead of forwarded -
+    // see microphone_threshold's doc comment (va_input_stream_source.h).
     bool opened = capture_device.open(device_name, (ALenum)format, frequency, buffer_size_frames,
-        [this](const uint8_t *data, int num_bytes)
+        [this, format](const uint8_t *data, int num_bytes)
         {
-            if (is_stream_open())
+            if (is_stream_open() && peak_amplitude(data, num_bytes, format) >= microphone_threshold)
             {
                 push_audio_data(data, num_bytes);
             }

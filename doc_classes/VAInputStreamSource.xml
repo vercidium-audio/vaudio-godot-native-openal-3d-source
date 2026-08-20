@@ -21,6 +21,9 @@
 		<member name="buffer_size_frames" type="int" setter="set_buffer_size_frames" getter="get_buffer_size_frames" default="1024">
 			The size, in frames, of the capture device's internal ring buffer, passed to the automatic [method open_capture] call this node makes on [code]_ready[/code].
 		</member>
+		<member name="microphone_threshold" type="int" setter="set_microphone_threshold" getter="get_microphone_threshold" default="0">
+			The minimum peak sample amplitude (0-32767, on a 16-bit PCM scale regardless of [member format]) a captured chunk must reach before it's pushed into the stream. Chunks quieter than this are silently dropped instead of being played/forwarded. [code]0[/code] (the default) forwards every captured chunk, disabling the gate.
+		</member>
 	</members>
 	<methods>
 		<method name="open_capture">

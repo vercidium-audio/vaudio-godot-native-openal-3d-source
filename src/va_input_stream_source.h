@@ -39,6 +39,23 @@ private:
     String device_name;
     int buffer_size_frames = 1024;
 
+    // Minimum peak sample amplitude (0-32767, matching a 16-bit PCM sample's
+    // range regardless of the capture format actually in use - 8-bit samples
+    // are scaled up before comparing) a captured chunk must reach before it's
+    // forwarded to push_audio_data() - see todo.md's "Godot" section:
+    // "microphone threshold should be a setting on the node that accepts
+    // microphone input from the user's capture device". 0 (the default)
+    // forwards every chunk, matching the C# reference's MicrophoneThreshold
+    // defaulting to 0 (ALManager.cs, vaudio-godot-mono-openal-3d) before this
+    // was wired up to anything there.
+    int microphone_threshold = 0;
+
+    // Returns the greatest absolute sample amplitude in a chunk of format-
+    // encoded PCM data, scaled to a 16-bit range so microphone_threshold
+    // means the same thing regardless of format. Used by the open_capture()
+    // data callback to gate push_audio_data() on microphone_threshold.
+    static int peak_amplitude(const uint8_t *data, int num_bytes, int format);
+
 protected:
     static void _bind_methods();
 
@@ -101,6 +118,16 @@ public:
     void set_buffer_size_frames(int value)
     {
         buffer_size_frames = value;
+    }
+
+    int get_microphone_threshold() const
+    {
+        return microphone_threshold;
+    }
+
+    void set_microphone_threshold(int value)
+    {
+        microphone_threshold = value < 0 ? 0 : value;
     }
 
     // Opens a microphone/input device (device_name empty for the driver's

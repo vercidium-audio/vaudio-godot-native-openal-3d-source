@@ -258,13 +258,25 @@ bool ALManager::open_device_and_context()
         return false;
     }
 
-    ALCint attributes[7];
+    ALCint attributes[11];
     int count = 0;
 
     if (max_auxiliary_sends > 0)
     {
         attributes[count++] = ALC_MAX_AUXILIARY_SENDS;
         attributes[count++] = max_auxiliary_sends;
+    }
+
+    if (max_mono_sources > 0)
+    {
+        attributes[count++] = ALC_MONO_SOURCES;
+        attributes[count++] = max_mono_sources;
+    }
+
+    if (max_stereo_sources > 0)
+    {
+        attributes[count++] = ALC_STEREO_SOURCES;
+        attributes[count++] = max_stereo_sources;
     }
 
     if (sample_rate > 0)
@@ -332,14 +344,14 @@ bool ALManager::open_device_and_context()
     return true;
 }
 
-// Reads device_name/max_auxiliary_sends/sample_rate/hrtf_enabled from the
-// audio/vaudio/* Project Settings registered by register_project_settings()
-// (register_types.cpp), so the one-and-only device open below already uses
-// the user's real settings instead of hard-coded defaults - see
-// godot_singleton_plan.md, Section 4.2. Assumes register_project_settings()
-// already ran (it's called before al_manager.initialize() in
-// initialize_vaudio_godot_native_openal_3d_module), so every setting already
-// exists with its registered default.
+// Reads device_name/max_auxiliary_sends/max_mono_sources/max_stereo_sources/
+// sample_rate/hrtf_enabled from the audio/vaudio/* Project Settings
+// registered by register_project_settings() (register_types.cpp), so the
+// one-and-only device open below already uses the user's real settings
+// instead of hard-coded defaults - see godot_singleton_plan.md, Section 4.2.
+// Assumes register_project_settings() already ran (it's called before
+// al_manager.initialize() in initialize_vaudio_godot_native_openal_3d_module),
+// so every setting already exists with its registered default.
 void ALManager::read_settings_from_project_settings()
 {
     ProjectSettings *settings = ProjectSettings::get_singleton();
@@ -359,6 +371,8 @@ void ALManager::read_settings_from_project_settings()
     device_name = device_name_utf8.get_data();
 
     max_auxiliary_sends = settings->get_setting("audio/vaudio/max_reverb_sends");
+    max_mono_sources = settings->get_setting("audio/vaudio/max_mono_sources");
+    max_stereo_sources = settings->get_setting("audio/vaudio/max_stereo_sources");
     sample_rate = settings->get_setting("audio/vaudio/sample_rate");
     hrtf_enabled = settings->get_setting("audio/vaudio/hrtf_enabled");
 }
@@ -390,7 +404,8 @@ bool ALManager::initialize()
     }
 
     VA_LOG("ALManager initialized - device '", device_name.empty() ? "(default)" : device_name.c_str(),
-        "', max_reverb_sends ", max_auxiliary_sends, ", sample_rate ", sample_rate, ", hrtf_enabled ", hrtf_enabled);
+        "', max_reverb_sends ", max_auxiliary_sends, ", max_mono_sources ", max_mono_sources,
+        ", max_stereo_sources ", max_stereo_sources, ", sample_rate ", sample_rate, ", hrtf_enabled ", hrtf_enabled);
 
     singleton = this;
     return true;
@@ -451,13 +466,25 @@ bool ALManager::reinitialize(const String &new_device_name, int new_max_auxiliar
     {
         const ALCchar *requested_device = device_name.empty() ? nullptr : device_name.c_str();
 
-        ALCint attributes[7];
+        ALCint attributes[11];
         int count = 0;
 
         if (max_auxiliary_sends > 0)
         {
             attributes[count++] = ALC_MAX_AUXILIARY_SENDS;
             attributes[count++] = max_auxiliary_sends;
+        }
+
+        if (max_mono_sources > 0)
+        {
+            attributes[count++] = ALC_MONO_SOURCES;
+            attributes[count++] = max_mono_sources;
+        }
+
+        if (max_stereo_sources > 0)
+        {
+            attributes[count++] = ALC_STEREO_SOURCES;
+            attributes[count++] = max_stereo_sources;
         }
 
         if (sample_rate > 0)

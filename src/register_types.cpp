@@ -211,6 +211,36 @@ static void register_project_settings()
     max_reverb_sends_info["hint_string"] = "0,16,or_greater";
     settings->add_property_info(max_reverb_sends_info);
 
+    // max_mono_sources/max_stereo_sources: project-level settings set by the developer, matching
+    // vaudio-godot-mono-openal-3d's ALManager.cs MaximumMonoSources/MaximumStereoSources (todo.md's
+    // "Godot" section) - defaults match that C# reference's own field initialisers (16/240).
+    // Read once by ALManager::read_settings_from_project_settings() before the one-and-only device
+    // open, same "not settable at runtime" shape as that C# reference (see MaximumMonoSources'
+    // doc comment in ALManager.cs).
+    if (!settings->has_setting("audio/vaudio/max_mono_sources"))
+        settings->set_setting("audio/vaudio/max_mono_sources", 16);
+
+    settings->set_initial_value("audio/vaudio/max_mono_sources", 16);
+
+    Dictionary max_mono_sources_info;
+    max_mono_sources_info["name"] = "audio/vaudio/max_mono_sources";
+    max_mono_sources_info["type"] = Variant::INT;
+    max_mono_sources_info["hint"] = PROPERTY_HINT_RANGE;
+    max_mono_sources_info["hint_string"] = "0,256,or_greater";
+    settings->add_property_info(max_mono_sources_info);
+
+    if (!settings->has_setting("audio/vaudio/max_stereo_sources"))
+        settings->set_setting("audio/vaudio/max_stereo_sources", 240);
+
+    settings->set_initial_value("audio/vaudio/max_stereo_sources", 240);
+
+    Dictionary max_stereo_sources_info;
+    max_stereo_sources_info["name"] = "audio/vaudio/max_stereo_sources";
+    max_stereo_sources_info["type"] = Variant::INT;
+    max_stereo_sources_info["hint"] = PROPERTY_HINT_RANGE;
+    max_stereo_sources_info["hint_string"] = "0,256,or_greater";
+    settings->add_property_info(max_stereo_sources_info);
+
     // sample_rate: 0 means "driver default" - never shown to the user as 0.
     if (!settings->has_setting("audio/vaudio/sample_rate"))
         settings->set_setting("audio/vaudio/sample_rate", 0);

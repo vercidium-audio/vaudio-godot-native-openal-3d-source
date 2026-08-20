@@ -140,6 +140,18 @@ private:
     std::string device_name;
     int max_auxiliary_sends = 0;
 
+    // ALC_MONO_SOURCES/ALC_STEREO_SOURCES attributes passed to
+    // alcCreateContext - 0 means "leave it to the driver default" (matches
+    // max_auxiliary_sends' 0-means-default convention above). Unlike
+    // max_auxiliary_sends/sample_rate/hrtf_enabled, these aren't read from
+    // Project Settings here - see MaximumMonoSources/MaximumStereoSources's
+    // doc comment in vaudio-godot-mono-openal-3d's ALManager.cs: they can't
+    // be changed at runtime, so read_settings_from_project_settings() reads
+    // them once, matching that C# reference's "read once during
+    // CreateDeviceAndContext(), not settable at runtime" behaviour.
+    int max_mono_sources = 0;
+    int max_stereo_sources = 0;
+
     // ALC_FREQUENCY attribute passed to alcCreateContext - 0 means "leave the
     // mixing sample rate at the driver default" (matches max_auxiliary_sends'
     // 0-means-default convention above).
