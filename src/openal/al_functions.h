@@ -25,6 +25,15 @@ using alcGetErrorFn = ALCenum(ALC_APIENTRY *)(ALCdevice *);
 using alcGetStringFn = const ALCchar *(ALC_APIENTRY *)(ALCdevice *, ALCenum);
 using alcGetIntegervFn = void(ALC_APIENTRY *)(ALCdevice *, ALCenum, ALCsizei, ALCint *);
 using alcIsExtensionPresentFn = ALCboolean(ALC_APIENTRY *)(ALCdevice *, const ALCchar *);
+using alcGetProcAddressFn = void *(ALC_APIENTRY *)(ALCdevice *, const ALCchar *);
+
+// ALC_SOFT_reopen_device - lets an existing device/context be redirected to a
+// different physical output device in place, instead of a full
+// close+create+MakeContextCurrent teardown/recreate (see reinitialize(),
+// al_manager.cpp). An ALC extension, so - unlike the AL_EXT_EFX/AL_SOFT_callback_buffer
+// entry points below (looked up via alGetProcAddress) - it's resolved via
+// alcGetProcAddress instead.
+using alcReopenDeviceSOFTFn = LPALCREOPENDEVICESOFT;
 
 // ALC_EXT_capture (core in the ALC API since OpenAL 1.1, not looked up via
 // alGetProcAddress) - resolved the same way as the other alc* entry points

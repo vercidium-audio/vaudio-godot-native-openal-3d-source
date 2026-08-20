@@ -55,6 +55,14 @@ private:
     alcGetStringFn alcGetString_ = nullptr;
     alcGetIntegervFn alcGetIntegerv_ = nullptr;
     alcIsExtensionPresentFn alcIsExtensionPresent_ = nullptr;
+    alcGetProcAddressFn alcGetProcAddress_ = nullptr;
+
+    // ALC_SOFT_reopen_device entry point - resolved per-device in
+    // open_device_and_context() (like EFX below), since it's queried via
+    // alcGetProcAddress against a live device. Null if the extension isn't
+    // present; reinitialize() falls back to the full close+recreate path
+    // when so.
+    alcReopenDeviceSOFTFn alcReopenDeviceSOFT_ = nullptr;
 
     // ALC_EXT_capture entry points - resolved alongside the other core alc*
     // functions in resolve_functions() (a core soft_oal.dll export, not an
@@ -200,12 +208,16 @@ public:
     // Returns false (with a Godot error already logged) on any failure.
     bool initialize();
 
-    // Tears down the current device/context (if any) and reopens them using
+    // Switches the current device/context (if any) to use
     // device_name/max_auxiliary_sends/new_sample_rate/new_hrtf_enabled,
-    // leaving the resolved function pointers and loaded library alone. Every
-    // existing AL object (sources, buffers, filters, effects) is invalidated
-    // by this - see set_output_device() below for the runtime-switching
-    // entry point that calls this after boot.
+    // leaving the resolved function pointers and loaded library alone. When
+    // ALC_SOFT_reopen_device is present on the currently open device, this
+    // calls alcReopenDeviceSOFT to redirect the existing device/context to
+    // the new output device in place, which keeps every existing AL object
+    // (sources, buffers, filters, effects) valid. Otherwise it falls back to
+    // a full close_device()+open_device_and_context() teardown/recreate,
+    // which invalidates all of those - see set_output_device() below for the
+    // runtime-switching entry point that calls this after boot.
     bool reinitialize(const String &new_device_name, int new_max_auxiliary_sends, int new_sample_rate, bool new_hrtf_enabled);
 
     // Runtime device-switching entry point for a shipped game's audio

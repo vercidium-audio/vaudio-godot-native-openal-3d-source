@@ -146,6 +146,7 @@ bool ALManager::resolve_functions()
     ok &= resolve(library, "alcGetString", alcGetString_);
     ok &= resolve(library, "alcGetIntegerv", alcGetIntegerv_);
     ok &= resolve(library, "alcIsExtensionPresent", alcIsExtensionPresent_);
+    ok &= resolve(library, "alcGetProcAddress", alcGetProcAddress_);
 
     ok &= resolve(library, "alcCaptureOpenDevice", alcCaptureOpenDevice_);
     ok &= resolve(library, "alcCaptureCloseDevice", alcCaptureCloseDevice_);
@@ -315,6 +316,19 @@ bool ALManager::open_device_and_context()
 
     efx_present = resolve_efx_functions();
 
+    // ALC_SOFT_reopen_device is per-device state, like EFX above - re-queried
+    // every time a device is (re)opened rather than cached process-wide,
+    // since a fallback device reached after switching output devices might
+    // not support it even if the previous one did.
+    if (alcIsExtensionPresent_(device, "ALC_SOFT_reopen_device") == ALC_FALSE)
+    {
+        alcReopenDeviceSOFT_ = nullptr;
+    }
+    else
+    {
+        alcReopenDeviceSOFT_ = reinterpret_cast<alcReopenDeviceSOFTFn>(alcGetProcAddress_(device, "alcReopenDeviceSOFT"));
+    }
+
     return true;
 }
 
@@ -422,6 +436,49 @@ bool ALManager::reinitialize(const String &new_device_name, int new_max_auxiliar
     if (!library)
     {
         return initialize();
+    }
+
+    // Prefer alcReopenDeviceSOFT when the currently open device supports it:
+    // it redirects the existing ALC device/context to the new output device
+    // in place, so every existing AL object (sources, buffers, filters,
+    // effects) stays valid - unlike the close_device()+open_device_and_context()
+    // fallback below, which is a full teardown/recreate that invalidates all
+    // of them. Only usable when a device/context already exists (is_initialized())
+    // and requires re-deriving the same attribute list open_device_and_context()
+    // would pass to alcCreateContext, since alcReopenDeviceSOFT takes the same
+    // attribs format.
+    if (alcReopenDeviceSOFT_ && is_initialized())
+    {
+        const ALCchar *requested_device = device_name.empty() ? nullptr : device_name.c_str();
+
+        ALCint attributes[7];
+        int count = 0;
+
+        if (max_auxiliary_sends > 0)
+        {
+            attributes[count++] = ALC_MAX_AUXILIARY_SENDS;
+            attributes[count++] = max_auxiliary_sends;
+        }
+
+        if (sample_rate > 0)
+        {
+            attributes[count++] = ALC_FREQUENCY;
+            attributes[count++] = sample_rate;
+        }
+
+        attributes[count++] = ALC_HRTF_SOFT;
+        attributes[count++] = hrtf_enabled ? ALC_TRUE : ALC_FALSE;
+
+        attributes[count++] = 0;
+
+        if (alcReopenDeviceSOFT_(device, requested_device, attributes) == ALC_TRUE)
+        {
+            singleton = this;
+            return true;
+        }
+
+        VA_WARN("alcReopenDeviceSOFT failed for device '", String::utf8(device_name.c_str()),
+            "', ALC error ", (int)alcGetError_(device), " - falling back to full device recreation");
     }
 
     close_device();
