@@ -39,10 +39,7 @@ public:
         return reference_distance;
     }
 
-    // Script-only alias for `reference_distance`, matching AudioStreamPlayer3D's
-    // `unit_size` - lets a script written against AudioStreamPlayer3D keep
-    // working unmodified after converting to this node (see
-    // va_conversion_plugin.cpp, which does the same remap at conversion time).
+    // Script-only alias for `reference_distance` matching AudioStreamPlayer3D's `unit_size` (see va_conversion_plugin.cpp's matching remap).
     float get_unit_size() const
     {
         return get_reference_distance();

@@ -17,9 +17,7 @@ namespace va_godot
 
 namespace
 {
-    // GLSL source for the diamond sprites. Spawn time (seconds, matching the CPU clock
-    // Time::get_ticks_msec()/1000.0 used when writing instances) travels from vertex to fragment
-    // via a varying, since INSTANCE_CUSTOM is only readable in the vertex stage.
+    // GLSL for the diamond sprites; spawn time travels vertex->fragment via a varying since INSTANCE_CUSTOM is only readable in the vertex stage.
     const char *VISUALISATION_SHADER_CODE = R"(
 shader_type spatial;
 render_mode unshaded, blend_mix, cull_disabled, depth_draw_never;
@@ -113,8 +111,7 @@ void VAVisualisation::_enter_tree()
 
     if (!emitter)
     {
-        // Same rationale as VAEmitter::waiting_for_world - this node's scene may enter the tree
-        // before being parented under its intended VAEmitter/VASource/VAListener.
+        // Same rationale as VAEmitter::waiting_for_world - this node's scene may enter the tree before being parented under its intended emitter.
         waiting_for_world = true;
         get_tree()->connect("node_added", callable_mp(this, &VAVisualisation::retry_find_emitter));
     }
@@ -160,9 +157,7 @@ void VAVisualisation::find_emitter()
 
     if (!emitter)
     {
-        // VASource isn't itself a VAEmitter - it owns a hidden child VAEmitter
-        // node instead (see VASource::create_emitter) - so fall back to that
-        // when this node's direct parent is a VASource.
+        // VASource isn't itself a VAEmitter - it owns a hidden child VAEmitter node instead (see VASource::create_emitter).
         VASource *source = Object::cast_to<VASource>(get_parent());
 
         if (source)
@@ -177,10 +172,7 @@ void VAVisualisation::find_emitter()
 
     if (!emitter->get_handle())
     {
-        // Parent VAEmitter node exists but hasn't created its SDK handle yet (its own
-        // _enter_tree/create_emitter runs later, e.g. if it's waiting on a VAWorld too) -
-        // treat this the same as "no emitter yet" so we retry later via node_added instead of
-        // dereferencing a null handle below.
+        // Parent VAEmitter exists but hasn't created its SDK handle yet - treat as "no emitter yet" and retry via node_added.
         emitter = nullptr;
         return;
     }
@@ -213,8 +205,7 @@ int VAVisualisation::required_instance_count() const
 {
     int batch_size = MAX(1, ray_count * bounce_count);
 
-    // How many callback batches can be alive (still fading) at once - +1 as a safety margin
-    // against jitter between when a batch's diamonds spawn and when they actually finish fading.
+    // Batches alive (still fading) at once, +2 as a safety margin against spawn/fade jitter.
     int batches_in_flight = (duration_ms / MAX(1, update_frequency_ms)) + 2;
 
     return batch_size * batches_in_flight;
@@ -222,8 +213,7 @@ int VAVisualisation::required_instance_count() const
 
 Ref<ArrayMesh> VAVisualisation::build_diamond_mesh()
 {
-    // Unit diamond in the local XY plane, facing +Z - orientated per-instance to the ray hit
-    // normal via each MultiMesh instance's transform (see on_visualisation_data).
+    // Unit diamond in the local XY plane, facing +Z - orientated per-instance to the ray hit normal (see on_visualisation_data).
     Vector3 top(0, 1, 0);
     Vector3 right(1, 0, 0);
     Vector3 bottom(0, -1, 0);
@@ -266,21 +256,16 @@ void VAVisualisation::create_multimesh()
     multimesh_instance->set_multimesh(multimesh);
     multimesh_instance->set_material_override(shader_material);
 
-    // VAVisualisationData positions/normals are already in world space (this node moves with
-    // the parent VAEmitter/VAListener, which itself moves every frame) - top_level makes this
-    // node's own transform (left at identity) the effective global transform, so the world-space
-    // positions written in on_visualisation_data can be used directly instead of being
-    // re-relativised to a moving parent every time the listener moves.
+    // VAVisualisationData positions/normals are already in world space - top_level makes this node's own transform
+    // (left at identity) the effective global transform, so those world-space positions can be used directly.
     multimesh_instance->set_as_top_level(true);
     multimesh_instance->set_transform(Transform3D());
 
-    // Instance transforms are written from the visualisation callback on a regular _process
-    // frame, not the physics step - physics interpolation has nothing valid to interpolate
-    // between and just warns ("triggered from outside physics process") on every write.
+    // Instance transforms are written from the visualisation callback on a regular _process frame, not the physics
+    // step - physics interpolation has nothing valid to interpolate between and just warns on every write.
     multimesh_instance->set_physics_interpolation_mode(Node::PHYSICS_INTERPOLATION_MODE_OFF);
 
-    // Rays can land anywhere within the VAWorld, far outside this node's own transform - a
-    // per-instance frustum test against this node's local AABB would cull them incorrectly.
+    // Rays can land anywhere within the VAWorld, far outside this node's own transform - a per-instance frustum test would cull them incorrectly.
     multimesh_instance->set_ignore_occlusion_culling(true);
     multimesh_instance->set_extra_cull_margin(1024.0f);
 
@@ -309,12 +294,9 @@ void VAVisualisation::visualisation_callback_trampoline(::VAEmitter *emitter, VA
         self->get_visualisation()->on_visualisation_data(data, count);
 }
 
-// Called on the main thread from inside VAWorld::_process's vaWorldUpdate() call (see the
-// threading note in vaudio.h above vaWorldUpdate/vaWorldWait - results, and therefore this
-// callback, are only ever handled on the main thread). Writes one MultiMesh instance per ray
-// bounce, wrapping the ring-buffer cursor rather than doing any per-instance cleanup - a stale
-// instance from several callbacks ago simply keeps rendering until this cursor wraps back around
-// to overwrite it, by which point the shader has long since faded it to zero alpha.
+// Called on the main thread from inside VAWorld::_process's vaWorldUpdate() call (see the threading note above
+// vaWorldUpdate/vaWorldWait in vaudio.h). Wraps the ring-buffer cursor rather than doing any per-instance cleanup -
+// a stale instance simply keeps rendering until overwritten, by which point the shader has faded it to zero alpha.
 void VAVisualisation::on_visualisation_data(VAVisualisationData *data, int count)
 {
     if (!multimesh.is_valid() || count <= 0)
@@ -345,9 +327,7 @@ void VAVisualisation::on_visualisation_data(VAVisualisationData *data, int count
     {
         Vector3 position = FromVAudio(data[i].position);
 
-        // Skip bounces too far from the emitter to be worth drawing, rather than writing them
-        // and hiding them in the shader - keeps the ring buffer's slots for bounces actually
-        // worth rendering.
+        // Skip bounces too far from the emitter rather than writing and hiding them in the shader - keeps ring buffer slots for bounces worth rendering.
         if (max_distance > 0.0f && position.distance_squared_to(emitter_position) > max_distance_squared)
             continue;
 
@@ -360,8 +340,7 @@ void VAVisualisation::on_visualisation_data(VAVisualisationData *data, int count
         Basis basis = Basis::looking_at(normal, basis_up, true);
         basis.scale(Vector3(size, size, size));
 
-        // Nudge each diamond off the surface it landed on, along the hit normal, to avoid
-        // z-fighting with the world geometry it's rendered flush against.
+        // Nudge each diamond off the surface it landed on, along the hit normal, to avoid z-fighting.
         Transform3D transform(basis, position + normal * normal_offset);
 
         multimesh->set_instance_transform(next_instance, transform);

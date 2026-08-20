@@ -10,31 +10,13 @@ using namespace godot;
 
 class ALSourceHandle;
 
-// A source that plays live, caller-pushed PCM data instead of a fixed
-// AudioStream resource. The native C++
-// equivalent of openal_soft_bindings's managed/ALStreamSource.cs, for use
-// cases like microphone/VOIP audio where the full sound isn't known/decodable
-// up front. Kept as its own class rather than folded into VASource/
-// ALSource since it doesn't use ALSource's decode-then-upload ALBuffer
-// pool at all - open_stream() creates one ALStreamBuffer + one ALSourceHandle
-// directly instead of going through ALSource::play()/configure_source().
-//
-// Extends VARaytracedSource (not ALSource3D directly) to get the
-// same raytraced reverb/muffling/ambience behaviour VASource has, on top of
-// 3D position/max_distance/reference_distance/filter/reverb routing - per
-// user, streaming vs. fixed-buffer playback is purely an AL-layer difference,
-// the VA/raytracing side should be identical between VASource and
-// VAStreamSource. The `streams`/`autoplay`/`looping`/decode-task machinery
-// ALSource also brings along is simply unused here (open_stream()
-// bypasses play() entirely, so none of it ever runs).
-//
-// This base class only knows how to accept already-decoded PCM bytes from
-// wherever they come from - it has no opinion on the source of that data.
-// See VAInputStreamSource (microphone, via ALCaptureDevice) and
-// VANetworkedStreamSource (a network packet handler in a script calling
-// push_audio_data directly - Godot's multiplayer/RPC/ENet/UDP APIs are
-// scripting-only, so there is no C++ binding surface for this class to add)
-// for the two concrete node types a scene actually uses.
+// A source that plays live, caller-pushed PCM data instead of a fixed AudioStream resource - the native equivalent of
+// openal_soft_bindings's ALStreamSource.cs, for cases like microphone/VOIP audio where the sound isn't decodable up front.
+// Kept separate from VASource/ALSource since it bypasses ALSource's decode-then-upload buffer pool entirely: open_stream()
+// creates one ALStreamBuffer + ALSourceHandle directly instead of going through ALSource::play()/configure_source().
+// Extends VARaytracedSource (not ALSource3D) to get the same raytraced reverb/muffling/ambience behaviour as VASource, since
+// streaming vs. fixed-buffer playback is purely an AL-layer difference. This base class only accepts already-decoded PCM
+// bytes; see VAInputStreamSource (microphone) and VANetworkedStreamSource (network packets from script) for concrete uses.
 class VAStreamSource : public VARaytracedSource
 {
     GDCLASS(VAStreamSource, VARaytracedSource);
@@ -42,12 +24,10 @@ class VAStreamSource : public VARaytracedSource
 private:
     ALStreamBuffer stream_buffer;
 
-    // True once open_stream() has created stream_buffer + a live ALSourceHandle -
-    // guards push_audio_data/close_stream against being called out of order.
+    // True once open_stream() has created stream_buffer + a live ALSourceHandle; guards push_audio_data/close_stream against being called out of order.
     bool stream_open = false;
 
-    // Reused across try_get_used_chunk() calls in _process() so drain_chunks()
-    // doesn't allocate a new std::vector for every used chunk.
+    // Reused across try_get_used_chunk() calls so drain_used_chunks() doesn't allocate a new std::vector for every used chunk.
     std::vector<uint8_t> drained_chunk;
 
     void drain_used_chunks();
@@ -61,45 +41,24 @@ public:
 
     void _process(double delta) override;
 
-    // Hides ALSource's fixed-buffer-only inspector properties (streams,
-    // looping, autoplay, pitch_randomness, volume_randomness_db,
-    // playback_no_repeat) - none of them apply to a stream source, which
-    // never goes through ALSource::play()/streams/decode-task machinery
-    // at all (see the class comment above). Inherited by VAInputStreamSource
-    // and VANetworkedStreamSource.
+    // Hides ALSource's fixed-buffer-only inspector properties (streams, looping, autoplay, pitch_randomness,
+    // volume_randomness_db, playback_no_repeat) since none apply to a stream source (see the class comment above).
     void _validate_property(PropertyInfo &p_property) const;
 
-    // Creates the internal ALStreamBuffer with the given OpenAL format (e.g.
-    // AL_FORMAT_MONO16) and frequency, attaches it to a freshly-created
-    // ALSourceHandle configured the same way ALSource3D::configure_source
-    // configures any other source (position/max_distance/reference_distance),
-    // and starts that source playing immediately - unlike ALSource::play(),
-    // there's no decode step to wait on, so playback (of silence, until the
-    // first push_audio_data call) begins right away. Closes any previously
-    // open stream first. Returns false (with a Godot error already logged) on
-    // failure - e.g. AL_SOFT_callback_buffer isn't available on this device.
+    // Creates the internal ALStreamBuffer with the given OpenAL format/frequency, attaches it to a freshly-created
+    // ALSourceHandle, and starts it playing immediately - unlike ALSource::play() there's no decode step to wait on, so
+    // playback (of silence until the first push_audio_data call) begins right away. Closes any previously open stream first.
     bool open_stream(int format, int frequency);
 
-    // Copies data's bytes (raw PCM, in the format passed to open_stream - no
-    // decoding happens here) into a new
-    // chunk and queues it for playback. No-ops with a logged error if
-    // open_stream() hasn't been called (or close_stream() already tore the
-    // stream down). This is the single entry point every audio source feeds
-    // through - a microphone callback (VAInputStreamSource) or a received
-    // network packet (VANetworkedStreamSource, called directly from a
-    // script's multiplayer/RPC handler) both end up calling this the same
-    // way.
+    // Copies data's raw PCM bytes into a new chunk and queues it for playback; no-ops with a logged error if open_stream()
+    // hasn't been called. Single entry point every audio source feeds through - a microphone callback (VAInputStreamSource)
+    // or a received network packet (VANetworkedStreamSource, from a script's multiplayer/RPC handler) both call this.
     void push_audio_data(const PackedByteArray &data);
 
-    // Raw-pointer overload for C++-internal callers only (not exposed to
-    // GDScript) - avoids the PackedByteArray copy push_audio_data's Variant
-    // signature otherwise forces, for a hot per-frame path like
-    // VAInputStreamSource's capture-device callback. Same semantics as
-    // push_audio_data(PackedByteArray) otherwise.
+    // Raw-pointer overload for C++-internal callers only (not exposed to GDScript) - avoids the PackedByteArray copy for a hot per-frame path like VAInputStreamSource's capture callback.
     void push_audio_data(const uint8_t *data, int num_bytes);
 
-    // Stops and destroys the underlying ALSourceHandle and ALStreamBuffer. Safe to
-    // call even if open_stream() was never called or already closed.
+    // Stops and destroys the underlying ALSourceHandle and ALStreamBuffer. Safe to call even if open_stream() was never called or already closed.
     void close_stream();
 
     bool is_stream_open() const

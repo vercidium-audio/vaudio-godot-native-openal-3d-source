@@ -103,9 +103,7 @@ void ConversionContextMenuPlugin::_popup_menu(const PackedStringArray &paths)
         if (is_va_source_ambient)
             all_not_va_source_ambient = false;
 
-        // VASourceLeech must be a direct child of a VAEmitter to function (it
-        // leeches that parent's raytracing results instead of casting its own) -
-        // only offer the conversion when that's actually every node's parent.
+        // VASourceLeech must be a direct child of a VAEmitter to function (it leeches that parent's raytracing results instead of casting its own).
         bool parent_is_va_emitter = Object::cast_to<VAEmitter>(node->get_parent()) != nullptr;
 
         if (is_va_source_leech || !parent_is_va_emitter)
@@ -174,15 +172,9 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
     copy_property(old_node, new_base_node, "pitch_scale", "pitch");
     copy_property(old_node, new_base_node, "autoplay", "autoplay");
 
-    // AudioStreamPlayer3D (and old scenes' ALSource `stream`, before it
-    // was replaced by `streams`) has a single `stream` property - ALSource
-    // only has `streams` now, so wrap it as a one-entry array. AudioStreamRandomizer
-    // picks a random sub-stream/pitch/volume at playback time, which
-    // ALSource has no equivalent resource for - instead, expand its
-    // sub-streams into `streams` directly and copy its randomisation settings
-    // into pitch_randomness/volume_randomness_db, so an existing scene using
-    // it keeps the same behaviour (minus re-decoding a fresh pick on every
-    // single play(), which the randomizer approach did and this doesn't).
+    // AudioStreamPlayer3D has a single `stream` property; ALSource only has `streams` now, so wrap it as a one-entry
+    // array. AudioStreamRandomizer picks a random sub-stream/pitch/volume at playback time, which ALSource has no
+    // equivalent resource for, so instead expand its sub-streams into `streams` and copy its randomisation settings.
     if (has_property(old_node, "stream"))
     {
         Ref<AudioStream> old_stream = old_node->get("stream");
@@ -228,9 +220,7 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
         copy_property(old_node, new_base_node, "looping", "looping");
         copy_property(old_node, new_base_node, "autoplay", "autoplay");
 
-        // Only relevant when old_node is itself an ALSource (e.g.
-        // VASource -> VASourceRelative) - has_property() skips these
-        // silently for a plain AudioStreamPlayer3D, which has none of them.
+        // Only relevant when old_node is itself an ALSource - has_property() skips these silently for a plain AudioStreamPlayer3D.
         copy_property(old_node, new_base_node, "streams", "streams");
         copy_property(old_node, new_base_node, "pitch_randomness", "pitch_randomness");
         copy_property(old_node, new_base_node, "volume_randomness_db", "volume_randomness_db");
@@ -284,14 +274,8 @@ bool VADeviceRefreshInspectorPlugin::_can_handle(Object *object) const
 bool VADeviceRefreshInspectorPlugin::_parse_property(Object *object, Variant::Type type, const String &name, PropertyHint hint_type,
     const String &hint_string, BitField<PropertyUsageFlags> usage_flags, bool wide)
 {
-    // add_custom_control() (unlike add_property_editor's add_to_end flag)
-    // inserts the control just before the current property's own row is
-    // drawn (see EditorInspector::update_tree's per-property parse_property
-    // loop in editor/inspector/editor_inspector.cpp), not after it - so to
-    // land the button visually below device_name, this has to match on the
-    // NEXT property in VAInputStreamSource's _bind_methods order
-    // (buffer_size_frames after device_name) rather than the device property
-    // itself.
+    // add_custom_control() inserts the control just before the current property's own row is drawn, not after it - so to
+    // land the button visually below device_name, this matches on the NEXT property (buffer_size_frames) instead.
     bool is_input_stream_target = Object::cast_to<VAInputStreamSource>(object) && name == StringName("buffer_size_frames");
 
     if (!is_input_stream_target)
@@ -309,15 +293,9 @@ void VAConversionPlugin::_bind_methods()
 {
 }
 
-// audio/vaudio/output_device's Project Settings dropdown is built once, at module load, before
-// soft_oal.dll has loaded any devices (see register_project_settings() in register_types.cpp),
-// so it only ever shows "System Default" until something re-queries ALManager. This tool menu item
-// ("Refresh OpenAL Devices") is that something - same problem, same fix, as
-// VADeviceRefreshInspectorPlugin's per-node button above, just for Project Settings instead of
-// the Inspector, since ProjectSettingsEditor isn't a GDExtension-exposed class an
-// EditorInspectorPlugin can hook into. Named "Devices" (not "Output Devices") since capture
-// devices are still refreshed via VAInputStreamSource's own per-node button - there is no
-// project-wide input device setting (capture device selection is entirely per-node)
+// audio/vaudio/output_device's Project Settings dropdown is built once at module load, before soft_oal.dll has loaded
+// any devices, so it only ever shows "System Default" until something re-queries ALManager - this tool menu item is
+// that something, since ProjectSettingsEditor isn't a GDExtension-exposed class an EditorInspectorPlugin can hook into.
 void VAConversionPlugin::refresh_output_device_setting()
 {
     refresh_output_device_hint();

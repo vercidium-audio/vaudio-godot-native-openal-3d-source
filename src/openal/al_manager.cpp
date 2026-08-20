@@ -29,8 +29,7 @@ void ALManager::_bind_methods()
 
     ClassDB::bind_method(D_METHOD("set_distance_model", "value"), &ALManager::set_distance_model);
     ClassDB::bind_method(D_METHOD("get_distance_model"), &ALManager::get_distance_model);
-    // Matches vaudio-godot-mono-openal-3d's ALDistanceModel enum order/values (AL/al.h) and
-    // VAWorld::distance_model's PROPERTY_HINT_ENUM (va_world.cpp).
+    // Matches ALDistanceModel's enum order/values (AL/al.h) and VAWorld::distance_model's PROPERTY_HINT_ENUM.
     ADD_PROPERTY(PropertyInfo(Variant::INT, "distance_model", PROPERTY_HINT_ENUM, "None:0,InverseDistance:53249,InverseDistanceClamped:53250,LinearDistance:53251,LinearDistanceClamped:53252,ExponentDistance:53253,ExponentDistanceClamped:53254"), "set_distance_model", "get_distance_model");
 
     ClassDB::bind_method(D_METHOD("set_meters_per_unit", "value"), &ALManager::set_meters_per_unit);
@@ -51,12 +50,8 @@ ALManager::~ALManager()
     shutdown();
 }
 
-// A bare LoadLibraryW(L"soft_oal.dll") only searches the host executable's
-// directory and PATH - not this GDExtension binary's own directory - so it
-// fails to find the copy SConstruct places next to
-// libvaudiogodotnativeopenal.*.dll. Resolve our own module's path first
-// (GetModuleHandleExW against an address inside this translation unit) and
-// load soft_oal.dll from beside it instead.
+// A bare LoadLibraryW(L"soft_oal.dll") only searches PATH and the host executable's directory, not this GDExtension binary's own directory,
+// so it misses the copy SConstruct places alongside it - resolve our own module's path and load soft_oal.dll from beside it instead.
 static std::wstring get_own_module_directory()
 {
     HMODULE self = nullptr;
@@ -114,9 +109,7 @@ static bool resolve(HMODULE library, const char *name, T &out_fn)
     return true;
 }
 
-// EFX entry points aren't exports of soft_oal.dll at all (they're an AL
-// extension) - they must be looked up via alGetProcAddress instead of
-// Win32 GetProcAddress.
+// EFX entry points aren't exports of soft_oal.dll (they're an AL extension) - must be looked up via alGetProcAddress instead of Win32 GetProcAddress.
 template <typename T>
 static bool resolve_ext(alGetProcAddressFn alGetProcAddress, const char *name, T &out_fn)
 {
@@ -180,11 +173,8 @@ bool ALManager::resolve_functions()
     return ok;
 }
 
-// EFX (AL_EXT_EFX) function pointers aren't core soft_oal.dll exports - they
-// must be resolved via alGetProcAddress, and only after a device/context
-// exist (the extension is queried per-device via alcIsExtensionPresent).
-// Missing EFX isn't a hard failure: has_efx() just stays false and callers
-// (ALFilter) are expected to no-op rather than crash.
+// EFX function pointers aren't core soft_oal.dll exports - resolved via alGetProcAddress only after a device/context exist. Missing EFX isn't a hard
+// failure: has_efx() just stays false and callers (ALFilter) are expected to no-op.
 bool ALManager::resolve_efx_functions()
 {
     if (alcIsExtensionPresent_(device, ALC_EXT_EFX_NAME) == ALC_FALSE)
@@ -211,12 +201,8 @@ bool ALManager::resolve_efx_functions()
     ok &= resolve_ext(alGetProcAddress_, "alAuxiliaryEffectSloti", alAuxiliaryEffectSloti_);
     ok &= resolve_ext(alGetProcAddress_, "alAuxiliaryEffectSlotf", alAuxiliaryEffectSlotf_);
 
-    // AL_SOFT_callback_buffer isn't part of ALC_EXT_EFX - it's a separate AL
-    // extension - but it's resolved here too since both are looked up via
-    // alGetProcAddress_ only after a device/context exist. Not folded into
-    // `ok`: a driver without this extension should still get EFX (filters/
-    // reverb), it just won't get streaming buffers (ALStreamBuffer checks
-    // al_buffer_callback_soft() for null before use).
+    // AL_SOFT_callback_buffer is a separate AL extension, resolved here too since both need a device/context. Not folded into `ok`: a driver
+    // without this should still get EFX, it just won't get streaming buffers (ALStreamBuffer checks al_buffer_callback_soft() for null).
     if (!resolve_ext(alGetProcAddress_, "alBufferCallbackSOFT", alBufferCallbackSOFT_))
     {
         VA_WARN("AL_SOFT_callback_buffer not present on this device - streaming source support disabled");
@@ -234,17 +220,9 @@ void ALManager::unload_library()
     }
 }
 
-// Opens device_name (empty = default playback device, matching
-// vaudio-godot-mono-openal-3d's ALManagerDevice.cs auto-selecting the first entry in
-// the output device list) and creates+activates a context against it, with
-// max_auxiliary_sends passed as ALC_MAX_AUXILIARY_SENDS when non-zero
-// (0 leaves it at the driver default), sample_rate passed as ALC_FREQUENCY
-// when non-zero (0 leaves it at the driver default), and hrtf_enabled passed
-// as ALC_HRTF_SOFT (ALC_SOFT_HRTF extension) to request/deny HRTF binaural
-// rendering - the driver can still refuse HRTF (e.g. no HRTF data available
-// for the output device). Assumes the library is already loaded and
-// functions already resolved - shared by initialize() and reinitialize().
-// Returns false (with a Godot error already logged) on any failure.
+// Opens device_name (empty = default playback device) and creates+activates a context against it, passing max_auxiliary_sends/sample_rate/hrtf_enabled
+// as ALC attributes when set (0/false leaves each at the driver default; the driver can still refuse HRTF). Assumes the library is already loaded and
+// functions resolved - shared by initialize() and reinitialize().
 bool ALManager::open_device_and_context()
 {
     const ALCchar *requested_device = device_name.empty() ? nullptr : device_name.c_str();
@@ -308,28 +286,16 @@ bool ALManager::open_device_and_context()
         return false;
     }
 
-    // AL_INVERSE_DISTANCE_CLAMPED is already OpenAL's spec-default distance
-    // model (and distance_model's own default) - the physically-correct
-    // real-world falloff curve (gain ~ referenceDistance / (referenceDistance
-    // + rolloff * (distance - referenceDistance)), clamped to each source's
-    // reference/max distance), as opposed to AL_LINEAR_DISTANCE's
-    // straight-line falloff. Re-applied here since it's per-context state,
-    // lost whenever open_device_and_context() recreates the context.
+    // Re-applied here since distance model is per-context state, lost whenever open_device_and_context() recreates the context.
     alDistanceModel_(distance_model);
 
-    // meters_per_unit/speed_of_sound are also per-context listener state,
-    // lost across a context recreation - re-apply the last value set via
-    // set_meters_per_unit/set_speed_of_sound (or their defaults, on the very
-    // first open_device_and_context() call from initialize()).
+    // meters_per_unit/speed_of_sound are also per-context listener state, lost across a context recreation - re-apply the last value set.
     alListenerf_(AL_METERS_PER_UNIT, meters_per_unit);
     alSpeedOfSound_(speed_of_sound);
 
     efx_present = resolve_efx_functions();
 
-    // ALC_SOFT_reopen_device is per-device state, like EFX above - re-queried
-    // every time a device is (re)opened rather than cached process-wide,
-    // since a fallback device reached after switching output devices might
-    // not support it even if the previous one did.
+    // Per-device state like EFX - re-queried every (re)open since a fallback device reached after switching outputs might not support it.
     if (alcIsExtensionPresent_(device, "ALC_SOFT_reopen_device") == ALC_FALSE)
     {
         alcReopenDeviceSOFT_ = nullptr;
@@ -342,24 +308,14 @@ bool ALManager::open_device_and_context()
     return true;
 }
 
-// Reads device_name/max_auxiliary_sends/max_mono_sources/max_stereo_sources/
-// sample_rate/hrtf_enabled from the audio/vaudio/* Project Settings
-// registered by register_project_settings() (register_types.cpp), so the
-// one-and-only device open below already uses the user's real settings
-// instead of hard-coded defaults.
-// Assumes register_project_settings() already ran (it's called before
-// al_manager.initialize() in initialize_vaudio_godot_native_openal_3d_module),
-// so every setting already exists with its registered default.
+// Reads device_name/max_auxiliary_sends/max_mono_sources/max_stereo_sources/sample_rate/hrtf_enabled from the audio/vaudio/* Project Settings
+// registered by register_project_settings() (register_types.cpp), which must already have run so every setting exists with its registered default.
 void ALManager::read_settings_from_project_settings()
 {
     ProjectSettings *settings = ProjectSettings::get_singleton();
 
-    // PROPERTY_HINT_ENUM on a STRING property stores the literal entry text the
-    // user picked (there's no separate "Label:value" mapping - see hint_string's
-    // format in refresh_output_device_hint(), register_types.cpp), so the
-    // Project Settings UI writes DEFAULT_DEVICE_LABEL itself into the setting
-    // when a user picks "System Default" - translate that back to "" (alcOpenDevice's
-    // own "use the driver default" spelling).
+    // PROPERTY_HINT_ENUM on a STRING property stores the literal entry text picked (see refresh_output_device_hint(), register_types.cpp), so the
+    // UI writes DEFAULT_DEVICE_LABEL when a user picks "System Default" - translate that back to "" (alcOpenDevice's own "use the driver default").
     String device_name_setting = settings->get_setting("audio/vaudio/output_device");
 
     if (device_name_setting == String(DEFAULT_DEVICE_LABEL))
@@ -451,15 +407,8 @@ bool ALManager::reinitialize(const String &new_device_name, int new_max_auxiliar
         return initialize();
     }
 
-    // Prefer alcReopenDeviceSOFT when the currently open device supports it:
-    // it redirects the existing ALC device/context to the new output device
-    // in place, so every existing AL object (sources, buffers, filters,
-    // effects) stays valid - unlike the close_device()+open_device_and_context()
-    // fallback below, which is a full teardown/recreate that invalidates all
-    // of them. Only usable when a device/context already exists (is_initialized())
-    // and requires re-deriving the same attribute list open_device_and_context()
-    // would pass to alcCreateContext, since alcReopenDeviceSOFT takes the same
-    // attribs format.
+    // Prefer alcReopenDeviceSOFT when supported: it redirects the existing ALC device/context to the new output device in place, keeping every
+    // existing AL object valid - unlike the close_device()+open_device_and_context() fallback below, a full teardown/recreate that invalidates them.
     if (alcReopenDeviceSOFT_ && is_initialized())
     {
         const ALCchar *requested_device = device_name.empty() ? nullptr : device_name.c_str();
@@ -531,10 +480,7 @@ PackedStringArray ALManager::get_available_devices()
         ? ALC_ALL_DEVICES_SPECIFIER
         : ALC_DEVICE_SPECIFIER;
 
-    // alcGetString(nullptr, ALC_ALL_DEVICES_SPECIFIER) returns a single
-    // buffer containing multiple null-terminated device name strings,
-    // itself terminated by an extra empty string (i.e. two consecutive
-    // nulls mark the end) - standard ALC enumeration string convention.
+    // Standard ALC enumeration convention: a single buffer of null-terminated device names, itself terminated by an extra empty string.
     const ALCchar *list = alcGetString_(nullptr, specifier);
 
     if (!list)
@@ -560,9 +506,7 @@ PackedStringArray ALManager::get_available_capture_devices()
         return devices;
     }
 
-    // Same null-terminated-list-of-null-terminated-strings convention as
-    // get_available_devices() above, just for ALC_CAPTURE_DEVICE_SPECIFIER
-    // instead of ALC_(ALL_)DEVICE_SPECIFIER.
+    // Same convention as get_available_devices() above, just for ALC_CAPTURE_DEVICE_SPECIFIER.
     const ALCchar *list = alcGetString_(nullptr, ALC_CAPTURE_DEVICE_SPECIFIER);
 
     if (!list)

@@ -8,20 +8,12 @@
 
 #include <algorithm>
 
-// VAWorldProperties.cs port. Only pending_shutdown's bind/get/set live in
-// va_world.cpp/_bind_methods (it was already there before this file existed);
-// everything else the C# exposes under [ExportGroup] is added here. Each
-// setter clamps/validates the same way its C# counterpart does before
-// forwarding to the native handle, which always exists by the time these run
-// (world is created in VAWorld::VAWorld() itself - see va_world.cpp).
+// VAWorldProperties.cs port. Only pending_shutdown's bind/get/set live in va_world.cpp/_bind_methods (predates this file); everything else the C# exposes under [ExportGroup] is added here.
 
 namespace va_godot
 {
 
-// Shadows the inherited Node3D::set_position (see _bind_methods) so that moving this node - via
-// the viewport gizmo, the Inspector's Position field, or code - also updates vaWorldSetPosition.
-// The bounds are always axis-aligned starting at this position (see _validate_property, which
-// hides rotation/scale), so the node's position doubles as the AABB's world-space origin.
+// Shadows the inherited Node3D::set_position so moving this node also updates vaWorldSetPosition; the node's position doubles as the AABB's world-space origin (rotation/scale are hidden, see _validate_property).
 void VAWorld::set_position(const Vector3 &value)
 {
     Node3D::set_position(value);
@@ -83,9 +75,7 @@ void VAWorld::set_world_is_indoors(bool value)
 
 void VAWorld::set_maximum_grouped_eax_count(int value)
 {
-    // Editor field has a range hint of 1+, but callers can still pass 0 or below via code.
-    // SDK requires >= 1 (VA_OUT_OF_RANGE otherwise); only the negative side is clamped here,
-    // so a caller passing 0 will still be rejected by the SDK and reported below.
+    // SDK requires >= 1 (VA_OUT_OF_RANGE otherwise); only the negative side is clamped here, so a caller passing 0 is still rejected by the SDK and reported below.
     maximum_grouped_eax_count = std::max(0, value);
 
     if (!world)
@@ -132,8 +122,7 @@ void VAWorld::set_speed_of_sound(float value)
         ALManager::get_singleton()->set_speed_of_sound(speed_of_sound);
 }
 
-// AL-only settings (no vaudio SDK equivalent) - forwarded straight to ALManager. Guarded since
-// VAWorld can exist before/without ALManager having initialized successfully (e.g. in the editor).
+// AL-only settings (no vaudio SDK equivalent) - forwarded straight to ALManager. Guarded since VAWorld can exist before/without ALManager having initialized (e.g. in the editor).
 void VAWorld::set_master_volume(float value)
 {
     master_volume = value;

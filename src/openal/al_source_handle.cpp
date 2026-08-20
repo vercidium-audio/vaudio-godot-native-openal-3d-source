@@ -33,14 +33,8 @@ bool ALSourceHandle::create()
 
     handle = new_handle;
 
-    // Every buffer this plugin uploads is stereo (ALBuffer::load always
-    // uploads AL_FORMAT_STEREO16 - Godot's mix_audio pull API upmixes mono
-    // sources internally before we ever see the samples). OpenAL Soft's
-    // default AL_AUTO spatialize mode leaves stereo sources unspatialized
-    // (direct L/R passthrough with only distance attenuation, no panning),
-    // so without this every VASource/VASourceRelative would be audible but
-    // never directional. AL_SOFT_source_spatialize (AL_SOURCE_SPATIALIZE_SOFT)
-    // forces 3D spatialization regardless of channel count.
+    // Every buffer this plugin uploads is stereo (ALBuffer::load always uploads AL_FORMAT_STEREO16), and OpenAL Soft's
+    // default AL_AUTO spatialize mode leaves stereo sources unspatialized - AL_SOURCE_SPATIALIZE_SOFT forces 3D spatialization regardless of channel count.
     ALManager::get_singleton()->al_sourcei()(handle, AL_SOURCE_SPATIALIZE_SOFT, AL_TRUE);
 
     return true;

@@ -27,31 +27,18 @@ private:
 protected:
     static void _bind_methods();
 
-    // The buffer every new ALSourceHandle created by play() uploads/attaches -
-    // subclasses (VASource) set this before calling play(). Mirrors
-    // ALSource3D.cs's Play() calling ALManager.instance.TryCreateSource(
-    // SoundName, ...) - this native port has no sound-name/resource-loading
-    // registry yet, so the buffer handle is supplied directly instead.
+    // Buffer every new ALSourceHandle created by play() uploads/attaches; subclasses (VASource) set this before calling play().
     ALuint buffer_handle = 0;
 
-    // Inspector-facing pool of sounds to play - one entry is picked at random
-    // each play() (see pick_stream_index()). A single fixed sound is just a
-    // one-entry array. Native replacement for pointing an AudioStreamPlayer's
-    // stream at an AudioStreamRandomizer (removed: it re-decoded a sub-stream
-    // from scratch on every single play(), which is slow for frequently-firing
-    // sounds like impacts) - streams here are decoded once each and cached.
+    // Inspector-facing pool of sounds to play, one picked at random each play() (see pick_stream_index()). Native replacement
+    // for AudioStreamRandomizer (removed: it re-decoded a sub-stream from scratch on every play()) - streams here are cached.
     TypedArray<AudioStream> streams;
 
-    // One decoded+uploaded ALBuffer per entry in `streams` - decoded once
-    // each and cached. decoded_streams mirrors which Ref<AudioStream> each
-    // decoded_buffers entry belongs to, so a change to `streams` can be
-    // detected and re-decoded.
+    // One decoded+uploaded ALBuffer per entry in `streams`; decoded_streams tracks which Ref<AudioStream> each belongs to so changes can be re-decoded.
     std::vector<ALBuffer> decoded_buffers;
     std::vector<Ref<AudioStream>> decoded_streams;
 
-    // Streams still waiting for a decode task (see ensure_stream_decode_started());
-    // decode_stream_task() pops and decodes one at a time onto decode_task_id
-    // so only one background decode is ever in flight per node.
+    // Streams waiting for a decode task; decode_stream_task() pops one at a time so only one background decode is ever in flight per node.
     std::vector<Ref<AudioStream>> pending_streams;
 
     WorkerThreadPool::TaskID decode_task_id = WorkerThreadPool::INVALID_TASK_ID;
@@ -60,39 +47,26 @@ protected:
     bool decode_succeeded = false;
     bool play_requested = false;
 
-    // Index into decoded_buffers picked by the most recent pick_stream_index()
-    // call, so playback_mode's no-repeat rule can avoid picking it again.
+    // Index picked by the most recent pick_stream_index() call, so playback_no_repeat can avoid picking it again.
     int last_played_index = -1;
 
-    // Queues a background decode for every entry in `streams` not already in
-    // decoded_streams/pending_streams/decoding_stream. Returns true if every
-    // entry is already decoded (i.e. play() should proceed), false if
-    // `streams` is empty or a decode just started/is in flight.
+    // Queues a background decode for every entry in `streams` not already decoded/pending/decoding. Returns true if
+    // every entry is already decoded (play() should proceed), false if `streams` is empty or a decode just started.
     bool ensure_stream_decode_started();
 
-    // WorkerThreadPool::add_native_task entry point - runs on a worker
-    // thread, only touches decoding_buffer.decode() (pure CPU, no OpenAL
-    // calls) and decode_succeeded. Both are only read/written on the main
-    // thread after is_task_completed() reports true (see
-    // poll_decode_task()), so there's no concurrent access to race.
+    // WorkerThreadPool task entry point; only touches decoding_buffer.decode() and decode_succeeded, both read/written
+    // on the main thread only after is_task_completed() (see poll_decode_task()), so there's no concurrent access to race.
     static void decode_stream_task(void *userdata);
 
-    // Polled every frame from _process(): once decode_task_id completes,
-    // uploads the decoded PCM to OpenAL, starts the next queued decode (if
-    // any), and if play() was called while any decode was in flight, starts
-    // playback once the whole batch is done.
+    // Polled every frame from _process(): once decode_task_id completes, uploads the decoded PCM to OpenAL, starts the
+    // next queued decode (if any), and if play() was called while a decode was in flight, starts playback once done.
     void poll_decode_task();
 
-    // Picks a random index into decoded_buffers, honouring playback_no_repeat
-    // (skip whichever index played last time, when there's more than one
-    // choice). Returns -1 if decoded_buffers is empty.
+    // Picks a random index into decoded_buffers, honouring playback_no_repeat. Returns -1 if decoded_buffers is empty.
     int pick_stream_index() const;
 
-    // Actually creates and starts an ALSourceHandle against a randomly-picked
-    // decoded buffer, applying pitch_randomness/volume_randomness_db on top
-    // of pitch/gain - the part of play() that used to run right after a
-    // (blocking) decode, now also called from poll_decode_task() once a
-    // background decode finishes.
+    // Creates and starts an ALSourceHandle against a randomly-picked decoded buffer, applying pitch/volume randomness -
+    // the part of play() that runs right after a decode finishes (either immediately or via poll_decode_task()).
     bool start_playing();
 
     float gain = 1.0f;
@@ -100,21 +74,13 @@ protected:
     bool looping = false;
     bool autoplay = false;
 
-    // Random pitch variation applied on top of `pitch` each play(), as a
-    // ratio (1.0 = no variation) - matches AudioStreamRandomizer's
-    // random_pitch: actual pitch is randf_range(pitch / pitch_randomness,
-    // pitch * pitch_randomness).
+    // Random pitch variation applied on top of `pitch` each play(), as a ratio (1.0 = no variation), matching AudioStreamRandomizer's random_pitch.
     float pitch_randomness = 1.0f;
 
-    // Random volume variation applied on top of `gain` each play(), in dB
-    // (0.0 = no variation) - matches AudioStreamRandomizer's
-    // random_volume_offset_db: actual gain is gain * db_to_linear(randf_range(
-    // -volume_randomness_db, volume_randomness_db)).
+    // Random volume variation applied on top of `gain` each play(), in dB (0.0 = no variation), matching AudioStreamRandomizer's random_volume_offset_db.
     float volume_randomness_db = 0.0f;
 
-    // When true (default, matches AudioStreamRandomizer's default
-    // PLAYBACK_RANDOM_NO_REPEATS) and streams has more than one entry, the
-    // same entry is never picked twice in a row.
+    // When true (default) and streams has more than one entry, the same entry is never picked twice in a row.
     bool playback_no_repeat = true;
 
     // Hook for subclasses to configure a freshly-created ALSourceHandle before it starts playing
@@ -124,15 +90,10 @@ public:
     ALSource();
     ~ALSource();
 
-    // Matches AudioStreamPlayer3D's Autoplay: play() is called once when this
-    // node first becomes ready in a running (non-editor) scene tree. Virtual
-    // so VASource can override its own _ready and still get this behaviour
-    // (its play() defers to raytracing completing, so the call here just arms
-    // it the same way a manual play() call would).
+    // Matches AudioStreamPlayer3D's Autoplay: play() is called once this node first becomes ready in a running scene tree. Virtual so VASource can override it.
     void _ready() override;
 
-    // Polls decode_task_id for completion - see poll_decode_task(). Subclasses
-    // overriding _process (e.g. ALSource3D) must call this base version.
+    // Polls decode_task_id for completion - see poll_decode_task(). Subclasses overriding _process (e.g. ALSource3D) must call this base version.
     void _process(double delta) override;
 
     // Low pass filter,  lazily created on first UpdateFilter/Play call
@@ -207,9 +168,7 @@ public:
         playback_no_repeat = value;
     }
 
-    // Inspector-facing pool of streams to pick randomly from each play() -
-    // a single fixed sound is just a one-entry array. Decoding is deferred to
-    // the first play() (see ensure_stream_decode_started()).
+    // Decoding is deferred to the first play() (see ensure_stream_decode_started()).
     TypedArray<AudioStream> get_streams() const
     {
         return streams;
@@ -220,12 +179,7 @@ public:
         streams = value;
     }
 
-    // Script-only alias for `streams`, matching AudioStreamPlayer3D's single
-    // `stream` field - lets a script written against AudioStreamPlayer3D keep
-    // working unmodified after converting to this node (see
-    // va_conversion_plugin.cpp, which does the same remap at conversion
-    // time). Reads back the first entry of `streams`; writes replace `streams`
-    // with a one-entry array.
+    // Script-only alias for `streams` matching AudioStreamPlayer3D's single `stream` field (see va_conversion_plugin.cpp's matching remap).
     Ref<AudioStream> get_stream() const
     {
         return streams.is_empty() ? Ref<AudioStream>() : Ref<AudioStream>(streams[0]);
@@ -238,8 +192,7 @@ public:
         streams = value_array;
     }
 
-    // Script-only alias for `pitch`, matching AudioStreamPlayer3D's
-    // `pitch_scale` - see get_stream()/set_stream() above for the rationale.
+    // Script-only alias for `pitch` matching AudioStreamPlayer3D's `pitch_scale`.
     float get_pitch_scale() const
     {
         return get_pitch();
@@ -250,10 +203,7 @@ public:
         set_pitch(value);
     }
 
-    // Script-only alias for `gain`, matching AudioStreamPlayer(3D)'s
-    // logarithmic `volume_db` - see get_stream()/set_stream()'s comment above
-    // for the rationale. Converts through linear_to_db/db_to_linear since
-    // `gain` is linear (see va_conversion_plugin.cpp's identical conversion).
+    // Script-only alias for `gain` matching AudioStreamPlayer(3D)'s logarithmic `volume_db`; converts via linear_to_db/db_to_linear since `gain` is linear.
     float get_volume_db() const;
     void set_volume_db(float value);
 

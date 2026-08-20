@@ -14,8 +14,7 @@ void ALSource3D::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_reference_distance", "value"), &ALSource3D::set_reference_distance);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reference_distance", PROPERTY_HINT_RANGE, "0.0,1000.0,0.1,or_greater"), "set_reference_distance", "get_reference_distance");
 
-    // Script-only alias for `reference_distance` - not exposed in the inspector,
-    // see get_unit_size()'s comment in al_source3d.h for why this exists.
+    // Script-only alias for `reference_distance` - not exposed in the inspector, see al_source3d.h's get_unit_size().
     ClassDB::bind_method(D_METHOD("get_unit_size"), &ALSource3D::get_unit_size);
     ClassDB::bind_method(D_METHOD("set_unit_size", "value"), &ALSource3D::set_unit_size);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "unit_size", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_unit_size", "get_unit_size");
@@ -40,13 +39,7 @@ void ALSource3D::_process(double delta)
 {
     ALSource::_process(delta);
 
-    // Matches ALSource3D.cs's _Process: keeps every live source's OpenAL
-    // position in sync with this node's current global position every frame
-    // - play() only sets it once, at the moment the source starts, so
-    // without this a source's audible position freezes at wherever the node
-    // was when it started playing (or, for VASource, at the origin if the
-    // node is moved before its emitter first finishes raytracing and
-    // playback triggers).
+    // Keeps every live source's OpenAL position in sync each frame; play() only sets it once, so without this a source's audible position freezes.
     Vector3 position = get_global_position();
 
     for (auto &source : get_sources())

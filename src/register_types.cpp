@@ -42,18 +42,12 @@
 
 using namespace godot;
 
-// Process-wide OpenAL device/context owner, registered as the "ALManager" Engine singleton so any
-// script can call it directly. Heap-allocated with `memnew`
-// inside initialize_vaudio_godot_native_openal_3d_module rather than a plain `static ALManager`,
-// since ALManager is now a GDCLASS Object - see al_manager.h's class doc comment for why
-// constructing one at CRT static-init time (before GDExtensionBinding exists) would crash.
+// Process-wide OpenAL device/context owner, registered as the "ALManager" Engine singleton. Heap-allocated with
+// `memnew` rather than a plain `static ALManager`, since constructing a GDCLASS Object at CRT static-init time (before GDExtensionBinding exists) would crash.
 static ALManager *al_manager = nullptr;
 
-// Depth-first search for a descendant named scene_root_name - used instead of
-// SceneTree::get_current_scene() below, which isn't reliable in a game that manually adds a scene
-// as a plain child rather than via change_scene_to_*/change_scene_to_file (e.g. this plugin's own
-// demo project's car_select.gd, which loads town_scene.tscn via get_parent().add_child(town) and
-// never touches current_scene, leaving it permanently pointed at the CarSelect menu scene).
+// Depth-first search for a descendant named scene_root_name - used instead of SceneTree::get_current_scene(), which isn't
+// reliable in a game that manually adds a scene as a plain child rather than via change_scene_to_*/change_scene_to_file.
 static Node *find_child_named_recursive(Node *node, const StringName &name)
 {
     TypedArray<Node> children = node->get_children();
@@ -72,12 +66,10 @@ static Node *find_child_named_recursive(Node *node, const StringName &name)
     return nullptr;
 }
 
-// Receiving end of VADebuggerPlugin::sync_primitive - the editor process sends a
-// "vaudio:sync_primitive" debugger message with the edited scene's root node name and a NodePath
-// relative to it, whenever the "Vercidium Audio" Inspector material dropdown or permeation
-// checkbox changes while the game is running. EditorInspectorPlugin controls can only edit the
-// editor's own local copy of the scene, so this debugger-message capture is the only way those
-// edits reach the running game's actual VAWorld - see va_debugger_plugin.h.
+// Receiving end of VADebuggerPlugin::sync_primitive - the editor sends a "vaudio:sync_primitive" debugger message
+// with the edited scene's root node name and a NodePath relative to it, whenever the "Vercidium Audio" Inspector
+// material dropdown or permeation checkbox changes while the game is running. EditorInspectorPlugin controls can only
+// edit the editor's own local copy of the scene, so this debugger-message capture is the only way those edits reach the running game's actual VAWorld.
 static bool on_debugger_message(const String &message, const Array &data)
 {
     if (message != "sync_primitive" || data.size() < 4)
@@ -120,10 +112,8 @@ static bool on_debugger_message(const String &message, const Array &data)
         return true;
     }
 
-    // The running game has its own separate copy of this node - apply the metadata the editor's
-    // local copy just had set/removed on it (see VAMaterialInspectorPlugin::sync_running_game)
-    // before re-adding the primitive below, since add_primitive/get_material read it straight off
-    // this node, not off anything sent directly.
+    // The running game has its own separate copy of this node - apply the metadata the editor's local copy just had
+    // set/removed on it before re-adding the primitive below, since add_primitive/get_material read it straight off this node.
     String material = data[2];
     StringName material_meta_key = va_godot::VAWorld::get_material_meta_key();
 
@@ -145,23 +135,11 @@ static bool on_debugger_message(const String &message, const Array &data)
     return true;
 }
 
-// Rebuilds audio/vaudio/output_device's PROPERTY_HINT_ENUM hint_string from
-// ALManager::get_available_devices(). Split out from register_project_settings() below so the
-// "Refresh OpenAL Devices" tool menu item (va_conversion_plugin.cpp) can re-run just this part
-// after soft_oal.dll has loaded, without touching the other three settings or their defaults.
-// Godot's Project Settings dialog reads a property's hint_string when that row is drawn, not
-// continuously - re-running this updates ProjectSettings' stored metadata immediately, but an
-// already-open dialog only shows the new device list after its Output Device row is redrawn
-// (e.g. switching away from and back to the General tab, or reopening the dialog).
-//
-// Strict enum, not PROPERTY_HINT_ENUM_SUGGESTION: for a Variant::STRING property, Godot's editor
-// unconditionally injects an extra blank "" entry into an ENUM_SUGGESTION dropdown, with no way
-// to suppress it - same issue VAOpenALSettings::_validate_property hit (see its doc comment in
-// va_openal_settings.cpp), fixed the same way here. The device list being empty this early (before
-// soft_oal.dll loads) isn't a problem for a strict enum either: DEFAULT_DEVICE_LABEL is always
-// the one entry present, and ALManager::read_settings_from_project_settings() reads the raw
-// setting value directly rather than validating it against hint_string, so an unrecognized saved
-// device name is never lost - just not shown pre-selected until this is re-run.
+// Rebuilds audio/vaudio/output_device's PROPERTY_HINT_ENUM hint_string from ALManager::get_available_devices(). Split
+// out from register_project_settings() so the "Refresh OpenAL Devices" tool menu item can re-run just this part after
+// soft_oal.dll has loaded; an already-open Project Settings dialog only shows the new list after its row is redrawn.
+// Strict enum, not PROPERTY_HINT_ENUM_SUGGESTION: Godot's editor unconditionally injects a blank "" entry into an
+// ENUM_SUGGESTION dropdown for a Variant::STRING property, with no way to suppress it.
 void refresh_output_device_hint()
 {
     ProjectSettings *settings = ProjectSettings::get_singleton();
@@ -177,18 +155,14 @@ void refresh_output_device_hint()
     settings->add_property_info(output_device_info);
 }
 
-// Registers this plugin's own audio/vaudio/* entries under Project Settings, matched to how
-// Godot's own Project Settings > Audio > Driver > Device is read at startup before any scene
-// loads - device_name/max_reverb_sends/sample_rate/ hrtf_enabled must exist here so ALManager::initialize()
-// can read them before it opens the one-and-only device, below.
+// Registers this plugin's own audio/vaudio/* entries under Project Settings - device_name/max_reverb_sends/sample_rate/
+// hrtf_enabled must exist here so ALManager::initialize() can read them before it opens the one-and-only device, below.
 static void register_project_settings()
 {
     ProjectSettings *settings = ProjectSettings::get_singleton();
 
-    // output_device: stored as DEFAULT_DEVICE_LABEL, not "", so the strict PROPERTY_HINT_ENUM
-    // dropdown below always has a current value among its own entries - see DEFAULT_DEVICE_LABEL's
-    // own doc comment in va_device_name.h. ALManager::read_settings_from_project_settings()
-    // translates DEFAULT_DEVICE_LABEL back to "" ("driver default") when it reads this setting.
+    // output_device: stored as DEFAULT_DEVICE_LABEL, not "", so the strict PROPERTY_HINT_ENUM dropdown below always has
+    // a current value among its own entries. ALManager::read_settings_from_project_settings() translates it back to "" ("driver default").
     if (!settings->has_setting("audio/vaudio/output_device"))
         settings->set_setting("audio/vaudio/output_device", DEFAULT_DEVICE_LABEL);
 
@@ -209,12 +183,8 @@ static void register_project_settings()
     max_reverb_sends_info["hint_string"] = "0,16,or_greater";
     settings->add_property_info(max_reverb_sends_info);
 
-    // max_mono_sources/max_stereo_sources: project-level settings set by the developer, matching
-    // vaudio-godot-mono-openal-3d's ALManager.cs MaximumMonoSources/MaximumStereoSources -
-    // defaults match that C# reference's own field initialisers (16/240).
-    // Read once by ALManager::read_settings_from_project_settings() before the one-and-only device
-    // open, same "not settable at runtime" shape as that C# reference (see MaximumMonoSources'
-    // doc comment in ALManager.cs).
+    // max_mono_sources/max_stereo_sources: project-level settings set by the developer, matching ALManager.cs's
+    // MaximumMonoSources/MaximumStereoSources defaults (16/240). Read once before the one-and-only device open, not settable at runtime.
     if (!settings->has_setting("audio/vaudio/max_mono_sources"))
         settings->set_setting("audio/vaudio/max_mono_sources", 16);
 
@@ -263,7 +233,7 @@ void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p
 {
     if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR)
     {
-        // Scene tree right-click "Convert to VASource"/"Convert to VASourceRelative" items - editor-only, so registered at the Editor level rather than alongside the Scene-level classes below.
+        // Editor-only classes, registered at the Editor level rather than alongside the Scene-level classes below.
         ClassDB::register_class<va_godot::ConversionContextMenuPlugin>();
         ClassDB::register_class<va_godot::VADeviceRefreshInspectorPlugin>();
         ClassDB::register_class<va_godot::VAMaterialInspectorPlugin>();
@@ -312,9 +282,7 @@ void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p
     if (al_manager->initialize())
         Engine::get_singleton()->register_singleton("ALManager", al_manager);
 
-    // Only the running game needs to receive VADebuggerPlugin's messages - EngineDebugger only
-    // exists at all when running under the editor's debugger (see is_active()), and there's no
-    // running game to sync in the editor process itself.
+    // Only the running game needs to receive VADebuggerPlugin's messages - there's no running game to sync in the editor process itself.
     if (!IS_EDITOR_HINT() && EngineDebugger::get_singleton() && EngineDebugger::get_singleton()->is_active())
         EngineDebugger::get_singleton()->register_message_capture("vaudio", callable_mp_static(&on_debugger_message));
 }

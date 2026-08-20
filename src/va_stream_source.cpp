@@ -118,11 +118,7 @@ void VAStreamSource::_process(double delta)
 
 void VAStreamSource::drain_used_chunks()
 {
-    // Just discards each used chunk's bytes - VAStreamSource owns no
-    // long-lived copy of pushed data to free beyond drained_chunk itself
-    // (unlike ALStreamSource.cs's TryGetUsedData, which hands the chunk back
-    // to the caller to free/recycle; there's no equivalent recycling need on
-    // the GDScript side of push_audio_data's PackedByteArray copy).
+    // Just discards each used chunk's bytes, unlike ALStreamSource.cs's TryGetUsedData which hands it back to the caller to recycle.
     while (stream_buffer.try_get_used_chunk(drained_chunk))
     {
     }

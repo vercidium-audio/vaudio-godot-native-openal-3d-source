@@ -27,11 +27,7 @@ void VAInputStreamSource::_bind_methods()
 
     ClassDB::bind_method(D_METHOD("get_sample_rate"), &VAInputStreamSource::get_sample_rate);
     ClassDB::bind_method(D_METHOD("set_sample_rate", "value"), &VAInputStreamSource::set_sample_rate);
-    // Similar common-rates enum hint to the audio/vaudio/sample_rate Project
-    // Setting, minus its "System Default:0" entry - unlike ALManager's
-    // playback device, ALCaptureDevice::open() has no "use the driver's
-    // default rate" concept, every capture open() call needs an explicit
-    // frequency.
+    // Unlike ALManager's playback device, ALCaptureDevice::open() has no "use the driver's default rate" concept, so there's no "System Default" entry here.
     ADD_PROPERTY(PropertyInfo(Variant::INT, "sample_rate", PROPERTY_HINT_ENUM, "22050,44100,48000,96000"), "set_sample_rate", "get_sample_rate");
 
     ClassDB::bind_method(D_METHOD("get_device_name"), &VAInputStreamSource::get_device_name);
@@ -59,12 +55,7 @@ void VAInputStreamSource::_bind_methods()
     ADD_SIGNAL(MethodInfo("audio_captured", PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data")));
 }
 
-// Turns device_name into a strict PROPERTY_HINT_ENUM dropdown (Godot's
-// editor unconditionally injects a blank entry into a Variant::STRING
-// PROPERTY_HINT_ENUM_SUGGESTION dropdown, with no way to suppress it) - safe
-// despite device_name being runtime-dependent (an unrecognized saved value
-// is shown as-is, not blanked out - just not pre-selected until
-// refresh_devices() re-queries the driver).
+// Uses PROPERTY_HINT_ENUM rather than PROPERTY_HINT_ENUM_SUGGESTION since Godot's editor unconditionally injects a blank entry into the latter for Variant::STRING, with no way to suppress it.
 void VAInputStreamSource::_validate_property(PropertyInfo &p_property) const
 {
     if (p_property.name != StringName("device_name"))
@@ -96,12 +87,7 @@ void VAInputStreamSource::refresh_devices()
     notify_property_list_changed();
 }
 
-// Matches ALSource::_ready()'s autoplay pattern: only runs in a live
-// (non-editor) tree, and only needs to happen once when this node first
-// becomes ready. Replaces what used to be a user script's manual
-// open_stream()/open_capture()/start_capture() call sequence with the equivalent
-// sequence driven by this node's own exported format/sample_rate/
-// device_name/buffer_size_frames properties.
+// Matches ALSource::_ready()'s autoplay pattern: runs the open_stream()/open_capture()/start_capture() sequence once, driven by this node's own exported properties instead of a user script.
 void VAInputStreamSource::_ready()
 {
     VAStreamSource::_ready();
@@ -124,11 +110,7 @@ void VAInputStreamSource::_ready()
     start_capture();
 }
 
-// AL_FORMAT_MONO8/STEREO8 samples are unsigned (silence = 128), everything
-// else this class supports (MONO16/STEREO16) is signed 16-bit (silence = 0) -
-// see bytes_per_frame_for_format() in al_capture_device.cpp for the same
-// format set. 8-bit amplitudes are scaled up by 256 so microphone_threshold
-// means the same thing regardless of which format is captured in.
+// AL_FORMAT_MONO8/STEREO8 samples are unsigned (silence = 128); MONO16/STEREO16 are signed (silence = 0) - 8-bit amplitudes are scaled up by 256 so microphone_threshold means the same thing regardless of format.
 int VAInputStreamSource::peak_amplitude(const uint8_t *data, int num_bytes, int format)
 {
     int peak = 0;
@@ -160,19 +142,9 @@ bool VAInputStreamSource::open_capture(const String &device_name, int format, in
 {
     close_capture();
 
-    // Bytes are pushed straight through push_audio_data() - a script may
-    // legitimately call open_capture()/start_capture() before open_stream(),
-    // in which case captured audio is simply dropped until a stream is
-    // opened (push_audio_data() no-ops with a logged error otherwise), rather
-    // than erroring every single captured chunk. Chunks that don't reach
-    // microphone_threshold's peak amplitude are dropped instead of forwarded -
-    // see microphone_threshold's doc comment (va_input_stream_source.h).
-    //
-    // "audio_captured" is emitted independently of is_stream_open(), so a
-    // script can use this node purely to get at the microphone (e.g. for
-    // VOIP) without ever calling open_stream() at all - it's still gated on
-    // microphone_threshold, so a VOIP consumer gets the same silence-gating
-    // as local playback rather than needing to re-implement it.
+    // Captured audio is dropped (not errored) until a stream is opened, so open_capture()/start_capture() may legitimately
+    // run before open_stream(). "audio_captured" is emitted independently of is_stream_open() so a script can use this node
+    // purely to get at the microphone (e.g. for VOIP), gated on microphone_threshold the same as local playback.
     bool opened = capture_device.open(device_name, (ALenum)format, frequency, buffer_size_frames,
         [this, format](const uint8_t *data, int num_bytes)
         {

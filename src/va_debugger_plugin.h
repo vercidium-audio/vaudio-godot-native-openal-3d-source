@@ -10,13 +10,10 @@ using namespace godot;
 namespace va_godot
 {
 
-// Relays "Vercidium Audio" material/permeation edits made in the Inspector while the game is
-// running to the running game's own process - EditorInspectorPlugin controls (see
-// VAMaterialInspectorPlugin) only ever run against the editor's local copy of the scene, whose
-// VAWorld has no live raytracing world (it's only created outside the editor - see
-// VAWorld::VAWorld). Godot's debugger protocol is the only bridge between the two processes, so
-// this sends a "vaudio:sync_primitive" message to every active session; the running game receives
-// it via an EngineDebugger message capture registered in register_types.cpp.
+// Relays "Vercidium Audio" material/permeation edits made in the Inspector to the running game's own process - EditorInspectorPlugin
+// controls (see VAMaterialInspectorPlugin) only run against the editor's local copy of the scene, whose VAWorld has no live raytracing
+// world. Godot's debugger protocol is the only bridge, so this sends a "vaudio:sync_primitive" message to every active session; the
+// running game receives it via an EngineDebugger message capture registered in register_types.cpp.
 class VADebuggerPlugin : public EditorDebuggerPlugin
 {
     GDCLASS(VADebuggerPlugin, EditorDebuggerPlugin);
@@ -25,18 +22,11 @@ protected:
     static void _bind_methods();
 
 public:
-    // node_path is relative to the edited scene's root node, whose name is scene_root_name -
-    // SceneTree::current_scene isn't reliable here (a running game may add a scene as a plain
-    // child rather than via change_scene_to_*, e.g. this plugin's own demo project's car_select.gd,
-    // which never updates current_scene), so the receiving end searches for scene_root_name
-    // anywhere under the running game's root instead - see on_debugger_message in register_types.cpp.
-    //
-    // The running game has its own separate copy of this node, whose metadata was never touched by
-    // the edit that just happened in the editor's local copy - material/use_flat_transmission carry
-    // that new metadata across so the receiving end can apply it before re-adding the primitive.
-    // An empty material means "no material metadata" (Air), matching remove_meta in
-    // VAMaterialInspectorPlugin::on_material_selected; use_flat_transmission is NIL for the same
-    // "no metadata, use the default" case, matching on_use_flat_transmission_toggled.
+    // node_path is relative to the edited scene's root (scene_root_name) - SceneTree::current_scene isn't reliable (a running game may
+    // add a scene as a plain child, e.g. car_select.gd never updates it), so the receiving end searches for scene_root_name anywhere
+    // under the running game's root instead (see on_debugger_message in register_types.cpp). material/use_flat_transmission carry the
+    // edited metadata across since the running game's copy of this node wasn't touched by the edit; empty material means Air (no
+    // metadata, matching remove_meta in VAMaterialInspectorPlugin::on_material_selected), NIL use_flat_transmission means "use default".
     void sync_primitive(const String &scene_root_name, const NodePath &node_path, const String &material, const Variant &use_flat_transmission);
 };
 

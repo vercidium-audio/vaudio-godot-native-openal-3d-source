@@ -145,8 +145,7 @@ void VADefaultMaterial::_enter_tree()
         return;
     }
 
-    // Built-in materials already exist in every ::VAWorld, so just override the properties
-    ::VAWorld *world = va_world->get_handle();
+    ::VAWorld *world = va_world->get_handle(); // Built-in materials already exist in every ::VAWorld, so just override the properties
 
     log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(world, material_type, absorption_lf), "absorption_lf", material_type);
     log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(world, material_type, absorption_hf), "absorption_hf", material_type);

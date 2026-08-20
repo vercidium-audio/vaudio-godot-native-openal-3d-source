@@ -13,9 +13,7 @@
 
 using namespace godot;
 
-// Pull frames from playback in fixed-size chunks rather than one huge
-// mix_audio() call - keeps a single temporary allocation bounded regardless
-// of how long the source stream is.
+// Pull frames from playback in fixed-size chunks rather than one huge mix_audio() call, to bound the temporary allocation.
 static constexpr int32_t MIX_CHUNK_FRAMES = 8192;
 
 static int16_t float_to_pcm16(float sample)
@@ -64,10 +62,7 @@ bool ALBuffer::decode(const Ref<AudioStream> &p_stream)
     float mix_rate = AudioServer::get_singleton()->get_mix_rate();
     double length_seconds = p_stream->get_length();
 
-    // Some streams (e.g. procedurally-generated or malformed ones) report a
-    // zero/negative length. Fall back to pulling until mix_audio stops
-    // returning frames, bounded by a generous frame count so a broken
-    // stream can't loop forever.
+    // Some streams report a zero/negative length; fall back to a generous frame cap so a broken stream can't loop forever.
     int64_t expected_frames = length_seconds > 0.0
         ? (int64_t)(length_seconds * mix_rate) + MIX_CHUNK_FRAMES
         : (int64_t)mix_rate * 60 * 10; // 10 minute safety cap
@@ -96,8 +91,7 @@ bool ALBuffer::decode(const Ref<AudioStream> &p_stream)
 
         frames_pulled += chunk.size();
 
-        // mix_audio returning fewer frames than requested means the stream
-        // has ended (matches Godot's documented pull-based mix contract).
+        // Fewer frames than requested means the stream has ended (Godot's documented pull-based mix contract).
         if (chunk.size() < MIX_CHUNK_FRAMES)
         {
             break;
@@ -149,16 +143,10 @@ bool ALBuffer::upload()
         return false;
     }
 
-    // Clear any error left over from an unrelated earlier AL call this frame -
-    // alGetError() reports a single sticky flag rather than a queue, so
-    // without this a stale error here would be misattributed to alBufferData
-    // below, logging a false "failed to upload" for a buffer that actually
-    // uploaded fine.
+    // Clear any error left over from an earlier AL call - alGetError() is a single sticky flag, not a queue, so a stale error here would be misattributed to alBufferData below.
     manager->al_get_error()();
 
-    // mix_audio always returns interleaved stereo frames regardless of the
-    // source stream's own channel count (Godot's mixer upmixes mono
-    // internally), so AL_FORMAT_STEREO16 is always correct here.
+    // mix_audio always returns interleaved stereo frames regardless of the source's own channel count (Godot's mixer upmixes mono internally).
     manager->al_buffer_data()(
         new_handle,
         AL_FORMAT_STEREO16,
@@ -180,9 +168,7 @@ bool ALBuffer::upload()
     handle = new_handle;
     duration_seconds = (double)pending_frames_pulled / sample_rate;
 
-    // Free the PCM copy now that it's been handed to OpenAL (which keeps its
-    // own copy) - no need to hold onto it, and it'd otherwise stick around
-    // for this ALBuffer's whole lifetime.
+    // Free the PCM copy now that OpenAL has its own copy - no need to hold onto it for this ALBuffer's whole lifetime.
     pending_pcm_data.clear();
     pending_pcm_data.shrink_to_fit();
 

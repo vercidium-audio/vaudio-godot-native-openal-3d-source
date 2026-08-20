@@ -122,8 +122,7 @@ void VASourceLeech::_process(double delta)
     }
 }
 
-// Same as VASource::apply_raytracing_results, but reads results off the
-// parent VAEmitter this node leeches instead of an owned child emitter.
+// Same as VASource::apply_raytracing_results, but reads results off the parent VAEmitter this node leeches instead of an owned child emitter.
 void VASourceLeech::apply_raytracing_results(va_godot::VAEmitter *other)
 {
     effect = va_world->get_reverb_effect(emitter->get_handle());

@@ -12,17 +12,12 @@ void VAListener::_bind_methods()
 
 VAListener::VAListener()
 {
-    // Forces this node to always be the world's listener - matches
-    // AVAudioListener always registering itself as the raytracing world's
-    // single reference point, without needing a separate checkbox.
+    // Forces this node to always be the world's listener, matching AVAudioListener's always-on registration.
     set_is_main_listener(true);
     set_has_relative_reverb(true);
 }
 
-// Hides inherited properties from the inspector that aren't meaningful on a
-// listener: is_main_listener is always true (see the constructor), and
-// affects_grouped_eax/occlusion_energy_cap/permeation_energy_cap only apply
-// to emitters that can be occluded/permeated, not the listener itself.
+// Hides inherited properties not meaningful on a listener: is_main_listener is always true, and affects_grouped_eax/occlusion_energy_cap/permeation_energy_cap only apply to emitters that can be occluded/permeated.
 void VAListener::_validate_property(PropertyInfo &p_property) const
 {
     if (p_property.name == StringName("is_main_listener") ||

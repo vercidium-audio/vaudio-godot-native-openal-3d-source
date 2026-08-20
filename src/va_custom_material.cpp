@@ -9,10 +9,7 @@
 #include "va_world.h"
 #include "va_world_lookup.h"
 
-// Port of vaudio-godot-mono-openal-3d's VACustomMaterial.cs. Only the material-property
-// side is ported here - GetDebugColor/_GetConfigurationWarnings/_ValidateProperty
-// are editor-only visualisation niceties with no SDK-facing behaviour, so they're
-// intentionally left out.
+// Port of VACustomMaterial.cs. GetDebugColor/_GetConfigurationWarnings/_ValidateProperty are editor-only visualisation niceties with no SDK-facing behaviour, so they're left out.
 
 namespace va_godot
 {
@@ -84,9 +81,7 @@ void VACustomMaterial::_enter_tree()
 
     VAWorld *va_world = find_va_world(this);
 
-    // No VAWorld anywhere in the tree yet - this node's scene may have entered the tree before being
-    // parented under the level. Unlike VAEmitter/VASource, materials don't retry via node_added, since
-    // they're expected to be defined alongside (and after) the level's VAWorld.
+    // Unlike VAEmitter/VASource, materials don't retry via node_added - they're expected to be defined alongside (and after) the level's VAWorld.
     if (!va_world)
         return;
 

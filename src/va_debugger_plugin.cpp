@@ -17,8 +17,7 @@ void VADebuggerPlugin::sync_primitive(const String &scene_root_name, const NodeP
     {
         Ref<EditorDebuggerSession> session = sessions[i];
 
-        // Only sessions currently attached to a running game can receive messages - a session
-        // stays in get_sessions() after the game it was attached to has stopped.
+        // A session stays in get_sessions() after the game it was attached to has stopped, so check is_active() too.
         if (session.is_valid() && session->is_active())
         {
             Array data;

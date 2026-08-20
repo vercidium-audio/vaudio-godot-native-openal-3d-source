@@ -15,8 +15,7 @@ void ALSource::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_streams", "value"), &ALSource::set_streams);
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "streams", PROPERTY_HINT_TYPE_STRING, String::num(Variant::OBJECT) + "/" + String::num(PROPERTY_HINT_RESOURCE_TYPE) + ":AudioStream"), "set_streams", "get_streams");
 
-    // Script-only alias for `streams` - not exposed in the inspector, see
-    // get_stream()/set_stream()'s comment in al_source.h for why this exists.
+    // Script-only alias for `streams` - not exposed in the inspector, see al_source.h's get_stream()/set_stream().
     ClassDB::bind_method(D_METHOD("get_stream"), &ALSource::get_stream);
     ClassDB::bind_method(D_METHOD("set_stream", "value"), &ALSource::set_stream);
     ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "stream", PROPERTY_HINT_RESOURCE_TYPE, "AudioStream", PROPERTY_USAGE_NONE), "set_stream", "get_stream");
@@ -29,14 +28,12 @@ void ALSource::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_pitch", "value"), &ALSource::set_pitch);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pitch", PROPERTY_HINT_RANGE, "0.01,4.0,0.01"), "set_pitch", "get_pitch");
 
-    // Script-only alias for `pitch` - not exposed in the inspector, see
-    // get_pitch_scale()/set_pitch_scale()'s comment in al_source.h for why this exists.
+    // Script-only alias for `pitch` - not exposed in the inspector, see al_source.h's get_pitch_scale()/set_pitch_scale().
     ClassDB::bind_method(D_METHOD("get_pitch_scale"), &ALSource::get_pitch_scale);
     ClassDB::bind_method(D_METHOD("set_pitch_scale", "value"), &ALSource::set_pitch_scale);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "pitch_scale", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_pitch_scale", "get_pitch_scale");
 
-    // Script-only alias for `gain` - not exposed in the inspector, see
-    // get_volume_db()'s comment in al_source.h for why this exists.
+    // Script-only alias for `gain` - not exposed in the inspector, see al_source.h's get_volume_db().
     ClassDB::bind_method(D_METHOD("get_volume_db"), &ALSource::get_volume_db);
     ClassDB::bind_method(D_METHOD("set_volume_db", "value"), &ALSource::set_volume_db);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "volume_db", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE), "set_volume_db", "get_volume_db");
@@ -72,9 +69,7 @@ ALSource::ALSource()
 
 ALSource::~ALSource()
 {
-    // A decode task holds a raw pointer to decoding_buffer via userdata (see
-    // ensure_stream_decode_started()) - must not let it run after this node
-    // (and decoding_buffer with it) is destroyed.
+    // A decode task holds a raw pointer to decoding_buffer via userdata - must not let it run after this node is destroyed.
     if (decode_task_id != WorkerThreadPool::INVALID_TASK_ID)
         WorkerThreadPool::get_singleton()->wait_for_task_completion(decode_task_id);
 }
@@ -91,10 +86,7 @@ void ALSource::_process(double delta)
 {
     poll_decode_task();
 
-    // Sources never get removed on their own once they finish playing (they
-    // just sit there holding an OpenAL source handle) - without this, every
-    // play() call permanently leaks a handle until alGenSources starts
-    // failing once the device's source limit is reached.
+    // Sources never remove themselves once finished - without this, every play() call permanently leaks a handle.
     sources.erase(
         std::remove_if(sources.begin(), sources.end(), [](const std::unique_ptr<ALSourceHandle> &source)
                         { return source->is_finished(); }),
@@ -117,8 +109,7 @@ bool ALSource::ensure_stream_decode_started()
         return false;
     }
 
-    // Drop any cached decode whose stream is no longer in `streams` (e.g. an
-    // entry was removed or reassigned).
+    // Drop any cached decode whose stream is no longer in `streams` (e.g. removed or reassigned).
     for (size_t i = 0; i < decoded_streams.size();)
     {
         bool still_wanted = false;
@@ -143,8 +134,7 @@ bool ALSource::ensure_stream_decode_started()
         }
     }
 
-    // Queue a decode for every stream that isn't already decoded, in flight,
-    // or already queued.
+    // Queue a decode for every stream that isn't already decoded, in flight, or already queued.
     for (int i = 0; i < streams.size(); i++)
     {
         Ref<AudioStream> wanted = streams[i];
@@ -184,8 +174,7 @@ bool ALSource::ensure_stream_decode_started()
     if (pending_streams.empty() && decode_task_id == WorkerThreadPool::INVALID_TASK_ID)
         return true;
 
-    // A decode is already in flight - let it (and the rest of the queue)
-    // finish rather than starting a second, redundant one.
+    // A decode is already in flight - let it finish rather than starting a second, redundant one.
     if (decode_task_id != WorkerThreadPool::INVALID_TASK_ID)
         return true;
 
@@ -229,8 +218,7 @@ void ALSource::poll_decode_task()
 
     decoding_stream.unref();
 
-    // More streams still queued (e.g. multiple new entries in `streams`) -
-    // start the next one rather than waiting for another play()/poll cycle.
+    // More streams still queued - start the next one rather than waiting for another play()/poll cycle.
     if (!pending_streams.empty())
     {
         decoding_stream = pending_streams.front();
@@ -267,8 +255,7 @@ bool ALSource::start_playing()
 {
     int index = pick_stream_index();
 
-    // No decoded buffer to play (streams failed to decode/upload, see
-    // poll_decode_task(), or nothing was ever assigned).
+    // No decoded buffer to play (streams failed to decode/upload, or nothing was ever assigned).
     if (index < 0)
         return false;
 
@@ -280,14 +267,11 @@ bool ALSource::start_playing()
 
     auto source = std::make_unique<ALSourceHandle>();
 
-    // ALSourceHandle::create() already logs the reason for failure (e.g. the
-    // OpenAL source limit has been reached).
+    // ALSourceHandle::create() already logs the reason for failure (e.g. the OpenAL source limit was reached).
     if (!source->create())
         return false;
 
-    // Matches AudioStreamRandomizer's random_pitch/random_volume_offset_db:
-    // pitch_randomness of 1.0 (no variation) and volume_randomness_db of 0.0
-    // (no variation) both collapse randf_range to their single input value.
+    // Matches AudioStreamRandomizer's random_pitch/random_volume_offset_db; a randomness of 1.0/0.0 collapses randf_range to the single input value.
     float randomized_pitch = pitch * (float)UtilityFunctions::randf_range(1.0 / pitch_randomness, pitch_randomness);
     float randomized_gain = gain * (float)UtilityFunctions::db_to_linear(UtilityFunctions::randf_range(-volume_randomness_db, volume_randomness_db));
 
@@ -322,8 +306,7 @@ bool ALSource::play()
     if (decode_task_id == WorkerThreadPool::INVALID_TASK_ID && pending_streams.empty())
         return start_playing();
 
-    // A decode is in flight - poll_decode_task() will start playback once
-    // every entry in `streams` has finished decoding.
+    // A decode is in flight - poll_decode_task() will start playback once every entry in `streams` has finished decoding.
     play_requested = true;
     return true;
 }

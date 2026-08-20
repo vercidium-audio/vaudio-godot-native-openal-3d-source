@@ -143,8 +143,7 @@ ALsizei ALStreamBuffer::on_buffer_callback(ALvoid *sampledata, ALsizei numbytes)
 
         if (bytes_to_write < chunk.length)
         {
-            // Only partially consumed - keep the remainder for the next
-            // callback call instead of moving it to used_chunks yet.
+            // Only partially consumed - keep the remainder for the next callback call instead of moving it to used_chunks yet.
             chunk.offset += bytes_to_write;
             chunk.length -= bytes_to_write;
             partial_chunk = std::move(chunk);
@@ -157,8 +156,7 @@ ALsizei ALStreamBuffer::on_buffer_callback(ALvoid *sampledata, ALsizei numbytes)
         }
     }
 
-    // Not enough pending data to fill the request - pad the rest with
-    // silence rather than starving the source.
+    // Not enough pending data to fill the request - pad the rest with silence rather than starving the source.
     if (bytes_left > 0)
     {
         std::memset(write, 0, (size_t)bytes_left);

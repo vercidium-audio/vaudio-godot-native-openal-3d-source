@@ -21,10 +21,7 @@ void VARaytracedSource::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VARaytracedSource::get_muffling_gain_hf);
     ClassDB::bind_method(D_METHOD("is_raytraced"), &VARaytracedSource::is_raytraced);
 
-    // Direct port of vaudio-godot-mono-openal-3d's VASourceProperties.cs groups
-    // (Reverb/Muffling/Ambience/Advanced) - see the header for why this is a
-    // subset of VAEmitter's own property surface. Debug Rendering colors are
-    // not ported, same rationale as VAEmitter.
+    // Direct port of VASourceProperties.cs's groups (Reverb/Muffling/Ambience/Advanced) - a subset of VAEmitter's own property surface; Debug Rendering colors not ported, same as VAEmitter.
     ADD_GROUP("Reverb", "");
 
     ClassDB::bind_method(D_METHOD("get_reverb_ray_count"), &VARaytracedSource::get_reverb_ray_count);
@@ -116,10 +113,7 @@ void VARaytracedSource::_bind_methods()
 
 VARaytracedSource::VARaytracedSource()
 {
-    // Matches VASourceProperties.cs's `Random.Shared.Next()` field
-    // initializer (this omits the int.MaxValue upper bound
-    // VAEmitterProperties.cs uses, but Godot's randi() is unsigned either
-    // way, so both are masked down to a non-negative int the same way here).
+    // Matches VASourceProperties.cs's `Random.Shared.Next()` initializer; Godot's randi() is unsigned, so it's masked down to a non-negative int.
     scattering_seed = (int)(UtilityFunctions::randi() & 0x7fffffff);
 }
 
@@ -163,9 +157,7 @@ void VARaytracedSource::_enter_tree()
 
     if (!va_world)
     {
-        // No VAWorld anywhere in the tree yet - stay dormant and retry on
-        // every future node addition instead of erroring out permanently -
-        // see VAEmitter::_enter_tree's identical pattern for the rationale.
+        // No VAWorld anywhere in the tree yet - stay dormant and retry on every future node addition, see VAEmitter::_enter_tree's identical pattern.
         waiting_for_world = true;
         get_tree()->connect("node_added", callable_mp(this, &VARaytracedSource::retry_find_va_world));
         return;
@@ -185,8 +177,7 @@ void VARaytracedSource::_exit_tree()
 
         waiting_for_world = false;
 
-        // Never found a VAWorld anywhere in the tree for this node's entire
-        // time in it - see VAEmitter::_exit_tree's identical warning.
+        // Never found a VAWorld anywhere in the tree for this node's entire time in it - see VAEmitter::_exit_tree's identical warning.
         VA_WARN(
             "'", get_name(),
             "' left the tree without ever finding a VAWorld - "
@@ -196,18 +187,14 @@ void VARaytracedSource::_exit_tree()
 
     if (emitter)
     {
-        // remove_child alone only detaches - VAEmitter is exclusively owned
-        // by this node (not referenced elsewhere), so it must also be freed
-        // here or it leaks (confirmed via a headless run reporting a leaked
-        // "<name>-Emitter" ObjectDB instance before this fix).
+        // remove_child alone only detaches - VAEmitter is exclusively owned by this node, so it must also be freed here or it leaks (confirmed via a headless run reporting a leaked ObjectDB instance before this fix).
         remove_child(emitter);
         memdelete(emitter);
         emitter = nullptr;
     }
 }
 
-// Re-attempts find_va_world each time a node is added anywhere in the tree -
-// see VAEmitter::retry_find_va_world's identical pattern.
+// Re-attempts find_va_world each time a node is added anywhere in the tree - see VAEmitter::retry_find_va_world's identical pattern.
 void VARaytracedSource::retry_find_va_world(Node *node)
 {
     va_world = va_godot::find_va_world(this);
@@ -223,23 +210,16 @@ void VARaytracedSource::retry_find_va_world(Node *node)
     create_emitter();
 }
 
-// Matches VASource.cs's CreateEmitter: a private child VAEmitter, never the
-// listener, that never casts its own occlusion/permeation rays (only reverb
-// rays) - this node is heard via the listener's rays targeting it, not by
-// casting its own muffling rays.
+// Matches VASource.cs's CreateEmitter: a private child VAEmitter, never the listener, that never casts its own
+// occlusion/permeation rays (only reverb rays) - this node is heard via the listener's rays targeting it, not its own.
 void VARaytracedSource::create_emitter()
 {
     emitter = memnew(va_godot::VAEmitter);
     emitter->set_name(String(get_name()) + "-Emitter");
     add_child(emitter);
 
-    // Matches VASource.cs's CreateEmitter, which forces these onto the child
-    // emitter regardless of what a user may have set in the inspector - this
-    // node's own emitter only ever casts reverb rays; muffling is something
-    // done to it by the listener's rays, not something it casts itself.
-    // Routed through VAEmitter's own setters (rather than raw SDK calls) now
-    // that it has a tuning-knob property surface, so the cached C++-side
-    // state stays consistent with what's actually pushed to the SDK.
+    // Forces these onto the child emitter regardless of inspector settings - this emitter only ever casts reverb rays.
+    // Routed through VAEmitter's own setters so the cached C++-side state stays consistent with what's pushed to the SDK.
     emitter->set_has_relative_reverb(false);
     emitter->set_occlusion_ray_count(0);
     emitter->set_occlusion_bounce_count(0);
@@ -297,13 +277,9 @@ void VARaytracedSource::process_raytracing(double delta)
     }
 }
 
-// VASource.cs's ApplyRaytracingResults(vaudio.Emitter other) port: resolves
-// this node's reverb slot via its own child emitter's
-// AffectsGroupedEAX/GroupedEAXIndex (VAWorld::get_reverb_effect - the
-// listener slot if this node doesn't cast reverb rays into a grouped zone),
-// then - if the listener has raytraced this node's emitter as a target -
-// pushes the resulting muffling gain with fullReverb=true (reverb send
-// always gets the clean/unfiltered signal; only the direct path is muffled).
+// VASource.cs's ApplyRaytracingResults port: resolves this node's reverb slot via its child emitter's AffectsGroupedEAX/
+// GroupedEAXIndex, then if the listener has raytraced this emitter as a target, pushes the muffling gain with fullReverb=true
+// (reverb send always gets the clean/unfiltered signal; only the direct path is muffled).
 void VARaytracedSource::apply_raytracing_results(va_godot::VAEmitter *other)
 {
     effect = va_world->get_reverb_effect(emitter->get_handle());
@@ -315,11 +291,8 @@ void VARaytracedSource::apply_raytracing_results(va_godot::VAEmitter *other)
     }
 }
 
-// Exported tuning-knob getter/setter bodies - direct port of
-// VASourceProperties.cs, including its Math.Max(0, value) clamps. Each
-// setter stores locally (so the value survives if set before create_emitter()
-// runs) and forwards to the child VAEmitter's own setter once it exists,
-// mirroring VAEmitter's own "if (emitter != null)" guard pattern.
+// Exported tuning-knob getter/setter bodies - direct port of VASourceProperties.cs including its clamps. Each setter stores
+// locally (so the value survives if set before create_emitter() runs) and forwards to the child VAEmitter once it exists.
 
 int VARaytracedSource::get_reverb_ray_count() const
 {

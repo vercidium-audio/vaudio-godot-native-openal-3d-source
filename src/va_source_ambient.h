@@ -9,17 +9,10 @@ namespace va_godot
 class VAWorld;
 }
 
-// Port of vaudio-godot-mono-openal-3d's VASourceAmbient.cs. Reads the listener's
-// already-computed ambient (non-directional) muffling gain rather than
-// owning its own VAEmitter - meant for background ambience loops that should
-// be muffled by the room the listener is currently in, without being
-// raytraced/positioned relative to any specific source location. Waits for
-// the listener's first ambient filter result before playing, then re-applies
-// the (possibly-changing) ambient gain every frame. Extends
-// ALSourceRelative (not ALSource3D) so its sources are always
-// AL_SOURCE_RELATIVE with a pinned origin position - see that class's doc
-// comment for why this used to be a `relative` bool on ALSource3D and
-// caused mispositioned/panned audio.
+// Port of VASourceAmbient.cs. Reads the listener's already-computed ambient (non-directional) muffling gain rather than owning
+// its own VAEmitter - for background ambience that should be muffled by the listener's current room without being raytraced
+// itself. Waits for the listener's first ambient filter result before playing, then re-applies the gain every frame. Extends
+// ALSourceRelative (not ALSource3D) so its sources stay AL_SOURCE_RELATIVE with a pinned origin (see that class's comment).
 class VASourceAmbient : public ALSourceRelative
 {
     GDCLASS(VASourceAmbient, ALSourceRelative);
@@ -28,8 +21,7 @@ private:
     va_godot::VAWorld *va_world = nullptr;
     bool played = false;
 
-    // Set while _enter_tree found no VAWorld yet - see VAEmitter's identical
-    // waiting_for_world field for the rationale.
+    // Set while _enter_tree found no VAWorld yet (see VAEmitter's identical waiting_for_world field).
     bool waiting_for_world = false;
 
     void retry_find_va_world(Node *node);
@@ -45,7 +37,6 @@ public:
     void _exit_tree() override;
     void _process(double delta) override;
 
-    // Matches VASourceAmbient.cs's Play() override: refuses to start until
-    // the listener has produced an ambient filter result at least once.
+    // Matches VASourceAmbient.cs's Play() override: refuses to start until the listener has produced an ambient filter result at least once.
     bool play() override;
 };

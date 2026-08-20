@@ -33,9 +33,7 @@ void VASourceRelative::_enter_tree()
 
     if (!va_world)
     {
-        // No VAWorld anywhere in the tree yet - stay dormant and retry on
-        // every future node addition instead of never recovering - see
-        // VAEmitter::_enter_tree's identical pattern for the rationale.
+        // No VAWorld anywhere in the tree yet - stay dormant and retry on every future node addition (see VAEmitter::_enter_tree).
         waiting_for_world = true;
         get_tree()->connect("node_added", callable_mp(this, &VASourceRelative::retry_find_va_world));
     }
@@ -52,8 +50,7 @@ void VASourceRelative::_exit_tree()
 
         waiting_for_world = false;
 
-        // Never found a VAWorld anywhere in the tree for this node's entire
-        // time in it - see VAEmitter::_exit_tree's identical warning.
+        // Never found a VAWorld anywhere in the tree for this node's entire time in it (see VAEmitter::_exit_tree).
         VA_WARN(
             "'", get_name(),
             "' left the tree without ever finding a VAWorld - "
@@ -62,8 +59,7 @@ void VASourceRelative::_exit_tree()
     }
 }
 
-// Re-attempts find_va_world each time a node is added anywhere in the tree -
-// see VAEmitter::retry_find_va_world's identical pattern.
+// Re-attempts find_va_world each time a node is added anywhere in the tree (see VAEmitter::retry_find_va_world).
 void VASourceRelative::retry_find_va_world(Node *node)
 {
     va_world = va_godot::find_va_world(this);
@@ -86,12 +82,8 @@ bool VASourceRelative::play()
 
     if (va_world)
     {
-        // Matches VASourceRelative.cs: route into the listener's reverb
-        // effect, with no muffling filter (both gains full/unfiltered) -
-        // relative sources aren't raytraced themselves and have no emitter
-        // of their own, so they always share the listener's room reverb
-        // rather than any grouped-EAX slot (nullptr short-circuits
-        // get_reverb_effect straight to the listener slot).
+        // Matches VASourceRelative.cs: relative sources aren't raytraced and have no emitter of their own, so they always share
+        // the listener's room reverb rather than any grouped-EAX slot (nullptr short-circuits get_reverb_effect to the listener slot).
         effect = va_world->get_reverb_effect(nullptr);
     }
 

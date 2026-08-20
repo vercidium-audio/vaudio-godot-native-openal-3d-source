@@ -9,14 +9,10 @@
 
 using namespace godot;
 
-// Opens an OpenAL input (microphone) capture device and polls it for new
-// samples - the native C++ equivalent of openal_soft_bindings's
-// managed/ALCaptureDevice.cs. Deliberately
-// not a Godot Node: it's a plain object owned by whichever script/node wants
-// microphone input, matching ALCaptureDevice.cs's own design (a plain class
-// constructed/updated/closed by the caller, e.g. SequenceEcho.cs).
+// Opens an OpenAL input (microphone) capture device and polls it for new samples, native equivalent of ALCaptureDevice.cs.
+// Deliberately not a Godot Node: a plain object owned by whichever script/node wants microphone input.
 //
-// Typical usage, matching SequenceEcho.cs's per-frame wiring:
+// Typical usage:
 //   ALCaptureDevice mic;
 //   mic.open("", AL_FORMAT_MONO16, 44100, 1024, [&](const uint8_t *data, int num_bytes) {
 //       stream_source->push_audio_data(data, num_bytes);
@@ -34,14 +30,8 @@ private:
 
     std::vector<uint8_t> sample_buffer;
 
-    // Called from update() with (data, num_bytes) once per poll that finds
-    // new samples - mirrors ALCaptureDeviceSettings.DataCallback in the C#
-    // reference, except this reports a byte count rather than a frame count
-    // so callers (e.g. VAStreamSource::push_audio_data) never need to know
-    // this device's bytes-per-frame themselves. data points into
-    // sample_buffer, valid only for the duration of the callback (matches
-    // ALCaptureDevice.cs's DataCallback, which is handed the same reused
-    // native buffer each call).
+    // Called from update() with (data, num_bytes) once per poll that finds new samples; reports a byte count (not frame count) so callers don't
+    // need to know this device's bytes-per-frame. data points into sample_buffer, valid only for the duration of the callback.
     std::function<void(const uint8_t *, int)> data_callback;
 
     bool capturing = false;
@@ -53,37 +43,21 @@ public:
     ALCaptureDevice(const ALCaptureDevice &) = delete;
     ALCaptureDevice &operator=(const ALCaptureDevice &) = delete;
 
-    // Opens device_name (empty for the driver's default capture device - see
-    // ALManager::get_available_capture_devices() for valid names) for
-    // capturing at the given format/frequency, with an internal ring buffer
-    // sized for buffer_size_frames frames. callback is invoked from update()
-    // whenever new samples are available. Returns false (with a Godot error
-    // already logged) on failure - is_valid() stays false in that case. Only
-    // AL_FORMAT_MONO8/MONO16/STEREO8/STEREO16 are supported (the formats a
-    // microphone realistically captures in) - see bytes_per_frame_for_format().
+    // Opens device_name (empty for the driver's default - see ALManager::get_available_capture_devices()) at the given format/frequency, with an
+    // internal ring buffer sized for buffer_size_frames frames. callback is invoked from update() with new samples. Only mono/stereo 8/16-bit PCM is supported.
     bool open(const String &device_name, ALenum format, int frequency, int buffer_size_frames,
         std::function<void(const uint8_t *, int)> callback);
 
-    // Starts the device capturing into its internal ring buffer. update()
-    // must still be called each frame to actually pull samples out and reach
-    // data_callback - matches alcCaptureStart's own "starts filling the ring
-    // buffer in the background" semantics.
+    // Starts the device capturing into its internal ring buffer; update() must still be called each frame to pull samples out and reach data_callback.
     void start();
 
-    // Stops capturing. Already-buffered samples remain available to
-    // update()/alcCaptureSamples until read.
+    // Stops capturing. Already-buffered samples remain available to update()/alcCaptureSamples until read.
     void stop();
 
-    // Reads however many frames are currently available (capped at
-    // buffer_size_frames) via alcCaptureSamples and, if any were read,
-    // invokes data_callback with the resulting byte count. Call once per
-    // frame - matches ALCaptureDevice.cs's Update(), called once per frame by
-    // SequenceEcho.cs. No-ops if this device isn't open.
+    // Reads however many frames are currently available (capped at buffer_size_frames) and, if any, invokes data_callback. Call once per frame.
     void update();
 
-    // Stops capturing (if still active) and closes the device. Safe to call
-    // more than once and safe to call even if open() was never called or
-    // failed. Also called by the destructor.
+    // Stops capturing (if active) and closes the device. Safe to call more than once, and even if open() was never called or failed.
     void close();
 
     bool is_valid() const

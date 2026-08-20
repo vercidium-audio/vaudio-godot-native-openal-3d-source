@@ -18,16 +18,12 @@
 namespace va_godot
 {
 
-// Smallest id reserved for custom (non-built-in) materials - matches vaudio.h's
-// VAMaterialType comment ("First 1000 values are reserved") and
-// vaudio-unreal's FirstCustomMaterialId.
+// Smallest id reserved for custom (non-built-in) materials - matches vaudio.h's VAMaterialType comment and vaudio-unreal's FirstCustomMaterialId.
 static constexpr int FirstCustomMaterialId = 1000;
 
 void VAWorld::_bind_methods()
 {
-    // Rebinds the inherited Node3D "position" property to VAWorld's own get_position/set_position,
-    // so moving this node in the viewport or Inspector also updates vaWorldSetPosition - see
-    // set_position's doc comment in va_world_properties.cpp.
+    // Rebinds the inherited Node3D "position" property to VAWorld's own accessors, so moving this node also updates vaWorldSetPosition - see va_world_properties.cpp.
     ClassDB::bind_method(D_METHOD("get_position"), &VAWorld::get_position);
     ClassDB::bind_method(D_METHOD("set_position", "value"), &VAWorld::set_position);
     ClassDB::bind_method(D_METHOD("get_bounds_size"), &VAWorld::get_bounds_size);
@@ -41,9 +37,7 @@ void VAWorld::_bind_methods()
 
     ADD_GROUP("World", "");
 
-    // Without this, ClassDB still resolves the inherited "position" property to Node3D's own
-    // accessors, so VAWorld::set_position (bound above) would never be called through the
-    // property system - only direct .set_position() calls would reach vaWorldSetPosition.
+    // Without this, ClassDB still resolves the inherited "position" property to Node3D's own accessors, so set_position (bound above) would never be called through the property system.
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position", PROPERTY_HINT_RANGE, "-1000,1000,1,or_less,or_greater"), "set_position", "get_position");
 
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_size", PROPERTY_HINT_RANGE, "1,1000,1,or_greater"), "set_bounds_size", "get_bounds_size");
@@ -58,12 +52,10 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_reverb_only"), &VAWorld::get_reverb_only);
     ClassDB::bind_method(D_METHOD("set_reverb_only", "value"), &VAWorld::set_reverb_only);
 
-    // OpenAL settings, forwarded to the ALManager singleton
-    // If multiple VAWorlds exist in a scene, the last write wins
+    // OpenAL settings, forwarded to the ALManager singleton - if multiple VAWorlds exist in a scene, the last write wins.
     ADD_GROUP("OpenAL", "");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "master_volume"), "set_master_volume", "get_master_volume");
-    // Matches vaudio-godot-mono-openal-3d's ALDistanceModel enum order/values (AL/al.h) - see
-    // format's PROPERTY_HINT_ENUM in va_input_stream_source.cpp for the same "Label:value" style.
+    // Matches vaudio-godot-mono-openal-3d's ALDistanceModel enum order/values (AL/al.h).
     ADD_PROPERTY(PropertyInfo(Variant::INT, "distance_model", PROPERTY_HINT_ENUM, "None:0,InverseDistance:53249,InverseDistanceClamped:53250,LinearDistance:53251,LinearDistanceClamped:53252,ExponentDistance:53253,ExponentDistanceClamped:53254"), "set_distance_model", "get_distance_model");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reverb_only"), "set_reverb_only", "get_reverb_only");
 
@@ -88,9 +80,7 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_reference_frequency_hf"), &VAWorld::get_reference_frequency_hf);
     ClassDB::bind_method(D_METHOD("set_reference_frequency_hf", "value"), &VAWorld::set_reference_frequency_hf);
 
-    // meters_per_unit/speed_of_sound are also forwarded to the process-wide ALManager singleton
-    // (see set_meters_per_unit/set_speed_of_sound in va_world_properties.cpp), on top of their
-    // vaudio SDK usage below - same last-write-wins caveat as the Mixer group properties below.
+    // meters_per_unit/speed_of_sound are also forwarded to the process-wide ALManager singleton (see va_world_properties.cpp), same last-write-wins caveat as OpenAL group properties above.
     ADD_GROUP("AirAbsorption", "");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "meters_per_unit", PROPERTY_HINT_RANGE, "0.0001,1.0,or_greater"), "set_meters_per_unit", "get_meters_per_unit");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "speed_of_sound", PROPERTY_HINT_RANGE, "0.0001,1000.0,1,or_greater"), "set_speed_of_sound", "get_speed_of_sound");
@@ -124,27 +114,22 @@ void VAWorld::_bind_methods()
     ADD_GROUP("Rendering", "");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "rendering_enabled"), "set_rendering_enabled", "get_rendering_enabled");
 
-    // Read-only timing stats (milliseconds) - no ADD_PROPERTY, called
-    // directly from GDScript like methods (world.get_main_thread_time()).
+    // Read-only timing stats (milliseconds) - no ADD_PROPERTY, called directly from GDScript like methods (world.get_main_thread_time()).
     ClassDB::bind_method(D_METHOD("get_main_thread_time"), &VAWorld::get_main_thread_time);
     ClassDB::bind_method(D_METHOD("get_raytracing_time"), &VAWorld::get_raytracing_time);
     ClassDB::bind_method(D_METHOD("get_preparation_time"), &VAWorld::get_preparation_time);
     ClassDB::bind_method(D_METHOD("get_analysis_time"), &VAWorld::get_analysis_time);
 
-    // Read-only GroupedEAX stats, same no-ADD_PROPERTY rationale as the
-    // timing stats above.
+    // Read-only GroupedEAX stats, same no-ADD_PROPERTY rationale as the timing stats above.
     ClassDB::bind_method(D_METHOD("get_grouped_eax_count"), &VAWorld::get_grouped_eax_count);
     ClassDB::bind_method(D_METHOD("get_grouped_eax_gain_lf", "index"), &VAWorld::get_grouped_eax_gain_lf);
     ClassDB::bind_method(D_METHOD("get_grouped_eax_gain_hf", "index"), &VAWorld::get_grouped_eax_gain_hf);
     ClassDB::bind_method(D_METHOD("get_grouped_eax_decay_time", "index"), &VAWorld::get_grouped_eax_decay_time);
 
-    // Exports world settings/materials/primitives/emitters to a binary file
-    // (vaWorldExport) - callable from GDScript, e.g. wired to a UI button.
+    // Exports world settings/materials/primitives/emitters to a binary file (vaWorldExport) - callable from GDScript, e.g. wired to a UI button.
     ClassDB::bind_method(D_METHOD("export_to_file", "file_path"), &VAWorld::export_to_file);
 
-    // Exposes the 23 built-in material names, and the metadata key they and custom material
-    // selections are stored under, to GDScript - so the "Vercidium Audio" editor plugin's
-    // material dropdown (EditorMaterialProperty.gd) can't drift out of sync with them.
+    // Exposes the 23 built-in material names and their metadata key to GDScript so the "Vercidium Audio" editor plugin's material dropdown can't drift out of sync.
     ClassDB::bind_static_method("VAWorld", D_METHOD("get_builtin_material_names"), &VAWorld::get_builtin_material_names);
     ClassDB::bind_static_method("VAWorld", D_METHOD("get_material_meta_key"), &VAWorld::get_material_meta_key);
     ClassDB::bind_static_method("VAWorld", D_METHOD("get_use_flat_transmission_meta_key"), &VAWorld::get_use_flat_transmission_meta_key);
@@ -152,14 +137,10 @@ void VAWorld::_bind_methods()
 
 VAWorld::VAWorld()
 {
-    // The bounds are an axis-aligned box - scale isn't meaningful (see _validate_property), so
-    // don't let an inherited scale (e.g. from a scaled parent) skew the rendered gizmo box either.
+    // The bounds are an axis-aligned box - scale isn't meaningful (see _validate_property), so don't let an inherited scale skew the rendered gizmo box either.
     set_disable_scale(true);
 
-    // The world should only exist at runtime, not in the editor - matches
-    // the is_editor_hint() guard already in _ready()/_exit_tree() below.
-    // world stays nullptr; every other method already null-checks it (see
-    // ~VAWorld, _process, and the set_* property forwards in va_world.h).
+    // The world should only exist at runtime, not in the editor; world stays nullptr and every other method already null-checks it.
     if (IS_EDITOR_HINT())
     {
         return;
@@ -167,12 +148,12 @@ VAWorld::VAWorld()
 
     world = vaWorldCreate();
 
-    // These three calls are guaranteed to pass, no need to check result
+    // These three calls are guaranteed to pass, no need to check result.
     vaWorldSetCoordinateSystem(world, VACoordinateSystemGodot);
     vaWorldSetUserData(world, this);
     vaWorldSetOnReverbUpdatedCallback(world, &VAWorld::on_reverb_updated_trampoline);
 
-    // These objects handle error checking for us
+    // These setters handle error checking for us.
     set_position(get_position());
     set_bounds_size(bounds_size);
     set_epsilon(epsilon);
@@ -193,7 +174,7 @@ VAWorld::VAWorld()
     set_work_item_count(work_item_count);
     set_rendering_enabled(rendering_enabled);
 
-    // ALManager is initialized at GDExtension module-init time, so its safe to create AL objects
+    // ALManager is initialized at GDExtension module-init time, so it's safe to create AL objects here.
     listener_reverb_effect.create();
 
     set_process(true);
@@ -203,14 +184,14 @@ VAWorld::~VAWorld()
 {
     if (world)
     {
-        // Will block the main thread if the user hasn't set pendingShutdown=true first
+        // Will block the main thread if the user hasn't set pendingShutdown=true first.
         vaWorldWait(world);
 
         for (::VAEmitter *emitter : pending_emitter_destroys)
         {
             VAResult result = vaEmitterDestroy(emitter);
 
-            // Should never fail as we've called vaWorldWait() above
+            // Should never fail as we've called vaWorldWait() above.
             if (result != VA_SUCCESS)
                 VA_ERROR("Failed to destroy a pending emitter (VAResult=", VAResultToString(result), ")");
         }
@@ -218,7 +199,7 @@ VAWorld::~VAWorld()
 
         VAResult result = vaWorldDestroy(world);
 
-        // Should never fail as we've called vaWorldWait() above
+        // Should never fail as we've called vaWorldWait() above.
         if (result != VA_SUCCESS)
             VA_ERROR("Failed to destroy the world (VAResult=", VAResultToString(result), ")");
 
@@ -226,8 +207,7 @@ VAWorld::~VAWorld()
     }
 }
 
-// The bounds are always an axis-aligned box (vaWorldSetPosition/vaWorldSetSize take no
-// rotation/scale), so hide the rest of Node3D's transform and only expose position.
+// The bounds are always an axis-aligned box (vaWorldSetPosition/vaWorldSetSize take no rotation/scale), so hide the rest of Node3D's transform and only expose position.
 void VAWorld::_validate_property(PropertyInfo &p_property) const
 {
     if (p_property.name == StringName("rotation") ||
@@ -247,8 +227,7 @@ void VAWorld::_ready()
 {
     if (IS_EDITOR_HINT())
     {
-        // Scan for unknown vercidium_audio_material values, so warnings appear while editing
-        // get_tree() can be null if this node isn't inside the scene tree yet
+        // Scan for unknown vercidium_audio_material values, so warnings appear while editing. get_tree() can be null if this node isn't inside the scene tree yet.
         Node *root = get_tree() ? get_tree()->get_root() : nullptr;
 
         if (root)
@@ -257,7 +236,7 @@ void VAWorld::_ready()
         return;
     }
 
-    // Wait a frame to ensure all children/siblings have been added to the scene
+    // Wait a frame to ensure all children/siblings have been added to the scene.
     callable_mp(this, &VAWorld::init_scene).call_deferred();
 }
 
@@ -270,15 +249,13 @@ void VAWorld::_exit_tree()
 
     if (get_tree())
     {
-        // Disconnect callbacks
         if (get_tree()->is_connected("node_added", callable_mp(this, &VAWorld::on_node_added)))
             get_tree()->disconnect("node_added", callable_mp(this, &VAWorld::on_node_added));
 
         if (get_tree()->is_connected("node_removed", callable_mp(this, &VAWorld::on_node_removed)))
             get_tree()->disconnect("node_removed", callable_mp(this, &VAWorld::on_node_removed));
 
-        // Unregister all primitives
-        // get_current_scene() can be null if the tree has no scene loaded (e.g. exiting during shutdown)
+        // get_current_scene() can be null if the tree has no scene loaded (e.g. exiting during shutdown).
         Node *scene_root = get_tree()->get_current_scene();
 
         if (scene_root)
@@ -288,7 +265,6 @@ void VAWorld::_exit_tree()
 
 void VAWorld::_process(double delta)
 {
-    // Sync the AL listener to the main listener
     if (listener)
     {
         ALManager *manager = ALManager::get_singleton();
@@ -317,7 +293,7 @@ void VAWorld::_process(double delta)
 
 bool VAWorld::register_custom_material(va_godot::VACustomMaterial *material)
 {
-    // Get the lowest id not already claimed by other custom materials
+    // Get the lowest id not already claimed by other custom materials.
     int type = FirstCustomMaterialId;
 
     for (const auto &kvp : custom_materials)
@@ -357,7 +333,7 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         {
             listener = emitter;
 
-            // Wire up any emitters that registered before this listener existed, instead of leaving them permanently untargeted
+            // Wire up any emitters that registered before this listener existed, instead of leaving them permanently untargeted.
             for (va_godot::VAEmitter *pending_target : pending_targets)
                 listener->add_target(pending_target);
 
@@ -371,7 +347,7 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
 
     if (!listener)
     {
-        // The scene added this emitter before the main listener node - hold onto it and add it as a target once the listener registers, instead of dropping it
+        // The scene added this emitter before the main listener node - hold onto it and add it as a target once the listener registers, instead of dropping it.
         pending_targets.push_back(emitter);
 
         return;
@@ -391,7 +367,7 @@ void VAWorld::unregister_listener(va_godot::VAEmitter *emitter)
     {
         listener = nullptr;
 
-        // This node may come back (e.g. scene reload), so let a future missing-listener state warn again
+        // This node may come back (e.g. scene reload), so let a future missing-listener state warn again.
         warned_missing_listener = false;
     }
 }
@@ -438,8 +414,7 @@ void VAWorld::on_reverb_updated()
 {
     if (!listener || !listener->get_handle())
     {
-        // Don't warn during teardown - a reverb update can still be in flight after the
-        // listener node has unregistered but before this VAWorld node is destroyed
+        // Don't warn during teardown - a reverb update can still be in flight after the listener node has unregistered but before this VAWorld node is destroyed.
         if (!warned_missing_listener && !is_shutting_down)
         {
             VA_WARN_NAMED("Has no VAListener node, so reverb cannot be updated. Add a VAListener node to this scene.");
@@ -470,12 +445,8 @@ void VAWorld::on_reverb_updated()
 
         VAEAXReverbParams params = CopyReverbParams(grouped_eax[i]);
 
-        // VAWorldReverb.cs's CopyReverb "isGroupedEAX" branch: blend in this
-        // slot's gain/direction relative to the listener, so a grouped zone
-        // the listener hasn't raytraced yet (or is outside the relative-
-        // reverb blend range of) holds its last pan rather than snapping to
-        // silence/center - matches vaEAXReverbGetRelativeDirection/
-        // vaEAXReverbGetRelativeGain returning NULL for "no entry yet".
+        // Blend in this slot's gain/direction relative to the listener, so a grouped zone the listener hasn't raytraced
+        // yet holds its last pan rather than snapping to silence/center - vaEAXReverbGetRelative* return NULL for "no entry yet".
         float *relative_gain = vaEAXReverbGetRelativeGain(grouped_eax[i], listener->get_handle());
         VAVector *relative_direction = vaEAXReverbGetRelativeDirection(grouped_eax[i], listener->get_handle());
 
@@ -486,7 +457,7 @@ void VAWorld::on_reverb_updated()
 
         if (relative_direction)
         {
-            // Rotate the raytraced world-space direction into the listener's local space (equivalent to VAWorldReverb.cs's CalculateListenerRelativePan(pan, listener.Pitch, listener.Yaw)) so OpenAL's reflections/late-reverb pan vectors - which are listener-relative - point the right way regardless of which way the listener is facing. vaWorldCalculateListenerRelativePan handles the coordinate-system conversion itself (world's CoordinateSystem is set to VACoordinateSystemGodot in the constructor)
+            // Rotate the raytraced world-space direction into the listener's local space so OpenAL's listener-relative reflections/late-reverb pan vectors point the right way regardless of listener facing.
             Vector3 listener_rotation = listener->get_global_rotation();
             VAVector pan_vector = vaWorldCalculateListenerRelativePan(world, *relative_direction, listener_rotation.x, listener_rotation.y);
             Vector3 pan = FromVAudio(pan_vector);
@@ -523,11 +494,9 @@ ALReverbEffect *VAWorld::get_reverb_effect(::VAEmitter *emitter)
         }
     }
 
-    // Doesn't cast reverb rays or affect a grouped EAX zone - falls back to the listener's
-    // reverb effect only if this emitter opted into that via use_listener_reverb, otherwise
-    // it gets no reverb send at all (nullptr, see ALSource::apply_filter's effect ?
-    // effect->get_slot_handle() : 0). use_listener_reverb has no SDK-side backing, so it's
-    // read off the va_godot::VAEmitter via the user data vaEmitterCreate stashed on the handle.
+    // Doesn't cast reverb rays or affect a grouped EAX zone - falls back to the listener's reverb effect only if this
+    // emitter opted in via use_listener_reverb, otherwise no reverb send at all. use_listener_reverb has no SDK-side
+    // backing, so it's read off the va_godot::VAEmitter via the user data vaEmitterCreate stashed on the handle.
     if (emitter)
     {
         VAEmitter *self = static_cast<VAEmitter *>(vaEmitterGetUserData(emitter));

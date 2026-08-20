@@ -5,10 +5,7 @@
 
 #include <algorithm>
 
-// Only the formats a microphone realistically captures in - unlike
-// ALHelpers.cs's GetBytesPerFrame (which also covers quad/5.1/7.1/B-format
-// output layouts that don't apply to capture), this stays scoped to what
-// open() actually accepts. Returns 0 for any other format.
+// Only the formats a microphone realistically captures in, unlike ALHelpers.cs's GetBytesPerFrame which also covers output-only layouts. Returns 0 for any other format.
 static int bytes_per_frame_for_format(ALenum format)
 {
     switch (format)
@@ -116,9 +113,7 @@ void ALCaptureDevice::update()
         return;
     }
 
-    // If more frames are available than sample_buffer can hold, only read
-    // buffer_size_frames worth this call - the rest stays queued in the
-    // driver's own capture ring buffer for the next update().
+    // If more frames are available than sample_buffer can hold, only read buffer_size_frames worth; the rest stays queued for the next update().
     int frames_to_read = std::min((int)available_frames, buffer_size_frames);
 
     manager->alc_capture_samples()(device, sample_buffer.data(), (ALCsizei)frames_to_read);

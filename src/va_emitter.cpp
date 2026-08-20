@@ -25,23 +25,17 @@ void VAEmitter::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_raytrace_once", "value"), &VAEmitter::set_raytrace_once);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "raytrace_once"), "set_raytrace_once", "get_raytrace_once");
 
-    // Read-only SDK forwards (not ADD_PROPERTY'd - called directly from
-    // GDScript like methods, e.g. emitter.get_va_position()).
+    // Read-only SDK forwards and ambient filter stats (listener only) - not ADD_PROPERTY'd, called directly from GDScript like methods.
     ClassDB::bind_method(D_METHOD("get_va_position"), &VAEmitter::get_va_position);
     ClassDB::bind_method(D_METHOD("get_within_world_bounds"), &VAEmitter::get_within_world_bounds);
     ClassDB::bind_method(D_METHOD("is_raytraced"), &VAEmitter::is_raytraced);
     ClassDB::bind_method(D_METHOD("get_eax_debug_info"), &VAEmitter::get_eax_debug_info);
 
-    // Read-only ambient filter stats (listener only) - same no-ADD_PROPERTY
-    // rationale as the SDK forwards above.
     ClassDB::bind_method(D_METHOD("is_ambient_filter_ready"), &VAEmitter::is_ambient_filter_ready);
     ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_lf"), &VAEmitter::get_ambient_filter_gain_lf);
     ClassDB::bind_method(D_METHOD("get_ambient_filter_gain_hf"), &VAEmitter::get_ambient_filter_gain_hf);
 
-    // Direct port of vaudio-godot-mono-openal-3d's VAEmitterProperties.cs groups
-    // (Reverb/Muffling/Ambience/Visualisation/Advanced). Debug Rendering
-    // colors are not ported - no backing SDK API in this C SDK version (see
-    // va_emitter.h).
+    // Direct port of VAEmitterProperties.cs groups (Reverb/Muffling/Ambience/Visualisation/Advanced).
     ADD_GROUP("Reverb", "");
 
     ClassDB::bind_method(D_METHOD("get_reverb_ray_count"), &VAEmitter::get_reverb_ray_count);
@@ -191,8 +185,7 @@ void VAEmitter::_bind_methods()
 
 VAEmitter::VAEmitter()
 {
-    // Random scattering seed for every emitter
-    scattering_seed = (int)(UtilityFunctions::randi() & 0x7fffffff);
+    scattering_seed = (int)(UtilityFunctions::randi() & 0x7fffffff); // Random scattering seed for every emitter
 }
 
 VAEmitter::~VAEmitter()
@@ -220,10 +213,7 @@ void VAEmitter::set_raytrace_once(bool value)
     raytrace_once = value;
 }
 
-// Hides is_main_listener from the inspector - VAListener is the intended way
-// to designate a world's listener (see va_listener.cpp), so exposing this
-// checkbox here as well would just invite two conflicting ways to do the
-// same thing.
+// Hides is_main_listener from the inspector - VAListener is the intended way to designate a world's listener (see va_listener.cpp).
 void VAEmitter::_validate_property(PropertyInfo &p_property) const
 {
     if (p_property.name == StringName("is_main_listener"))
@@ -241,7 +231,7 @@ void VAEmitter::_enter_tree()
 
     if (!va_world)
     {
-        // No VAWorld anywhere in the tree yet - likely this node's scene (e.g. a car with a pre-configured VAListener) was instanced/entered the tree before being parented under the level. Stay dormant and retry on every future node addition instead of erroring out permanently - see retry_find_va_world.
+        // No VAWorld anywhere in the tree yet - stay dormant and retry on every future node addition instead of erroring out permanently, see retry_find_va_world.
         waiting_for_world = true;
         get_tree()->connect("node_added", callable_mp(this, &VAEmitter::retry_find_va_world));
         return;
@@ -262,7 +252,6 @@ void VAEmitter::_exit_tree()
 
         waiting_for_world = false;
 
-        // Warning if this emitter was never added to a world
         VA_WARN(
             "'", get_name(),
             "' left the tree without ever finding a VAWorld - no emitter was created for it. Make sure this node's scene was added under a VAWorld while it was in the tree.");
@@ -270,21 +259,14 @@ void VAEmitter::_exit_tree()
 
     if (emitter)
     {
-        // No-op unless this emitter was still waiting in va_world's pending_targets for a listener to appear
-        va_world->unregister_pending_target(this);
-
-        // No-op unless this emitter is va_world's current listener - avoids leaving a dangling
-        // pointer if this node is freed before VAWorld (e.g. scene unload order isn't guaranteed)
-        va_world->unregister_listener(this);
+        va_world->unregister_pending_target(this); // No-op unless this emitter was still waiting in pending_targets for a listener to appear
+        va_world->unregister_listener(this); // No-op unless this is va_world's current listener - avoids a dangling pointer if freed before VAWorld
 
         remove_emitter();
     }
 }
 
-// Re-attempts find_va_world each time a node is added anywhere in the tree
-// (connected from _enter_tree while waiting_for_world) - once a VAWorld
-// becomes reachable (e.g. this emitter's scene is finally parented under the
-// level), disconnects and initialises normally via create_emitter().
+// Re-attempts find_va_world each time a node is added anywhere in the tree; once a VAWorld becomes reachable, disconnects and initialises normally via create_emitter().
 void VAEmitter::retry_find_va_world(Node *node)
 {
     va_world = find_va_world(this);
@@ -311,19 +293,12 @@ void VAEmitter::create_emitter()
     vaEmitterSetOnRaytracedByAnotherEmitterCallback(emitter, &VAEmitter::on_raytraced_by_another_emitter_trampoline);
     vaEmitterSetOnRemovedCallback(emitter, &VAEmitter::on_removed_trampoline);
 
-    // Matches VAWorld.cs's CreateEmitter: the listener additionally gets
-    // HasRelativeReverb=true (used for relative-direction/relative-gain
-    // reverb blending, a grouped-EAX-only concern - harmless to set now,
-    // becomes meaningful once grouped-EAX is implemented).
+    // Matches VAWorld.cs's CreateEmitter: the listener additionally gets HasRelativeReverb=true, a grouped-EAX-only concern harmless to set now.
     if (is_main_listener)
     {
         vaEmitterSetHasRelativeReverb(emitter, true);
 
-        // Without either of these, the listener never casts rays toward
-        // VASource targets, so has_raytraced_target/get_target_filter
-        // (va_source.cpp's apply_raytracing_results) never fires and
-        // sources are never muffled - easy to miss since nothing else
-        // fails, sound just plays unmuffled through walls.
+        // Without either of these, the listener never casts rays toward VASource targets, so sources are never muffled - easy to miss since nothing else fails.
         if (occlusion_ray_count == 0 && permeation_ray_count == 0)
         {
             VA_WARN(
@@ -381,18 +356,11 @@ void VAEmitter::apply_properties_to_handle()
 
 void VAEmitter::remove_emitter()
 {
-    // vaWorldRemoveEmitter detaches the emitter from the world and, once any
-    // pending reverb tail finishes, invokes the OnRemoved callback
-    // (on_removed_trampoline -> on_emitter_removed, which hands the handle to
-    // VAWorld for deferred destruction - see on_emitter_removed's doc
-    // comment). Matches VAEmitter.cs's RemoveEmitter, which deliberately
-    // doesn't null `emitter` here either, for the same reason - the SDK
-    // doesn't destroy the handle synchronously.
+    // vaWorldRemoveEmitter detaches the emitter and, once any pending reverb tail finishes, invokes OnRemoved (-> on_emitter_removed,
+    // which defers destruction to VAWorld). Doesn't null `emitter` here either, matching VAEmitter.cs, since the SDK doesn't destroy synchronously.
     VAResult result = vaWorldRemoveEmitter(va_world->get_handle(), emitter);
 
-    // VA_PENDING_REMOVAL just means the reverb tail hasn't finished yet -
-    // OnRemoved will still fire once it has, which is the normal case for any
-    // emitter that casts reverb rays. Not an error.
+    // VA_PENDING_REMOVAL just means the reverb tail hasn't finished yet - OnRemoved will still fire once it has. Not an error.
     if (result != VA_SUCCESS && result != VA_PENDING_REMOVAL)
     {
         VA_ERROR(
@@ -467,8 +435,7 @@ void VAEmitter::add_target(VAEmitter *target)
     {
         case VA_SUCCESS:
         case VA_ALREADY_EXISTS:
-            // Matches VAEmitter.cs's AddTarget, which treats re-adding an
-            // existing target as a no-op rather than an error.
+            // Matches VAEmitter.cs's AddTarget, which treats re-adding an existing target as a no-op rather than an error.
             break;
 
         case VA_NOT_ADDED_TO_WORLD:
@@ -517,10 +484,8 @@ void VAEmitter::_process(double delta)
     }
 }
 
-// VAEmitter.cs's ApplyRaytracingResults port: resolves which reverb slot this
-// emitter uses (unconditionally, even for the listener itself), then - only
-// for non-listener emitters - updates the muffling filter from the
-// listener's perspective (how muffled this emitter sounds to the listener).
+// VAEmitter.cs's ApplyRaytracingResults port: resolves which reverb slot this emitter uses (even for the listener itself), then for
+// non-listener emitters only, updates the muffling filter from the listener's perspective (how muffled this emitter sounds to the listener).
 void VAEmitter::apply_raytracing_results()
 {
     effect = va_world->get_reverb_effect(emitter);
@@ -533,9 +498,7 @@ void VAEmitter::apply_raytracing_results()
 
     if (this == listener)
     {
-        // VAWorldReverb.cs's OnReverbUpdated ambientFilter update, moved from
-        // VAWorld::on_reverb_updated onto the listener it actually describes -
-        // only the listener's own ambient filter is meaningful.
+        // VAWorldReverb.cs's OnReverbUpdated ambientFilter update, moved onto the listener it actually describes - only its own ambient filter is meaningful.
         VALowPassFilter *ambient_filter = vaEmitterGetAmbientFilter(emitter);
 
         if (ambient_filter)
@@ -567,8 +530,7 @@ void VAEmitter::on_raytraced_by_another_emitter(::VAEmitter *other)
 
     apply_raytracing_results();
 
-    // Matches VAEmitter.cs's OnRaytracedByAnotherEmitter: once this emitter
-    // has been raytraced once, cast rays no more - remove it from the world.
+    // Matches VAEmitter.cs's OnRaytracedByAnotherEmitter: once raytraced once, cast rays no more - remove it from the world.
     if (raytrace_once)
     {
         remove_emitter();
@@ -577,27 +539,19 @@ void VAEmitter::on_raytraced_by_another_emitter(::VAEmitter *other)
 
 void VAEmitter::on_emitter_removed()
 {
-    // Deliberately not vaEmitterDestroy(emitter) here - see the warning on
-    // this method's declaration in va_emitter.h. VAWorld owns final
-    // destruction, deferred until after vaWorldWait() has fully drained.
+    // Deliberately not vaEmitterDestroy(emitter) here - see the warning on this method's declaration in va_emitter.h. VAWorld owns final destruction, deferred until vaWorldWait() has fully drained.
     va_world->defer_emitter_destroy(emitter);
     emitter = nullptr;
 }
 
 void VAEmitter::on_raytracing_complete_trampoline(::VAEmitter *emitter)
 {
-    // No VAEmitter-level behaviour needed yet - matches VAEmitter.cs's
-    // OnRaytracingComplete, which just forwards to an optional external
-    // callback nothing in this native port currently subscribes to.
+    // No VAEmitter-level behaviour needed yet - nothing in this native port currently subscribes to this callback.
 }
 
 void VAEmitter::on_raytraced_by_another_emitter_trampoline(::VAEmitter *source, ::VAEmitter *target)
 {
-    // Registered on (and invoked as a method of) target - the emitter being
-    // raytraced, i.e. "this" - matching world_emitters.c's
-    // target->onRaytracedByAnotherEmitter(source, target). source is who did
-    // the raytracing (VAEmitter.cs's OnRaytracedByAnotherEmitter(vaudio.Emitter
-    // emitter) parameter - only used to know the event fired, not stored).
+    // Registered on (and invoked as a method of) target - the emitter being raytraced, i.e. "this", matching world_emitters.c's target->onRaytracedByAnotherEmitter(source, target).
     VAEmitter *self = static_cast<VAEmitter *>(vaEmitterGetUserData(target));
 
     if (self)
@@ -616,9 +570,7 @@ void VAEmitter::on_removed_trampoline(::VAEmitter *emitter)
     }
 }
 
-// Exported tuning-knob getter/setter bodies - direct port of
-// VAEmitterProperties.cs, including its Math.Max(0, value) clamps on
-// ray/bounce counts and energy caps.
+// Exported tuning-knob getter/setter bodies - direct port of VAEmitterProperties.cs, including its Math.Max(0, value) clamps.
 
 int VAEmitter::get_reverb_ray_count() const
 {

@@ -112,7 +112,7 @@ inline std::vector<VAVector> ConvertMeshToVAudio(const Ref<Mesh> &mesh, VAVector
 
             if (calculated_normal.dot(mesh_normal) < 0)
             {
-                // Flip winding to match the mesh's own normal direction.
+                // Flip winding to match the mesh's own normal direction
                 Vector3 temp = v1;
                 v1 = v2;
                 v2 = temp;
