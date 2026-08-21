@@ -1,7 +1,6 @@
 #pragma once
 
 #include <godot_cpp/classes/node3d.hpp>
-#include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 
@@ -34,8 +33,6 @@ class VAEmitter : public Node3D
 private:
     VAWorld *va_world = nullptr;
     ::VAEmitter *emitter = nullptr;
-
-    bool is_main_listener = false;
 
     // Exported tuning-knob surface, direct port of VAEmitterProperties.cs. Each setter mirrors the C#'s "store locally, push to the SDK
     // handle if it already exists" pattern - values set before create_emitter() runs are applied once the handle is created.
@@ -134,10 +131,12 @@ public:
     void _enter_tree() override;
     void _exit_tree() override;
     void _process(double delta) override;
-    void _validate_property(PropertyInfo &p_property) const;
 
-    bool get_is_main_listener() const;
-    void set_is_main_listener(bool value);
+    // True only for a VAListener (see va_listener.h) - not an exported/settable property, matches VAEmitter.cs's IsMainListener.
+    virtual bool is_main_listener() const
+    {
+        return false;
+    }
 
     bool get_raytrace_once() const;
     void set_raytrace_once(bool value);

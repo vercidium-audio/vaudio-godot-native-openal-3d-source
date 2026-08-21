@@ -17,10 +17,6 @@ namespace va_godot
 
 void VAEmitter::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("get_is_main_listener"), &VAEmitter::get_is_main_listener);
-    ClassDB::bind_method(D_METHOD("set_is_main_listener", "value"), &VAEmitter::set_is_main_listener);
-    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_main_listener"), "set_is_main_listener", "get_is_main_listener");
-
     ClassDB::bind_method(D_METHOD("get_raytrace_once"), &VAEmitter::get_raytrace_once);
     ClassDB::bind_method(D_METHOD("set_raytrace_once", "value"), &VAEmitter::set_raytrace_once);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "raytrace_once"), "set_raytrace_once", "get_raytrace_once");
@@ -193,16 +189,6 @@ VAEmitter::~VAEmitter()
     delete filter;
 }
 
-bool VAEmitter::get_is_main_listener() const
-{
-    return is_main_listener;
-}
-
-void VAEmitter::set_is_main_listener(bool value)
-{
-    is_main_listener = value;
-}
-
 bool VAEmitter::get_raytrace_once() const
 {
     return raytrace_once;
@@ -211,13 +197,6 @@ bool VAEmitter::get_raytrace_once() const
 void VAEmitter::set_raytrace_once(bool value)
 {
     raytrace_once = value;
-}
-
-// Hides is_main_listener from the inspector - VAListener is the intended way to designate a world's listener (see va_listener.cpp).
-void VAEmitter::_validate_property(PropertyInfo &p_property) const
-{
-    if (p_property.name == StringName("is_main_listener"))
-        p_property.usage = PROPERTY_USAGE_NONE;
 }
 
 void VAEmitter::_enter_tree()
@@ -294,7 +273,7 @@ void VAEmitter::create_emitter()
     vaEmitterSetOnRemovedCallback(emitter, &VAEmitter::on_removed_trampoline);
 
     // Matches VAWorld.cs's CreateEmitter: the listener additionally gets HasRelativeReverb=true, a grouped-EAX-only concern harmless to set now.
-    if (is_main_listener)
+    if (is_main_listener())
     {
         vaEmitterSetHasRelativeReverb(emitter, true);
 
@@ -310,7 +289,7 @@ void VAEmitter::create_emitter()
 
     apply_properties_to_handle();
 
-    va_world->register_emitter(this, is_main_listener);
+    va_world->register_emitter(this, is_main_listener());
 }
 
 void VAEmitter::apply_properties_to_handle()

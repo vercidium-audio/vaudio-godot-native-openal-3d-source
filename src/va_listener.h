@@ -10,8 +10,9 @@ namespace va_godot
 {
 
 // Port of vaudio-unreal's AVAudioListener: a purpose-named node for the world's single listener, rather than requiring users
-// to add a plain VAEmitter and tick its is_main_listener checkbox themselves. A VAEmitter subclass that reuses its create/
-// destroy and raytracing plumbing entirely, only forcing is_main_listener=true (hidden from the inspector via _validate_property).
+// to add a plain VAEmitter and tick an is_main_listener checkbox themselves. A VAEmitter subclass that reuses its create/
+// destroy and raytracing plumbing entirely - is_main_listener() is overridden to return true, which is what makes being this
+// type the thing that designates the world's listener.
 class VAListener : public VAEmitter
 {
     GDCLASS(VAListener, VAEmitter);
@@ -21,6 +22,11 @@ protected:
 
 public:
     VAListener();
+
+    bool is_main_listener() const override
+    {
+        return true;
+    }
 
     void _validate_property(PropertyInfo &p_property) const;
 };
