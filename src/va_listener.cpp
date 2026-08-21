@@ -12,15 +12,18 @@ void VAListener::_bind_methods()
 
 VAListener::VAListener()
 {
+    set_affects_grouped_eax(false);
     set_has_relative_reverb(true);
 }
 
-// Hides inherited properties not meaningful on a listener: affects_grouped_eax/occlusion_energy_cap/permeation_energy_cap only apply to emitters that can be occluded/permeated.
+// Hides inherited properties not meaningful on a listener: affects_grouped_eax/occlusion_energy_cap/permeation_energy_cap only apply to emitters that can be occluded/permeated, and raytrace_once only applies to emitters that get raytraced against the listener, not the listener itself.
 void VAListener::_validate_property(PropertyInfo &p_property) const
 {
-    if (p_property.name == StringName("affects_grouped_eax") ||
+    if (p_property.name == StringName("has_relative_reverb") ||
+        p_property.name == StringName("affects_grouped_eax") ||
         p_property.name == StringName("occlusion_energy_cap") ||
-        p_property.name == StringName("permeation_energy_cap"))
+        p_property.name == StringName("permeation_energy_cap") ||
+        p_property.name == StringName("raytrace_once"))
     {
         p_property.usage = PROPERTY_USAGE_NONE;
     }
