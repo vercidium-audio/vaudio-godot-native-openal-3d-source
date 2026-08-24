@@ -3,7 +3,9 @@
 #include <godot_cpp/classes/box_shape3d.hpp>
 #include <godot_cpp/classes/capsule_shape3d.hpp>
 #include <godot_cpp/classes/concave_polygon_shape3d.hpp>
+#include <godot_cpp/classes/convex_polygon_shape3d.hpp>
 #include <godot_cpp/classes/cylinder_shape3d.hpp>
+#include <godot_cpp/classes/height_map_shape3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/shape3d.hpp>
@@ -17,7 +19,7 @@
 #include "va_custom_material.h"
 #include "va_engine_util.h"
 
-// Port of VAWorldPrimitives.cs. CSG box/cylinder/sphere, CollisionShape3D box/sphere/capsule/cylinder/world-boundary/concave-polygon, and MeshInstance3D are covered; CsgPolygon3D/CsgMesh3D and the ConvexPolygon/HeightMap CollisionShape3D variants need their own mesh-to-triangle-list conversion helpers and are left as a no-op fallthrough for now.
+// Port of VAWorldPrimitives.cs. CSG box/cylinder/sphere, CollisionShape3D box/sphere/capsule/cylinder/world-boundary/concave-polygon/convex-polygon/height-map, and MeshInstance3D are covered; CsgPolygon3D/CsgMesh3D still need their own mesh-to-triangle-list conversion helpers and are left as a no-op fallthrough for now.
 
 // Function-local statics (not namespace-scope) so the StringName isn't constructed at static-init time, before Godot's API is bound - doing so crashed the extension's DLL init routine.
 static const StringName &PrimitiveMetaKey()
@@ -691,9 +693,80 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
         prim = p;
         kind = VAPrimitiveKind::Mesh;
     }
+    else if (Ref<ConvexPolygonShape3D> convex_polygon = shape; convex_polygon.is_valid())
+    {
+        VAVector min, max;
+        std::vector<VAVector> triangles = ConvertConvexPolygonToVAudio(convex_polygon, min, max);
+
+        if (triangles.empty())
+        {
+            VA_WARN("ConvexPolygonShape3D ", collision_shape->get_name(), " will not affect raytracing as it cannot be triangulated");
+            return;
+        }
+
+        VAMatrix mat = ToVAudio(global_transform);
+
+        VAMeshPrimitive *p = nullptr;
+        VAResult create_result = vaMeshPrimitiveCreate(material, triangles.data(), (int)triangles.size(), min, max, &mat, &p);
+        if (create_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D convex polygon) failed to create the mesh primitive for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(create_result), ")");
+            return;
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D convex polygon) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaMeshPrimitiveDestroy(p);
+            return;
+        }
+
+        prim = p;
+        kind = VAPrimitiveKind::Mesh;
+    }
+    else if (Ref<HeightMapShape3D> height_map = shape; height_map.is_valid())
+    {
+        VAVector min, max;
+        std::vector<VAVector> triangles = ConvertHeightMapToVAudio(height_map, min, max);
+
+        if (triangles.empty())
+        {
+            VA_WARN("HeightMapShape3D ", collision_shape->get_name(), " will not affect raytracing as its dimensions are less than 2x2");
+            return;
+        }
+
+        VAMatrix mat = ToVAudio(global_transform);
+
+        VAMeshPrimitive *p = nullptr;
+        VAResult create_result = vaMeshPrimitiveCreate(material, triangles.data(), (int)triangles.size(), min, max, &mat, &p);
+        if (create_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D height map) failed to create the mesh primitive for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(create_result), ")");
+            return;
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D height map) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaMeshPrimitiveDestroy(p);
+            return;
+        }
+
+        prim = p;
+        kind = VAPrimitiveKind::Mesh;
+    }
     else
     {
-        // ConvexPolygonShape3D / HeightMapShape3D still need mesh-to-triangle-list conversion - separate checklist item.
         return;
     }
 
