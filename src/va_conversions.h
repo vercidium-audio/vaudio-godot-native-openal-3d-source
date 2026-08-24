@@ -3,8 +3,10 @@
 #include <cfloat>
 #include <vector>
 
+#include <godot_cpp/classes/concave_polygon_shape3d.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/packed_vector3_array.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -179,6 +181,44 @@ inline std::vector<VAVector> ConvertMeshToVAudio(const Ref<Mesh> &mesh, VAVector
     {
         min = Vector3();
         max = Vector3();
+    }
+
+    out_min = ToVAudio(min);
+    out_max = ToVAudio(max);
+
+    return vertices;
+}
+
+// ConcavePolygonShape3D::get_faces() already returns a flat CW-wound triangle vertex list (unlike Mesh, which is CCW and needs flipping) - just accumulate bounds.
+inline std::vector<VAVector> ConvertConcavePolygonToVAudio(const Ref<ConcavePolygonShape3D> &shape, VAVector &out_min, VAVector &out_max)
+{
+    PackedVector3Array faces = shape->get_faces();
+
+    std::vector<VAVector> vertices;
+
+    if (faces.is_empty())
+    {
+        out_min = ToVAudio(Vector3());
+        out_max = ToVAudio(Vector3());
+        return vertices;
+    }
+
+    Vector3 min(FLT_MAX, FLT_MAX, FLT_MAX);
+    Vector3 max(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+    vertices.reserve(faces.size());
+
+    for (int i = 0; i < faces.size(); i++)
+    {
+        const Vector3 &v = faces[i];
+        vertices.push_back(ToVAudio(v));
+
+        min.x = MIN(min.x, v.x);
+        min.y = MIN(min.y, v.y);
+        min.z = MIN(min.z, v.z);
+        max.x = MAX(max.x, v.x);
+        max.y = MAX(max.y, v.y);
+        max.z = MAX(max.z, v.z);
     }
 
     out_min = ToVAudio(min);
