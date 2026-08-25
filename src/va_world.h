@@ -69,7 +69,7 @@ private:
     std::vector<::VAEmitter *> pending_emitter_destroys;
 
     bool pending_shutdown = false;
-    bool rendering_enabled = false;
+    bool rendering_enabled = true;
 
     void init_scene();
     void on_node_added(Node *node);
