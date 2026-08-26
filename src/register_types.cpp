@@ -27,6 +27,7 @@
 #include "va_input_stream_source.h"
 #include "va_listener.h"
 #include "va_custom_material.h"
+#include "va_material_properties_inspector_plugin.h"
 #include "va_networked_stream_source.h"
 #include "va_primitive_ref.h"
 #include "va_raytraced_source.h"
@@ -66,12 +67,69 @@ static Node *find_child_named_recursive(Node *node, const StringName &name)
     return nullptr;
 }
 
+// Relays a VADefaultMaterial/VACustomMaterial property edit made in the Inspector while the game is running - see
+// VAMaterialPropertiesInspectorPlugin. Unlike on_debugger_message's "sync_primitive" handling below, this never
+// touches node metadata or re-registers a primitive: the target node's own apply_properties_from_editor pushes the
+// new values straight into the ::VAWorld material already tracking it.
+static bool on_sync_material_properties(const Array &data)
+{
+    // scene_root_name, node_path, 7 material floats, color
+    if (data.size() < 10)
+        return false;
+
+    SceneTree *scene_tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
+    Node *tree_root = scene_tree ? scene_tree->get_root() : nullptr;
+
+    if (!tree_root)
+    {
+        VA_WARN("Received a material property edit from the editor, but the game has no scene tree root");
+        return true;
+    }
+
+    StringName scene_root_name = data[0];
+    Node *scene_root = find_child_named_recursive(tree_root, scene_root_name);
+
+    if (!scene_root)
+    {
+        VA_WARN("Received a material property edit from the editor, but no node named '", scene_root_name, "' exists in the running scene");
+        return true;
+    }
+
+    NodePath node_path = data[1];
+    Node *node = scene_root->get_node_or_null(node_path);
+
+    float absorption_lf = data[2];
+    float absorption_hf = data[3];
+    float scattering = data[4];
+    float transmission_lf = data[5];
+    float transmission_hf = data[6];
+    float flat_transmission_lf = data[7];
+    float flat_transmission_hf = data[8];
+    Color color = data[9];
+
+    if (VADefaultMaterial *default_material = Object::cast_to<VADefaultMaterial>(node))
+        default_material->apply_properties_from_editor(absorption_lf, absorption_hf, scattering,
+            transmission_lf, transmission_hf, flat_transmission_lf, flat_transmission_hf, color);
+    else if (va_godot::VACustomMaterial *custom_material = Object::cast_to<va_godot::VACustomMaterial>(node))
+        custom_material->apply_properties_from_editor(absorption_lf, absorption_hf, scattering,
+            transmission_lf, transmission_hf, flat_transmission_lf, flat_transmission_hf, color);
+    else
+        VA_WARN(
+            "Received a material property edit from the editor for '", node_path,
+            "', but no matching VADefaultMaterial/VACustomMaterial node exists under '", scene_root_name, "' (", scene_root->get_path(), ")");
+
+    return true;
+}
+
 // Receiving end of VADebuggerPlugin::sync_primitive - the editor sends a "vaudio:sync_primitive" debugger message
 // with the edited scene's root node name and a NodePath relative to it, whenever the "Vercidium Audio" Inspector
 // material dropdown or permeation checkbox changes while the game is running. EditorInspectorPlugin controls can only
 // edit the editor's own local copy of the scene, so this debugger-message capture is the only way those edits reach the running game's actual VAWorld.
 static bool on_debugger_message(const String &message, const Array &data)
 {
+    if (message == "sync_material_properties")
+        return on_sync_material_properties(data);
+
     if (message != "sync_primitive" || data.size() < 4)
         return false;
 
@@ -242,6 +300,7 @@ void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p
         ClassDB::register_class<va_godot::ConversionContextMenuPlugin>();
         ClassDB::register_class<va_godot::VADeviceRefreshInspectorPlugin>();
         ClassDB::register_class<va_godot::VAMaterialInspectorPlugin>();
+        ClassDB::register_class<va_godot::VAMaterialPropertiesInspectorPlugin>();
         ClassDB::register_class<va_godot::VAWorldGizmoPlugin>();
         ClassDB::register_class<va_godot::VADebuggerPlugin>();
         ClassDB::register_class<va_godot::VAConversionPlugin>();

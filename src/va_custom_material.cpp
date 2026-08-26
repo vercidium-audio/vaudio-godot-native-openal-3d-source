@@ -236,4 +236,30 @@ void VACustomMaterial::set_color(const Color &value)
         log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(value)), "color", material_name);
 }
 
+void VACustomMaterial::apply_properties_from_editor(float new_absorption_lf, float new_absorption_hf, float new_scattering,
+    float new_transmission_lf, float new_transmission_hf, float new_flat_transmission_lf,
+    float new_flat_transmission_hf, const Color &new_color)
+{
+    absorption_lf = new_absorption_lf;
+    absorption_hf = new_absorption_hf;
+    scattering = new_scattering;
+    transmission_lf = new_transmission_lf;
+    transmission_hf = new_transmission_hf;
+    flat_transmission_lf = new_flat_transmission_lf;
+    flat_transmission_hf = new_flat_transmission_hf;
+    color = new_color;
+
+    if (!registered)
+        return;
+
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, absorption_lf), "absorption_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, absorption_hf), "absorption_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, scattering), "scattering", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, transmission_lf), "transmission_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, transmission_hf), "transmission_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(va_world_handle, material_type, flat_transmission_lf), "flat_transmission_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(va_world_handle, material_type, flat_transmission_hf), "flat_transmission_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(color)), "color", material_name);
+}
+
 } // namespace va_godot

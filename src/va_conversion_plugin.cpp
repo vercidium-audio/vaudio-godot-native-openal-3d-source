@@ -346,6 +346,10 @@ void VAConversionPlugin::_enter_tree()
     material_inspector_plugin->set_debugger_plugin(debugger_plugin);
     add_inspector_plugin(material_inspector_plugin);
 
+    material_properties_inspector_plugin.instantiate();
+    material_properties_inspector_plugin->set_debugger_plugin(debugger_plugin);
+    add_inspector_plugin(material_properties_inspector_plugin);
+
     world_gizmo_plugin.instantiate();
     add_node_3d_gizmo_plugin(world_gizmo_plugin);
 
@@ -364,6 +368,9 @@ void VAConversionPlugin::_exit_tree()
 
     remove_inspector_plugin(material_inspector_plugin);
     material_inspector_plugin.unref();
+
+    remove_inspector_plugin(material_properties_inspector_plugin);
+    material_properties_inspector_plugin.unref();
 
     remove_node_3d_gizmo_plugin(world_gizmo_plugin);
     world_gizmo_plugin.unref();

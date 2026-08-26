@@ -8,6 +8,7 @@
 
 #include "va_debugger_plugin.h"
 #include "va_material_inspector_plugin.h"
+#include "va_material_properties_inspector_plugin.h"
 #include "va_world_gizmo.h"
 
 using namespace godot;
@@ -56,6 +57,7 @@ private:
     Ref<ConversionContextMenuPlugin> context_menu_plugin;
     Ref<VADeviceRefreshInspectorPlugin> device_refresh_inspector_plugin;
     Ref<VAMaterialInspectorPlugin> material_inspector_plugin;
+    Ref<VAMaterialPropertiesInspectorPlugin> material_properties_inspector_plugin;
     Ref<VAWorldGizmoPlugin> world_gizmo_plugin;
     Ref<VADebuggerPlugin> debugger_plugin;
 

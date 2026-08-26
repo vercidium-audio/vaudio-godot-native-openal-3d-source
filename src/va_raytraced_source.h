@@ -29,7 +29,7 @@ private:
 
     va_godot::VAEmitter *emitter = nullptr;
 
-    bool raytrace_once = true;
+    bool raytrace_once = false;
 
     int reverb_ray_count = 0;
     int reverb_bounce_count = 0;

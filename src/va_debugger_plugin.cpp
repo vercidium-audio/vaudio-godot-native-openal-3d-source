@@ -29,3 +29,31 @@ void VADebuggerPlugin::sync_primitive(const String &scene_root_name, const NodeP
         }
     }
 }
+
+void VADebuggerPlugin::sync_material_properties(const String &scene_root_name, const NodePath &node_path, float absorption_lf,
+    float absorption_hf, float scattering, float transmission_lf, float transmission_hf,
+    float flat_transmission_lf, float flat_transmission_hf, const Color &color)
+{
+    Array sessions = get_sessions();
+
+    for (int i = 0; i < sessions.size(); i++)
+    {
+        Ref<EditorDebuggerSession> session = sessions[i];
+
+        if (session.is_valid() && session->is_active())
+        {
+            Array data;
+            data.push_back(scene_root_name);
+            data.push_back(node_path);
+            data.push_back(absorption_lf);
+            data.push_back(absorption_hf);
+            data.push_back(scattering);
+            data.push_back(transmission_lf);
+            data.push_back(transmission_hf);
+            data.push_back(flat_transmission_lf);
+            data.push_back(flat_transmission_hf);
+            data.push_back(color);
+            session->send_message("vaudio:sync_material_properties", data);
+        }
+    }
+}
