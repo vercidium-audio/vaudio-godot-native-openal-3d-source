@@ -68,17 +68,33 @@ static Node *find_child_named_recursive(Node *node, const StringName &name)
 }
 
 // VADefaultMaterial/VACustomMaterial nodes are always direct children of a VAWorld node (see both classes' doc
-// comments), so the missing material node's parent is just the VAWorld one level up node_path - which is expected
-// to already exist in the running game's tree (either it was there when the scene loaded, or the game's own
-// VAWorld itself). Returns nullptr (with no node created) if that parent isn't found either.
-static Node *create_missing_material_node(Node *scene_root, const NodePath &node_path, const String &node_name,
+// comments). existing_node is either nullptr (nothing at node_path at all) or a plain Node the editor's own Live
+// Edit already created there (see on_sync_material_properties) - either way it's replaced with a freshly
+// constructed, correctly typed node under the same parent, so the new node's own _enter_tree runs and registers it
+// with the running ::VAWorld. Returns nullptr (with no node created) if the parent isn't a VAWorld already present
+// in the running scene.
+static Node *replace_with_material_node(Node *scene_root, const NodePath &node_path, Node *existing_node, const String &node_name,
     bool is_custom_material, int material_type, const String &custom_material_name)
 {
-    int64_t name_count = node_path.get_name_count();
-    if (name_count < 2)
-        return nullptr;
+    Node *parent;
 
-    Node *parent = scene_root->get_node_or_null(node_path.slice(0, name_count - 1));
+    if (existing_node)
+    {
+        parent = existing_node->get_parent();
+
+        if (parent)
+            parent->remove_child(existing_node);
+
+        existing_node->queue_free();
+    }
+    else
+    {
+        int64_t name_count = node_path.get_name_count();
+        if (name_count < 2)
+            return nullptr;
+
+        parent = scene_root->get_node_or_null(node_path.slice(0, name_count - 1));
+    }
 
     if (!Object::cast_to<va_godot::VAWorld>(parent))
         return nullptr;
@@ -107,10 +123,14 @@ static Node *create_missing_material_node(Node *scene_root, const NodePath &node
 // Relays a VADefaultMaterial/VACustomMaterial property edit made in the Inspector while the game is running - see
 // VAMaterialPropertiesInspectorPlugin. Unlike on_debugger_message's "sync_primitive" handling below, this never
 // touches node metadata: the target node's own apply_properties_from_editor pushes the new values straight into
-// the ::VAWorld material already tracking it. If the node doesn't exist yet (e.g. it was just created in the
-// editor while the game is already running - the debugger protocol only relays property edits, not new nodes, so
-// the running game's own tree never heard about it), it's created here under its already-existing parent so its
-// own _enter_tree can register it with the running ::VAWorld the normal way.
+// the ::VAWorld material already tracking it.
+//
+// If the node doesn't exist yet, or exists but is a plain Node rather than a VADefaultMaterial/VACustomMaterial,
+// it's (re)created here so its own _enter_tree can register it with the running ::VAWorld the normal way. The
+// "exists but plain Node" case isn't a custom-protocol gap like sync_primitive's - the editor's own Live Edit
+// feature already creates a matching node in the running game whenever one is added in the editor's local scene
+// copy, but Live Edit only replicates the node's built-in Godot class, not any script/GDExtension class attached
+// to it, so the node Live Edit creates is always a plain Node.
 static bool on_sync_material_properties(const Array &data)
 {
     // scene_root_name, node_path, node_name, is_custom_material, material_type, custom_material_name,
@@ -153,8 +173,8 @@ static bool on_sync_material_properties(const Array &data)
     float flat_transmission_hf = data[12];
     Color color = data[13];
 
-    if (!node)
-        node = create_missing_material_node(scene_root, node_path, node_name, is_custom_material, material_type, custom_material_name);
+    if (!Object::cast_to<VADefaultMaterial>(node) && !Object::cast_to<va_godot::VACustomMaterial>(node))
+        node = replace_with_material_node(scene_root, node_path, node, node_name, is_custom_material, material_type, custom_material_name);
 
     if (VADefaultMaterial *default_material = Object::cast_to<VADefaultMaterial>(node))
         default_material->apply_properties_from_editor(absorption_lf, absorption_hf, scattering,
