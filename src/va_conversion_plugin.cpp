@@ -1,5 +1,6 @@
 #include "va_conversion_plugin.h"
 
+#include <godot_cpp/classes/audio_stream_ogg_vorbis.hpp>
 #include <godot_cpp/classes/audio_stream_randomizer.hpp>
 #include <godot_cpp/classes/audio_stream_wav.hpp>
 #include <godot_cpp/classes/button.hpp>
@@ -51,17 +52,23 @@ bool copy_property(Object *source, Object *target, const StringName &from, const
     return true;
 }
 
-// AudioStreamPlayer(3D) has no Looping property of its own - Godot loops based on the imported .wav's "Loop Mode" (Import
-// tab), exposed here as AudioStreamWAV::loop_mode. Ping pong / backwards aren't representable by OpenAL/FMOD's simple
-// looping flag, so any non-disabled loop mode is treated as "should loop" for the purposes of VASourceAmbient conversion.
+// AudioStreamPlayer(3D) has no Looping property of its own - Godot loops based on the imported stream's own loop
+// setting: AudioStreamWAV's "Loop Mode" (Import tab), exposed here as AudioStreamWAV::loop_mode, or
+// AudioStreamOggVorbis's "Loop" checkbox, exposed as AudioStreamOggVorbis::has_loop(). Ping pong / backwards aren't
+// representable by OpenAL/FMOD's simple looping flag, so any non-disabled WAV loop mode, or an enabled Ogg loop flag,
+// is treated as "should loop".
 bool any_stream_wants_looping(const TypedArray<AudioStream> &streams)
 {
     for (int i = 0; i < streams.size(); i++)
     {
         Ref<AudioStream> stream = streams[i];
-        AudioStreamWAV *wav = Object::cast_to<AudioStreamWAV>(stream.ptr());
 
+        AudioStreamWAV *wav = Object::cast_to<AudioStreamWAV>(stream.ptr());
         if (wav && wav->get_loop_mode() != AudioStreamWAV::LOOP_DISABLED)
+            return true;
+
+        AudioStreamOggVorbis *ogg = Object::cast_to<AudioStreamOggVorbis>(stream.ptr());
+        if (ogg && ogg->has_loop())
             return true;
     }
 
@@ -252,15 +259,14 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
     }
 
     // AudioStreamPlayer(3D) has no `looping` property of its own - Godot instead loops based on the imported .wav's
-    // "Loop Mode" (Import tab). Default VASourceAmbient to loop when converting from one of those, since ambience is
-    // effectively always meant to loop and this is the closest equivalent signal available. Only applies when old_node
-    // didn't already have its own `looping` property (i.e. wasn't itself an ALSource) - that value already won above.
-    if (target_class == "VASourceAmbient" && !has_property(old_node, "looping"))
+    // "Loop Mode" (Import tab). Derive `looping` from that when converting from one of those. Only applies when
+    // old_node didn't already have its own `looping` property (i.e. wasn't itself an ALSource) - that value already
+    // won above.
+    if (!has_property(old_node, "looping"))
     {
         TypedArray<AudioStream> streams = new_base_node->get("streams");
 
-        if (any_stream_wants_looping(streams))
-            new_base_node->set("looping", true);
+        new_base_node->set("looping", any_stream_wants_looping(streams));
     }
 
     // If 3D, copy its transform
