@@ -33,8 +33,12 @@ public:
     // Relays a VADefaultMaterial/VACustomMaterial property edit made in the Inspector while the game is running - see
     // VAMaterialPropertiesInspectorPlugin. Received by on_debugger_message in register_types.cpp, which applies the
     // values directly via apply_properties_from_editor - unlike sync_primitive above, there's no metadata to carry
-    // across and no primitive to re-add.
-    void sync_material_properties(const String &scene_root_name, const NodePath &node_path, float absorption_lf,
+    // across. node_name/is_custom_material/material_type/custom_material_name let the receiving end create the node
+    // itself (mirroring the editor's local copy) if it doesn't exist in the running game yet - e.g. a node added in
+    // the editor while the game is already running never enters the running game's own scene tree, since the
+    // debugger protocol only relays property edits, not new nodes.
+    void sync_material_properties(const String &scene_root_name, const NodePath &node_path, const String &node_name,
+        bool is_custom_material, int material_type, const String &custom_material_name, float absorption_lf,
         float absorption_hf, float scattering, float transmission_lf, float transmission_hf,
         float flat_transmission_lf, float flat_transmission_hf, const Color &color);
 };

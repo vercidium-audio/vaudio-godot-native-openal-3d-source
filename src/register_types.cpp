@@ -67,14 +67,55 @@ static Node *find_child_named_recursive(Node *node, const StringName &name)
     return nullptr;
 }
 
+// VADefaultMaterial/VACustomMaterial nodes are always direct children of a VAWorld node (see both classes' doc
+// comments), so the missing material node's parent is just the VAWorld one level up node_path - which is expected
+// to already exist in the running game's tree (either it was there when the scene loaded, or the game's own
+// VAWorld itself). Returns nullptr (with no node created) if that parent isn't found either.
+static Node *create_missing_material_node(Node *scene_root, const NodePath &node_path, const String &node_name,
+    bool is_custom_material, int material_type, const String &custom_material_name)
+{
+    int64_t name_count = node_path.get_name_count();
+    if (name_count < 2)
+        return nullptr;
+
+    Node *parent = scene_root->get_node_or_null(node_path.slice(0, name_count - 1));
+
+    if (!Object::cast_to<va_godot::VAWorld>(parent))
+        return nullptr;
+
+    Node *node;
+
+    if (is_custom_material)
+    {
+        va_godot::VACustomMaterial *custom_material = memnew(va_godot::VACustomMaterial);
+        custom_material->set_material_name(custom_material_name);
+        node = custom_material;
+    }
+    else
+    {
+        VADefaultMaterial *default_material = memnew(VADefaultMaterial);
+        default_material->set_material_type(material_type);
+        node = default_material;
+    }
+
+    node->set_name(node_name);
+    parent->add_child(node);
+
+    return node;
+}
+
 // Relays a VADefaultMaterial/VACustomMaterial property edit made in the Inspector while the game is running - see
 // VAMaterialPropertiesInspectorPlugin. Unlike on_debugger_message's "sync_primitive" handling below, this never
-// touches node metadata or re-registers a primitive: the target node's own apply_properties_from_editor pushes the
-// new values straight into the ::VAWorld material already tracking it.
+// touches node metadata: the target node's own apply_properties_from_editor pushes the new values straight into
+// the ::VAWorld material already tracking it. If the node doesn't exist yet (e.g. it was just created in the
+// editor while the game is already running - the debugger protocol only relays property edits, not new nodes, so
+// the running game's own tree never heard about it), it's created here under its already-existing parent so its
+// own _enter_tree can register it with the running ::VAWorld the normal way.
 static bool on_sync_material_properties(const Array &data)
 {
-    // scene_root_name, node_path, 7 material floats, color
-    if (data.size() < 10)
+    // scene_root_name, node_path, node_name, is_custom_material, material_type, custom_material_name,
+    // 7 material floats, color
+    if (data.size() < 14)
         return false;
 
     SceneTree *scene_tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
@@ -98,14 +139,22 @@ static bool on_sync_material_properties(const Array &data)
     NodePath node_path = data[1];
     Node *node = scene_root->get_node_or_null(node_path);
 
-    float absorption_lf = data[2];
-    float absorption_hf = data[3];
-    float scattering = data[4];
-    float transmission_lf = data[5];
-    float transmission_hf = data[6];
-    float flat_transmission_lf = data[7];
-    float flat_transmission_hf = data[8];
-    Color color = data[9];
+    String node_name = data[2];
+    bool is_custom_material = data[3];
+    int material_type = data[4];
+    String custom_material_name = data[5];
+
+    float absorption_lf = data[6];
+    float absorption_hf = data[7];
+    float scattering = data[8];
+    float transmission_lf = data[9];
+    float transmission_hf = data[10];
+    float flat_transmission_lf = data[11];
+    float flat_transmission_hf = data[12];
+    Color color = data[13];
+
+    if (!node)
+        node = create_missing_material_node(scene_root, node_path, node_name, is_custom_material, material_type, custom_material_name);
 
     if (VADefaultMaterial *default_material = Object::cast_to<VADefaultMaterial>(node))
         default_material->apply_properties_from_editor(absorption_lf, absorption_hf, scattering,
@@ -116,7 +165,8 @@ static bool on_sync_material_properties(const Array &data)
     else
         VA_WARN(
             "Received a material property edit from the editor for '", node_path,
-            "', but no matching VADefaultMaterial/VACustomMaterial node exists under '", scene_root_name, "' (", scene_root->get_path(), ")");
+            "', but no matching VADefaultMaterial/VACustomMaterial node exists under '", scene_root_name, "' (", scene_root->get_path(),
+            "), and its parent VAWorld node doesn't exist in the running scene either - restart the running game to pick it up");
 
     return true;
 }

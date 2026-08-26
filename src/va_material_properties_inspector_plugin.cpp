@@ -46,6 +46,12 @@ void VAMaterialPropertiesInspectorPlugin::on_property_edited(const String &prope
 
 // Mirrors VAMaterialInspectorPlugin::sync_running_game - see its header comment for why the debugger protocol is the
 // only bridge between the editor's local copy of this node and the running game's separate process/copy.
+//
+// node->get_name()/is_custom_material/material_type/custom_material_name let the receiving end
+// (on_sync_material_properties in register_types.cpp) create the node itself if it doesn't exist in the running
+// game yet - e.g. a VADefaultMaterial/VACustomMaterial added in the editor while the game is already running never
+// enters the running game's own scene tree (the debugger protocol only relays property edits, not new nodes), so
+// without this the sync would just fail with "no matching node exists".
 void VAMaterialPropertiesInspectorPlugin::sync_running_game(Node *node)
 {
     if (!debugger_plugin.is_valid())
@@ -54,6 +60,13 @@ void VAMaterialPropertiesInspectorPlugin::sync_running_game(Node *node)
     Node *scene_root = EditorInterface::get_singleton()->get_edited_scene_root();
     if (!scene_root)
         return;
+
+    bool is_custom_material = Object::cast_to<VACustomMaterial>(node) != nullptr;
+
+    // VADefaultMaterial has no material_name property and VACustomMaterial has no material_type property - only the
+    // one that applies to this node's actual type is meaningful, the receiving end ignores the other.
+    int material_type = is_custom_material ? 0 : (int)node->get("material_type");
+    String custom_material_name = is_custom_material ? (String)node->get("material_name") : String();
 
     NodePath node_path = scene_root->get_path_to(node);
 
@@ -66,6 +79,7 @@ void VAMaterialPropertiesInspectorPlugin::sync_running_game(Node *node)
     float flat_transmission_hf = node->get("flat_transmission_hf");
     Color color = node->get("color");
 
-    debugger_plugin->sync_material_properties(scene_root->get_name(), node_path, absorption_lf, absorption_hf,
+    debugger_plugin->sync_material_properties(scene_root->get_name(), node_path, String(node->get_name()),
+        is_custom_material, material_type, custom_material_name, absorption_lf, absorption_hf,
         scattering, transmission_lf, transmission_hf, flat_transmission_lf, flat_transmission_hf, color);
 }
