@@ -1,14 +1,20 @@
 #include "va_world.h"
 
+#include <godot_cpp/classes/camera3d.hpp>
+#include <godot_cpp/classes/editor_interface.hpp>
+#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/classes/sub_viewport.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include "openal/al_manager.h"
+#include "va_conversion_plugin.h"
 #include "va_conversions.h"
+#include "va_debugger_plugin.h"
 #include "va_emitter.h"
 #include "va_custom_material.h"
 #include "va_engine_util.h"
@@ -110,9 +116,12 @@ void VAWorld::_bind_methods()
     
     ClassDB::bind_method(D_METHOD("get_rendering_enabled"), &VAWorld::get_rendering_enabled);
     ClassDB::bind_method(D_METHOD("set_rendering_enabled", "value"), &VAWorld::set_rendering_enabled);
+    ClassDB::bind_method(D_METHOD("get_sync_viewport"), &VAWorld::get_sync_viewport);
+    ClassDB::bind_method(D_METHOD("set_sync_viewport", "value"), &VAWorld::set_sync_viewport);
 
     ADD_GROUP("Rendering", "");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "rendering_enabled"), "set_rendering_enabled", "get_rendering_enabled");
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "sync_viewport"), "set_sync_viewport", "get_sync_viewport");
 
     // Read-only timing stats (milliseconds) - no ADD_PROPERTY, called directly from GDScript like methods (world.get_main_thread_time()).
     ClassDB::bind_method(D_METHOD("get_main_thread_time"), &VAWorld::get_main_thread_time);
@@ -143,6 +152,8 @@ VAWorld::VAWorld()
     // The world should only exist at runtime, not in the editor; world stays nullptr and every other method already null-checks it.
     if (IS_EDITOR_HINT())
     {
+        // Still needs to _process so it can poll/send the viewport camera - see send_viewport_camera_to_running_game.
+        set_process(true);
         return;
     }
 
@@ -265,6 +276,14 @@ void VAWorld::_exit_tree()
 
 void VAWorld::_process(double delta)
 {
+    if (IS_EDITOR_HINT())
+    {
+        if (sync_viewport)
+            send_viewport_camera_to_running_game();
+
+        return;
+    }
+
     if (listener)
     {
         ALManager *manager = ALManager::get_singleton();
@@ -289,6 +308,27 @@ void VAWorld::_process(double delta)
             VA_ERROR_NAMED_RESULT(result, "Update failed");
         }
     }
+}
+
+void VAWorld::send_viewport_camera_to_running_game()
+{
+    if (!Engine::get_singleton()->has_singleton(VAConversionPlugin::DEBUGGER_PLUGIN_SINGLETON_NAME))
+        return;
+
+    SubViewport *viewport = EditorInterface::get_singleton()->get_editor_viewport_3d(0);
+    Camera3D *camera = viewport ? viewport->get_camera_3d() : nullptr;
+
+    if (!camera)
+        return;
+
+    Object *singleton_object = Engine::get_singleton()->get_singleton(VAConversionPlugin::DEBUGGER_PLUGIN_SINGLETON_NAME);
+    VADebuggerPlugin *debugger_plugin = Object::cast_to<VADebuggerPlugin>(singleton_object);
+
+    if (!debugger_plugin)
+        return;
+
+    // camera->get_fov() is vertical FOV in degrees, matching vaWorldSetFieldOfView, as long as KeepAspect is KeepHeight.
+    debugger_plugin->sync_viewport_camera(camera->get_global_position(), camera->get_global_rotation(), camera->get_fov());
 }
 
 bool VAWorld::register_custom_material(va_godot::VACustomMaterial *material)

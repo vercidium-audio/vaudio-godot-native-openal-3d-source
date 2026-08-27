@@ -53,6 +53,10 @@ class VAConversionPlugin : public EditorPlugin
 {
     GDCLASS(VAConversionPlugin, EditorPlugin);
 
+public:
+    // VAWorld looks this up via Engine::get_singleton to reach debugger_plugin, since VAWorld is instantiated by the user's own scene, not this plugin.
+    static constexpr const char *DEBUGGER_PLUGIN_SINGLETON_NAME = "VADebuggerPlugin";
+
 private:
     Ref<ConversionContextMenuPlugin> context_menu_plugin;
     Ref<VADeviceRefreshInspectorPlugin> device_refresh_inspector_plugin;

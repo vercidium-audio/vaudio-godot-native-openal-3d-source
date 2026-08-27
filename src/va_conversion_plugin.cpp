@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/editor_interface.hpp>
 #include <godot_cpp/classes/editor_selection.hpp>
+#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -348,6 +349,9 @@ void VAConversionPlugin::_enter_tree()
     debugger_plugin.instantiate();
     add_debugger_plugin(debugger_plugin);
 
+    // Also an Engine singleton so VAWorld can reach it - see DEBUGGER_PLUGIN_SINGLETON_NAME.
+    Engine::get_singleton()->register_singleton(DEBUGGER_PLUGIN_SINGLETON_NAME, debugger_plugin.ptr());
+
     material_inspector_plugin.instantiate();
     material_inspector_plugin->set_debugger_plugin(debugger_plugin);
     add_inspector_plugin(material_inspector_plugin);
@@ -380,6 +384,9 @@ void VAConversionPlugin::_exit_tree()
 
     remove_node_3d_gizmo_plugin(world_gizmo_plugin);
     world_gizmo_plugin.unref();
+
+    if (Engine::get_singleton()->has_singleton(DEBUGGER_PLUGIN_SINGLETON_NAME))
+        Engine::get_singleton()->unregister_singleton(DEBUGGER_PLUGIN_SINGLETON_NAME);
 
     remove_debugger_plugin(debugger_plugin);
     debugger_plugin.unref();

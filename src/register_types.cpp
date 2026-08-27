@@ -9,6 +9,7 @@
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
+#include <godot_cpp/core/math.hpp>
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/node_path.hpp>
@@ -191,6 +192,36 @@ static bool on_sync_material_properties(const Array &data)
     return true;
 }
 
+// Receiving end of VADebuggerPlugin::sync_viewport_camera. Unlike sync_primitive/sync_material_properties this isn't addressed to a specific node - it's applied to the first VAWorld found in the running scene.
+static bool on_sync_viewport_camera(const Array &data)
+{
+    if (data.size() < 3)
+        return false;
+
+    SceneTree *scene_tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
+    Node *tree_root = scene_tree ? scene_tree->get_root() : nullptr;
+
+    if (!tree_root)
+        return true;
+
+    va_godot::VAWorld *va_world = va_godot::find_va_world_recursive(tree_root);
+
+    if (!va_world || !va_world->get_sync_viewport() || !va_world->get_handle() || !va_world->get_rendering_enabled())
+        return true;
+
+    Vector3 position = data[0];
+    Vector3 rotation = data[1];
+    float fov_degrees = data[2];
+
+    vaWorldSetManualCamera(va_world->get_handle(), false);
+    vaWorldSetCameraPosition(va_world->get_handle(), ToVAudio(position));
+    vaWorldSetCameraYaw(va_world->get_handle(), rotation.y);
+    vaWorldSetCameraPitch(va_world->get_handle(), rotation.x);
+    vaWorldSetFieldOfView(va_world->get_handle(), Math::deg_to_rad(fov_degrees));
+
+    return true;
+}
+
 // Receiving end of VADebuggerPlugin::sync_primitive - the editor sends a "vaudio:sync_primitive" debugger message
 // with the edited scene's root node name and a NodePath relative to it, whenever the "Vercidium Audio" Inspector
 // material dropdown or permeation checkbox changes while the game is running. EditorInspectorPlugin controls can only
@@ -199,6 +230,9 @@ static bool on_debugger_message(const String &message, const Array &data)
 {
     if (message == "sync_material_properties")
         return on_sync_material_properties(data);
+
+    if (message == "sync_viewport_camera")
+        return on_sync_viewport_camera(data);
 
     if (message != "sync_primitive" || data.size() < 4)
         return false;

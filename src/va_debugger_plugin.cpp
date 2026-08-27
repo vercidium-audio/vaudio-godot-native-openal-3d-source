@@ -62,3 +62,22 @@ void VADebuggerPlugin::sync_material_properties(const String &scene_root_name, c
         }
     }
 }
+
+void VADebuggerPlugin::sync_viewport_camera(const Vector3 &position, const Vector3 &rotation, float fov_degrees)
+{
+    Array sessions = get_sessions();
+
+    for (int i = 0; i < sessions.size(); i++)
+    {
+        Ref<EditorDebuggerSession> session = sessions[i];
+
+        if (session.is_valid() && session->is_active())
+        {
+            Array data;
+            data.push_back(position);
+            data.push_back(rotation);
+            data.push_back(fov_degrees);
+            session->send_message("vaudio:sync_viewport_camera", data);
+        }
+    }
+}

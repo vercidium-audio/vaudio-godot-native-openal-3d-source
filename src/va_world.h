@@ -70,6 +70,10 @@ private:
 
     bool pending_shutdown = false;
     bool rendering_enabled = true;
+    bool sync_viewport = true;
+
+    // Editor-side only (called from _process while IS_EDITOR_HINT()) - sends the editor's own viewport camera to the running game via VADebuggerPlugin::sync_viewport_camera, fetched through Engine::get_singleton since this VAWorld isn't constructed by that plugin.
+    void send_viewport_camera_to_running_game();
 
     void init_scene();
     void on_node_added(Node *node);
@@ -196,6 +200,17 @@ public:
 
         if (world)
             vaWorldSetRenderingEnabled(world, value);
+    }
+
+    // While playing, mirrors the editor's viewport camera into the debug window's camera.
+    bool get_sync_viewport() const
+    {
+        return sync_viewport;
+    }
+
+    void set_sync_viewport(bool value)
+    {
+        sync_viewport = value;
     }
 
     // Shadows the inherited Node3D::position property so moving this node also updates vaWorldSetPosition - see va_world_properties.cpp.
