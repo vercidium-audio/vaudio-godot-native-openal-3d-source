@@ -363,6 +363,9 @@ void VAConversionPlugin::_enter_tree()
     world_gizmo_plugin.instantiate();
     add_node_3d_gizmo_plugin(world_gizmo_plugin);
 
+    node_gizmo_plugin.instantiate();
+    add_node_3d_gizmo_plugin(node_gizmo_plugin);
+
     add_tool_menu_item("Refresh OpenAL Devices", callable_mp(this, &VAConversionPlugin::refresh_output_device_setting));
 }
 
@@ -384,6 +387,9 @@ void VAConversionPlugin::_exit_tree()
 
     remove_node_3d_gizmo_plugin(world_gizmo_plugin);
     world_gizmo_plugin.unref();
+
+    remove_node_3d_gizmo_plugin(node_gizmo_plugin);
+    node_gizmo_plugin.unref();
 
     if (Engine::get_singleton()->has_singleton(DEBUGGER_PLUGIN_SINGLETON_NAME))
         Engine::get_singleton()->unregister_singleton(DEBUGGER_PLUGIN_SINGLETON_NAME);

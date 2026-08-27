@@ -30,6 +30,7 @@
 #include "va_custom_material.h"
 #include "va_material_properties_inspector_plugin.h"
 #include "va_networked_stream_source.h"
+#include "va_node_gizmo.h"
 #include "va_primitive_ref.h"
 #include "va_raytraced_source.h"
 #include "va_source.h"
@@ -406,6 +407,7 @@ void initialize_vaudio_godot_native_openal_3d_module(ModuleInitializationLevel p
         ClassDB::register_class<va_godot::VAMaterialInspectorPlugin>();
         ClassDB::register_class<va_godot::VAMaterialPropertiesInspectorPlugin>();
         ClassDB::register_class<va_godot::VAWorldGizmoPlugin>();
+        ClassDB::register_class<va_godot::VANodeGizmoPlugin>();
         ClassDB::register_class<va_godot::VADebuggerPlugin>();
         ClassDB::register_class<va_godot::VAConversionPlugin>();
         EditorPlugins::add_by_type<va_godot::VAConversionPlugin>();
