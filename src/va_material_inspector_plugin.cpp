@@ -17,7 +17,9 @@ using namespace va_godot;
 namespace
 {
 
-// "Air" (index 0) means "no vaudio geometry", which is what leaving the metadata unset already means.
+// The dropdown's index 0 is a literal "None" entry (removes the metadata) and index 1 a literal
+// "Air" entry (stores "air"), so the built-in name at index 0 ("air") is added by hand rather than
+// through the BUILTIN_MATERIAL_NAMES loop, which starts at index 1.
 const int FIRST_SELECTABLE_BUILTIN_INDEX = 1;
 
 // Custom materials only register their name with the running ::VAWorld at runtime, so at edit time this walks the scene tree directly instead.
@@ -71,7 +73,9 @@ void VAMaterialInspectorPlugin::_parse_end(Object *object)
 
     OptionButton *option_button = memnew(OptionButton);
     option_button->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    option_button->add_item("Air (no geometry)");
+    // Index 0 ("None") removes the metadata; index 1 ("Air") explicitly stores the "air" material string.
+    option_button->add_item("None");
+    option_button->add_item("Air");
 
     PackedStringArray builtin_names = VAWorld::get_builtin_material_names();
     for (int i = FIRST_SELECTABLE_BUILTIN_INDEX; i < builtin_names.size(); i++)
@@ -138,7 +142,7 @@ void VAMaterialInspectorPlugin::on_material_selected(int32_t index, Node *node, 
     if (index == 0)
         node->remove_meta(material_meta_key);
     else
-        node->set_meta(material_meta_key, option_button->get_item_text(index));
+        node->set_meta(material_meta_key, option_button->get_item_text(index).to_lower());
 
     EditorInterface::get_singleton()->mark_scene_as_unsaved();
 
