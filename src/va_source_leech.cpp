@@ -10,10 +10,6 @@
 
 void VASourceLeech::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("get_play_when_raytracing_completes"), &VASourceLeech::get_play_when_raytracing_completes);
-    ClassDB::bind_method(D_METHOD("set_play_when_raytracing_completes", "value"), &VASourceLeech::set_play_when_raytracing_completes);
-    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "play_when_raytracing_completes"), "set_play_when_raytracing_completes", "get_play_when_raytracing_completes");
-
     // Read-only muffling stats - no ADD_PROPERTY, same rationale as VASource's.
     ClassDB::bind_method(D_METHOD("get_muffling_gain_lf"), &VASourceLeech::get_muffling_gain_lf);
     ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VASourceLeech::get_muffling_gain_hf);
@@ -26,16 +22,6 @@ VASourceLeech::VASourceLeech()
 
 VASourceLeech::~VASourceLeech()
 {
-}
-
-bool VASourceLeech::get_play_when_raytracing_completes() const
-{
-    return play_when_raytracing_completes;
-}
-
-void VASourceLeech::set_play_when_raytracing_completes(bool value)
-{
-    play_when_raytracing_completes = value;
 }
 
 float VASourceLeech::get_muffling_gain_lf() const
@@ -86,7 +72,6 @@ bool VASourceLeech::play()
 {
     if (!is_raytraced())
     {
-        play_when_raytracing_completes = true;
         return false;
     }
 
@@ -104,7 +89,7 @@ void VASourceLeech::_process(double delta)
         return;
     }
 
-    if (!played && play_when_raytracing_completes)
+    if (!played && get_autoplay())
     {
         play();
     }

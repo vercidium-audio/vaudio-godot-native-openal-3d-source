@@ -15,7 +15,6 @@ class VASource : public VARaytracedSource
     GDCLASS(VASource, VARaytracedSource);
 
 private:
-    bool play_when_raytracing_completes = true;
     bool played = false;
 
 protected:
@@ -27,9 +26,6 @@ public:
 
     void _process(double delta) override;
 
-    // If raytracing hasn't produced results yet, arms play_when_raytracing_completes and returns false. Actual playback happens once is_raytraced() is true.
+    // If raytracing hasn't produced results yet, returns false without playing. Actual playback happens once is_raytraced() is true, via autoplay in _process.
     bool play() override;
-
-    bool get_play_when_raytracing_completes() const;
-    void set_play_when_raytracing_completes(bool value);
 };

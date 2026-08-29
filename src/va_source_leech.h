@@ -28,7 +28,6 @@ private:
     // Not owned - the parent VAEmitter this node leeches raytracing results off, resolved once in _enter_tree via get_parent().
     va_godot::VAEmitter *emitter = nullptr;
 
-    bool play_when_raytracing_completes = true;
     bool played = false;
 
     void apply_raytracing_results(va_godot::VAEmitter *other);
@@ -46,11 +45,8 @@ public:
 
     bool is_raytraced() const;
 
-    // Matches VASource's Play() override: if the parent emitter hasn't produced raytracing results yet, arms play_when_raytracing_completes and returns false.
+    // Matches VASource's Play() override: if the parent emitter hasn't produced raytracing results yet, returns false without playing.
     bool play() override;
-
-    bool get_play_when_raytracing_completes() const;
-    void set_play_when_raytracing_completes(bool value);
 
     // Current muffling filter state (direct/dry path only); 1.0/1.0 until the listener has raytraced the parent emitter at least once.
     float get_muffling_gain_lf() const;

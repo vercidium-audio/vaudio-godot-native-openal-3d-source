@@ -4,12 +4,8 @@
 	</brief_description>
 	<description>
 		A sound source that leeches raytracing results off a parent [VAEmitter] instead of casting its own rays. Must be a direct child of a [VAEmitter] (or [VAListener]) node. Useful for sounds that fire frequently from the same location (e.g. footsteps, gunshots) without each needing its own raytraced emitter.
+		If [member ALSource.autoplay] is [code]true[/code] and [method play] is called (including the automatic call on [code]_ready[/code]) before the parent emitter has produced any raytracing results yet, playback is deferred and starts automatically as soon as those results are available.
 	</description>
 	<tutorials>
 	</tutorials>
-	<members>
-		<member name="play_when_raytracing_completes" type="bool" setter="set_play_when_raytracing_completes" getter="get_play_when_raytracing_completes" default="true">
-			If [code]true[/code] and [method play] is called before the parent emitter has produced any raytracing results yet, playback is deferred and starts automatically as soon as those results are available.
-		</member>
-	</members>
 </class>
