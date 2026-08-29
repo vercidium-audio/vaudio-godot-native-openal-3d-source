@@ -44,7 +44,7 @@ void VAEmitter::_bind_methods()
 
     ClassDB::bind_method(D_METHOD("get_reverb_energy_cap"), &VAEmitter::get_reverb_energy_cap);
     ClassDB::bind_method(D_METHOD("set_reverb_energy_cap", "value"), &VAEmitter::set_reverb_energy_cap);
-    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reverb_energy_cap", PROPERTY_HINT_RANGE, "0.0,1.0"), "set_reverb_energy_cap", "get_reverb_energy_cap");
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reverb_energy_cap", PROPERTY_HINT_RANGE, "0.001,1.0"), "set_reverb_energy_cap", "get_reverb_energy_cap");
 
     ClassDB::bind_method(D_METHOD("get_max_volume"), &VAEmitter::get_max_volume);
     ClassDB::bind_method(D_METHOD("set_max_volume", "value"), &VAEmitter::set_max_volume);
