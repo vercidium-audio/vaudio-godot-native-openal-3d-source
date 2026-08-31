@@ -374,11 +374,8 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         {
             listener = emitter;
 
-            // Wire up any emitters that registered before this listener existed, instead of leaving them permanently untargeted.
-            for (va_godot::VAEmitter *pending_target : pending_targets)
-                listener->add_target(pending_target);
-
-            pending_targets.clear();
+            // Wire up every source registered so far, in either order - some may have registered before this listener existed, instead of leaving them permanently untargeted.
+            wire_pending_targets();
         }
         else
             VA_WARN_NAMED("This world can only have one VAListener node. Current listener: '", listener->get_name(), "' Second listener: '", emitter->get_name(), "'");
@@ -386,20 +383,41 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         return;
     }
 
-    if (!listener)
-    {
-        // The scene added this emitter before the main listener node - hold onto it and add it as a target once the listener registers, instead of dropping it.
-        pending_targets.push_back(emitter);
+    // Recorded before the listener check so a listener whose register_emitter runs later this same frame still sees this source when it walks registered_emitters.
+    registered_emitters.push_back(emitter);
 
+    if (listener)
+    {
+        listener->add_target(emitter);
         return;
     }
 
-    listener->add_target(emitter);
+    // No listener registered yet. If a VAListener node is in the tree but its own register_emitter simply hasn't run this frame (child-emitter registration order vs sibling _enter_tree), the walk it does on registering already covers us. This deferred re-walk is the belt-and-braces path for any other ordering where neither immediate wiring nor the listener's walk reached this source.
+    if (!wire_pending_targets_queued)
+    {
+        wire_pending_targets_queued = true;
+        callable_mp(this, &VAWorld::wire_pending_targets).call_deferred();
+    }
+}
+
+void VAWorld::wire_pending_targets()
+{
+    wire_pending_targets_queued = false;
+
+    if (!listener)
+        return;
+
+    for (va_godot::VAEmitter *emitter : registered_emitters)
+    {
+        // Skip a source whose SDK handle has already been torn down (raytrace_once removal, pending destroy) but whose node is still briefly in registered_emitters.
+        if (emitter->get_handle())
+            listener->add_target(emitter);
+    }
 }
 
 void VAWorld::unregister_pending_target(va_godot::VAEmitter *emitter)
 {
-    pending_targets.erase(std::remove(pending_targets.begin(), pending_targets.end(), emitter), pending_targets.end());
+    registered_emitters.erase(std::remove(registered_emitters.begin(), registered_emitters.end(), emitter), registered_emitters.end());
 }
 
 void VAWorld::unregister_listener(va_godot::VAEmitter *emitter)

@@ -48,8 +48,13 @@ private:
 
     va_godot::VAEmitter *listener = nullptr;
 
-    // Emitters that invoked register_emitter() before the listener existed; drained when the main listener registers.
-    std::vector<va_godot::VAEmitter *> pending_targets;
+    // Every non-listener emitter currently registered with this world, in registration order. Re-walked to wire listener targets whenever the listener appears (or re-appears after a scene reload), so VASource/VAListener/VAWorld can enter the tree in any order.
+    std::vector<va_godot::VAEmitter *> registered_emitters;
+
+    // (Re-)adds every registered_emitters entry as a target of the current listener. Safe to call repeatedly - vaEmitterAddTarget treats an existing target as a no-op.
+    void wire_pending_targets();
+
+    bool wire_pending_targets_queued = false;
 
     ALReverbEffect listener_reverb_effect;
     std::vector<std::unique_ptr<ALReverbEffect>> grouped_reverb_effects;
