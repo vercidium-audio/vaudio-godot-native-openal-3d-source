@@ -68,12 +68,6 @@ public:
     Color get_color() const;
     void set_color(const Color &value);
 
-    // Relays a property edit made on the editor's own copy of this node (see
-    // VAMaterialPropertiesInspectorPlugin) onto the running game's separate copy - mirrors
-    // VADefaultMaterial.ApplyPropertiesFromEditor in the C# Mono plugin. Called instead of going
-    // through the setters above, since those already ran (with no effect - registered is only
-    // ever set true by this node's own _enter_tree, which bails out in the editor) on the
-    // editor's own copy.
     void apply_properties_from_editor(float new_absorption_lf, float new_absorption_hf, float new_scattering,
         float new_transmission_lf, float new_transmission_hf, float new_flat_transmission_lf,
         float new_flat_transmission_hf, const Color &new_color);

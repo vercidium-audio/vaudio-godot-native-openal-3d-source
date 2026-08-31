@@ -15,11 +15,6 @@ class VAWorld;
 class VAEmitter;
 }
 
-// Shared raytracing surface for any spatialised source that casts its own reverb/ambience/visualisation rays, regardless of
-// how it gets audio into OpenAL (a fixed decoded buffer for VASource, a live pushed/callback buffer for VAStreamSource).
-// Factored out of VASource's old private child-VAEmitter machinery so both classes get identical reverb/muffling/ambience
-// behaviour instead of duplicating ~25 properties. Owns nothing about *when*/*how* playback starts (each subclass's own
-// play()/open_stream() override does that) - only the emitter lifecycle, property surface, and per-frame raytracing application.
 class VARaytracedSource : public ALSource3D
 {
     GDCLASS(VARaytracedSource, ALSource3D);
@@ -59,7 +54,6 @@ private:
 
     void create_emitter();
 
-    // Set while _enter_tree found no VAWorld yet - see VAEmitter's identical waiting_for_world field (a source's owning scene may enter the tree before being parented under the level).
     bool waiting_for_world = false;
 
     void retry_find_va_world(Node *node);
@@ -76,12 +70,10 @@ public:
     void _enter_tree() override;
     void _exit_tree() override;
 
-    // Not overriding _process here (unlike VAEmitter/VASourceLeech) - each subclass's own _process calls this directly, since VAStreamSource also needs its own per-frame stream-drain work interleaved.
     void process_raytracing(double delta);
 
     bool is_raytraced() const;
 
-    // The internal VAEmitter this node owns - lets VAVisualisation::find_emitter resolve a valid emitter when placed as a direct child, since this node itself is not a VAEmitter subclass.
     va_godot::VAEmitter *get_emitter() const
     {
         return emitter;

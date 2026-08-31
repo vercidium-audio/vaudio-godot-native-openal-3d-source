@@ -1,6 +1,6 @@
 #pragma once
 
-// Windows-only for v1: soft_oal.dll is loaded via LoadLibrary/GetProcAddress since no import .lib is vendored.
+// TODO: Windows-only. soft_oal.dll is loaded via LoadLibrary/GetProcAddress since no import .lib is vendored.
 #include <windows.h>
 
 #include <godot_cpp/classes/object.hpp>
@@ -15,10 +15,6 @@
 
 using namespace godot;
 
-// Owns the OpenAL Soft device/context pair for the whole plugin, native equivalent of ALManager.cs.
-// A singleton Object (not a Node, like Godot's own AudioServer), registered in register_types.cpp.
-// Heap-allocated with `memnew`, not a static global - GDExtension binding functions aren't bound
-// yet at CRT static-init time, so a static Object-derived global would crash.
 class ALManager : public Object
 {
     GDCLASS(ALManager, Object);
@@ -40,10 +36,8 @@ private:
     alcIsExtensionPresentFn alcIsExtensionPresent_ = nullptr;
     alcGetProcAddressFn alcGetProcAddress_ = nullptr;
 
-    // ALC_SOFT_reopen_device entry point; null if unsupported, reinitialize() falls back to close+recreate.
     alcReopenDeviceSOFTFn alcReopenDeviceSOFT_ = nullptr;
 
-    // ALC_EXT_capture entry points, used by ALCaptureDevice.
     alcCaptureOpenDeviceFn alcCaptureOpenDevice_ = nullptr;
     alcCaptureCloseDeviceFn alcCaptureCloseDevice_ = nullptr;
     alcCaptureStartFn alcCaptureStart_ = nullptr;
@@ -91,36 +85,27 @@ private:
     alAuxiliaryEffectSlotiFn alAuxiliaryEffectSloti_ = nullptr;
     alAuxiliaryEffectSlotfFn alAuxiliaryEffectSlotf_ = nullptr;
 
-    // AL_SOFT_callback_buffer entry point; null if unsupported, ALStreamBuffer checks before using it.
     alBufferCallbackSOFTFn alBufferCallbackSOFT_ = nullptr;
 
     bool efx_present = false;
 
-    // Settings pushed in before (re)opening the device - see reinitialize(). 0/empty means driver default.
-    // std::string not godot::String: a godot::String member here once crashed the DLL as a static global.
     std::string device_name;
     int max_auxiliary_sends = 0;
 
-    // ALC_MONO_SOURCES/ALC_STEREO_SOURCES - unlike the other settings, not settable at runtime (see ALManager.cs).
     int max_mono_sources = 0;
     int max_stereo_sources = 0;
 
     int sample_rate = 0;
     bool hrtf_enabled = false;
 
-    // Stored so reinitialize() can re-apply it after a device/context recreation.
     ALenum distance_model = AL_INVERSE_DISTANCE_CLAMPED;
 
-    // AL_METERS_PER_UNIT (EFX), distinct from VAWorld::meters_per_unit which only feeds vaudio's acoustics model.
     float meters_per_unit = 1.0f;
 
-    // Global AL speed of sound, distinct from VAWorld::speed_of_sound which only feeds vaudio's acoustics model.
     float speed_of_sound = 343.0f;
 
-    // Diagnostic toggle: routes every source's direct path through silence_filter so only reverb is audible.
     bool reverb_only = false;
 
-    // Lazily-created shared gain-0 filter for reverb_only, process-wide like ALSource3D.cs's silenceFilter.
     ALFilter silence_filter;
 
     bool load_library();
@@ -142,28 +127,19 @@ public:
     ALManager() = default;
     ~ALManager();
 
-    // Loads soft_oal.dll, resolves the entry points this plugin needs, opens
-    // the default playback device, and creates+activates an OpenAL context.
-    // Returns false (with a Godot error already logged) on any failure.
     bool initialize();
-
-    // If ALC_SOFT_reopen_device is present, redirects the existing device/context in place, keeping
-    // all AL objects valid. Otherwise falls back to a full close_device()+open_device_and_context().
     bool reinitialize(const String &new_device_name, int new_max_auxiliary_sends, int new_sample_rate, bool new_hrtf_enabled);
 
-    // Runtime device-switching entry point for a shipped game's audio settings menu
     bool set_output_device(const String &new_device_name)
     {
         return reinitialize(new_device_name, max_auxiliary_sends, sample_rate, hrtf_enabled);
     }
 
-    // Process-wide master volume multiplier applied on top of every source's own gain.
     void set_master_volume(float value)
     {
         alListenerf_(AL_GAIN, value);
     }
 
-    // Re-applied automatically after reinitialize() recreates the context (per-context state).
     void set_distance_model(ALenum value)
     {
         distance_model = value;
@@ -177,7 +153,6 @@ public:
         return distance_model;
     }
 
-    // Re-applied automatically after reinitialize() recreates the context (per-context state).
     void set_meters_per_unit(float value)
     {
         meters_per_unit = value;
@@ -191,7 +166,6 @@ public:
         return meters_per_unit;
     }
 
-    // Re-applied automatically after reinitialize() recreates the context (per-context state).
     void set_speed_of_sound(float value)
     {
         speed_of_sound = value;
@@ -205,7 +179,6 @@ public:
         return speed_of_sound;
     }
 
-    // Takes effect next time a source's direct filter is (re)applied, not retroactively on active sources.
     void set_reverb_only(bool value)
     {
         reverb_only = value;
@@ -216,7 +189,6 @@ public:
         return reverb_only;
     }
 
-    // Lazily creates the shared silence filter on first use.
     ALuint get_silence_filter_handle()
     {
         if (!silence_filter.is_valid())
@@ -225,13 +197,10 @@ public:
         return silence_filter.get_handle();
     }
 
-    // Falls back to ALC_ENUMERATION_EXT if ALC_ENUMERATE_ALL_EXT is unavailable. Can be called before initialize().
     PackedStringArray get_available_devices();
 
-    // Can be called before initialize().
     PackedStringArray get_available_capture_devices();
 
-    // Safe to call more than once, and even if initialize() was never called or failed partway through.
     void shutdown();
 
     bool is_initialized() const
@@ -249,7 +218,6 @@ public:
         return context;
     }
 
-    // Buffer entry points, exposed for ALBuffer to call directly.
     alGenBuffersFn al_gen_buffers() const
     {
         return alGenBuffers_;
@@ -270,8 +238,6 @@ public:
         return alGetError_;
     }
 
-    // ALC_EXT_capture entry points, exposed for ALCaptureDevice. Unlike other accessors here, these don't
-    // require is_initialized() - capture devices are independent ALC devices, opened/closed separately.
     alcCaptureOpenDeviceFn alc_capture_open_device() const
     {
         return alcCaptureOpenDevice_;
@@ -297,16 +263,11 @@ public:
         return alcCaptureSamples_;
     }
 
-    // Exposed for ALCaptureDevice::update() to query ALC_CAPTURE_SAMPLES
-    // (how many frames are currently ready to read) before calling
-    // alc_capture_samples().
     alcGetIntegervFn alc_get_integerv() const
     {
         return alcGetIntegerv_;
     }
 
-    // Source entry points - exposed for ALSourceHandle (src/openal/al_source_handle.cpp),
-    // same "no further wrapping" rationale as the buffer accessors above.
     alGenSourcesFn al_gen_sources() const
     {
         return alGenSources_;
@@ -352,13 +313,11 @@ public:
         return alSource3i_;
     }
 
-    // Checked by ALFilter before creating any filter objects.
     bool has_efx() const
     {
         return efx_present;
     }
 
-    // Filter entry points, exposed for ALFilter.
     alGenFiltersFn al_gen_filters() const
     {
         return alGenFilters_;
@@ -379,7 +338,6 @@ public:
         return alFilterf_;
     }
 
-    // Effect/effect-slot entry points, exposed for ALReverbEffect.
     alGenEffectsFn al_gen_effects() const
     {
         return alGenEffects_;
@@ -425,13 +383,11 @@ public:
         return alAuxiliaryEffectSlotf_;
     }
 
-    // Exposed for ALStreamBuffer. Null if AL_SOFT_callback_buffer wasn't resolved (see has_efx()).
     alBufferCallbackSOFTFn al_buffer_callback_soft() const
     {
         return alBufferCallbackSOFT_;
     }
 
-    // Called once per frame from VAWorld::_process against the scene's listener VAEmitter.
     void set_listener_position(const Vector3 &position)
     {
         ALfloat values[3] = {position.x, position.y, position.z};

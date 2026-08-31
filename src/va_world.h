@@ -35,7 +35,6 @@ namespace va_godot
 class VACustomMaterial;
 class VAEmitter;
 
-
 // Name collision: the vaudio C SDK's opaque handle type is also called "VAWorld" (global namespace); inside va_godot, 'VAWorld' means this class and '::VAWorld' the SDK handle.
 // This is a Node3D purely so the editor can draw a gizmo for the bounds_position/bounds_size AABB (see VAWorldGizmoPlugin) - the node's own transform is otherwise unused by vaudio.
 class VAWorld : public Node3D
@@ -60,19 +59,14 @@ private:
 
     bool warned_missing_listener = false;
 
-    // Set at the start of _exit_tree - suppresses the missing-listener warning for the in-flight reverb-updated
-    // callback that can still fire once during teardown, after the listener unregisters but before this node is destroyed.
     bool is_shutting_down = false;
 
-    // Emitters whose on_emitter_removed already ran but whose ::VAEmitter* handle hasn't been vaEmitterDestroy'd yet
-    // (see on_emitter_removed's comment for why destruction can't happen synchronously); drained in ~VAWorld after vaWorldWait().
     std::vector<::VAEmitter *> pending_emitter_destroys;
 
     bool pending_shutdown = false;
     bool rendering_enabled = true;
     bool sync_viewport = true;
 
-    // Editor-side only (called from _process while IS_EDITOR_HINT()) - sends the editor's own viewport camera to the running game via VADebuggerPlugin::sync_viewport_camera, fetched through Engine::get_singleton since this VAWorld isn't constructed by that plugin.
     void send_viewport_camera_to_running_game();
 
     void init_scene();
@@ -114,33 +108,22 @@ public:
         return world;
     }
 
-    // Returns false if another VACustomMaterial already claimed the same ID.
     bool register_custom_material(va_godot::VACustomMaterial *material);
 
-    // Re-registers a single node's raytracing primitive after its "Vercidium Audio" material/permeation metadata changed
-    // in the Inspector while the game is running. Only called on the running game's own VAWorld via the debugger-message
-    // capture in register_types.cpp - a custom EditorInspectorPlugin control has no way to reach this directly.
     void sync_primitive(Node *node);
 
-    // The 23 built-in material names, for editor tooling such as VAMaterialInspectorPlugin's material dropdown.
     static PackedStringArray get_builtin_material_names();
 
-    // Node metadata key storing a node's chosen material name; single source of truth shared with MaterialMetaKey() in va_world_primitives.cpp.
     static String get_material_meta_key();
 
-    // Node metadata key storing a node's "Use Flat Transmission" override; shared with UseFlatTransmissionMetaKey() in va_world_primitives.cpp.
     static String get_use_flat_transmission_meta_key();
 
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
 
-    // Removes this emitter from pending_targets if it's still waiting there for a listener to appear.
     void unregister_pending_target(va_godot::VAEmitter *emitter);
 
-    // Called from VAEmitter::_exit_tree when the current listener leaves the tree, so this world doesn't keep a dangling pointer.
     void unregister_listener(va_godot::VAEmitter *emitter);
 
-    // Exports all world settings, materials, primitives, and emitters to a binary file. file_path is a native OS path
-    // (not res://) - callers should resolve via ProjectSettings::globalize_path first. Returns false on failure.
     bool export_to_file(const String &file_path);
 
     va_godot::VAEmitter *get_listener() const
@@ -148,9 +131,6 @@ public:
         return listener;
     }
 
-    // Called from VAEmitter::on_emitter_removed. Queues the now-detached handle for vaEmitterDestroy, deferred until
-    // ~VAWorld runs it after vaWorldWait() returns - destroying an emitter synchronously inside its own OnRemoved
-    // callback can race the world's in-flight raytracing drain. TODO: have the SDK guard against this itself.
     void defer_emitter_destroy(::VAEmitter *emitter)
     {
         pending_emitter_destroys.push_back(emitter);
@@ -185,9 +165,6 @@ public:
     {
         rendering_enabled = value;
 
-        // The debug render window creates its own native OpenGL (WGL) context; when the project's renderer is also
-        // gl_compatibility (real WGL, not ANGLE), both run on the main thread and corrupt each other's GL state,
-        // observed to crash the engine deterministically within seconds - refuse until the root cause is fixed upstream.
         if (value && RenderingServer::get_singleton()->get_current_rendering_method() == "gl_compatibility")
         {
             UtilityFunctions::push_warning("VAWorld: rendering_enabled was not applied because the "
@@ -202,7 +179,6 @@ public:
             vaWorldSetRenderingEnabled(world, value);
     }
 
-    // While playing, mirrors the editor's viewport camera into the debug window's camera.
     bool get_sync_viewport() const
     {
         return sync_viewport;
@@ -213,7 +189,6 @@ public:
         sync_viewport = value;
     }
 
-    // Shadows the inherited Node3D::position property so moving this node also updates vaWorldSetPosition - see va_world_properties.cpp.
     Vector3 get_position() const
     {
         return Node3D::get_position();

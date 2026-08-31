@@ -76,11 +76,6 @@ public:
     Color get_color() const;
     void set_color(const Color &value);
 
-    // Relays a property edit made on the editor's own copy of this node (see
-    // VAMaterialPropertiesInspectorPlugin) onto the running game's separate copy - mirrors
-    // VADefaultMaterial::apply_properties_from_editor. Unlike VADefaultMaterial, this node's own
-    // material_type/va_world_handle were already assigned by its own (non-editor) _enter_tree, so
-    // there's no need to re-resolve or re-register anything here.
     void apply_properties_from_editor(float new_absorption_lf, float new_absorption_hf, float new_scattering,
         float new_transmission_lf, float new_transmission_hf, float new_flat_transmission_lf,
         float new_flat_transmission_hf, const Color &new_color);

@@ -8,12 +8,9 @@
 
 #include <algorithm>
 
-// VAWorldProperties.cs port. Only pending_shutdown's bind/get/set live in va_world.cpp/_bind_methods (predates this file); everything else the C# exposes under [ExportGroup] is added here.
-
 namespace va_godot
 {
 
-// Shadows the inherited Node3D::set_position so moving this node also updates vaWorldSetPosition; the node's position doubles as the AABB's world-space origin (rotation/scale are hidden, see _validate_property).
 void VAWorld::set_position(const Vector3 &value)
 {
     Node3D::set_position(value);
@@ -42,7 +39,6 @@ void VAWorld::set_bounds_size(Vector3 value)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world size (may be negative or NaN/Infinity)");
 }
 
-// Editor-only visualization setting, not forwarded to the SDK - just recolors the viewport gizmo.
 void VAWorld::set_bounds_color(Color value)
 {
     bounds_color = value;
@@ -75,7 +71,6 @@ void VAWorld::set_world_is_indoors(bool value)
 
 void VAWorld::set_maximum_grouped_eax_count(int value)
 {
-    // SDK requires >= 1 (VA_OUT_OF_RANGE otherwise); only the negative side is clamped here, so a caller passing 0 is still rejected by the SDK and reported below.
     maximum_grouped_eax_count = std::max(0, value);
 
     if (!world)
@@ -89,7 +84,6 @@ void VAWorld::set_maximum_grouped_eax_count(int value)
 
 void VAWorld::set_meters_per_unit(float value)
 {
-    // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     meters_per_unit = std::max(0.0001f, value);
 
     if (world)
@@ -106,7 +100,6 @@ void VAWorld::set_meters_per_unit(float value)
 
 void VAWorld::set_speed_of_sound(float value)
 {
-    // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     speed_of_sound = std::max(0.0001f, value);
 
     if (world)
@@ -117,12 +110,10 @@ void VAWorld::set_speed_of_sound(float value)
             VA_ERROR_NAMED_RESULT(result, "Failed to set world speed of sound (may be <= 0, NaN or Infinity)");
     }
 
-    // AL's set_speed_of_sound takes the direct value, not the inverse that vaWorldSetInverseSpeedOfSound takes.
     if (ALManager::get_singleton())
         ALManager::get_singleton()->set_speed_of_sound(speed_of_sound);
 }
 
-// AL-only settings (no vaudio SDK equivalent) - forwarded straight to ALManager. Guarded since VAWorld can exist before/without ALManager having initialized (e.g. in the editor).
 void VAWorld::set_master_volume(float value)
 {
     master_volume = value;
