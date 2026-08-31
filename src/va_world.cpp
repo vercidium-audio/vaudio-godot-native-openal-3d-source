@@ -312,7 +312,7 @@ void VAWorld::_process(double delta)
 
 void VAWorld::send_viewport_camera_to_running_game()
 {
-    if (!Engine::get_singleton()->has_singleton(VAConversionPlugin::DEBUGGER_PLUGIN_SINGLETON_NAME))
+    if (!Engine::get_singleton()->has_singleton(VAConversionPlugin::DEBUGGER_BRIDGE_SINGLETON_NAME))
         return;
 
     SubViewport *viewport = EditorInterface::get_singleton()->get_editor_viewport_3d(0);
@@ -321,8 +321,9 @@ void VAWorld::send_viewport_camera_to_running_game()
     if (!camera)
         return;
 
-    Object *singleton_object = Engine::get_singleton()->get_singleton(VAConversionPlugin::DEBUGGER_PLUGIN_SINGLETON_NAME);
-    VADebuggerPlugin *debugger_plugin = Object::cast_to<VADebuggerPlugin>(singleton_object);
+    Object *singleton_object = Engine::get_singleton()->get_singleton(VAConversionPlugin::DEBUGGER_BRIDGE_SINGLETON_NAME);
+    VADebuggerBridge *bridge = Object::cast_to<VADebuggerBridge>(singleton_object);
+    VADebuggerPlugin *debugger_plugin = bridge ? bridge->get_debugger_plugin() : nullptr;
 
     if (!debugger_plugin)
         return;

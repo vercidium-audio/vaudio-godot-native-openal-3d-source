@@ -8,3 +8,19 @@ version = "1.8.0"
 
 windows.debug.x86_64 = "res://addons/vaudio-godot-native-openal-3d/bin/libvaudiogodotnativeopenal3d.windows.template_debug.x86_64.dll"
 windows.release.x86_64 = "res://addons/vaudio-godot-native-openal-3d/bin/libvaudiogodotnativeopenal3d.windows.template_release.x86_64.dll"
+
+[icons]
+
+VACustomMaterial = "res://addons/vaudio-godot-native-openal-3d/icons/VACustomMaterial.svg"
+VADefaultMaterial = "res://addons/vaudio-godot-native-openal-3d/icons/VADefaultMaterial.svg"
+VAEmitter = "res://addons/vaudio-godot-native-openal-3d/icons/VAEmitter.svg"
+VAInputStreamSource = "res://addons/vaudio-godot-native-openal-3d/icons/VAInputStreamSource.svg"
+VAListener = "res://addons/vaudio-godot-native-openal-3d/icons/VAListener.svg"
+VANetworkedStreamSource = "res://addons/vaudio-godot-native-openal-3d/icons/VANetworkedStreamSource.svg"
+VASource = "res://addons/vaudio-godot-native-openal-3d/icons/VASource.svg"
+VASourceAmbient = "res://addons/vaudio-godot-native-openal-3d/icons/VASourceAmbient.svg"
+VASourceLeech = "res://addons/vaudio-godot-native-openal-3d/icons/VASourceLeech.svg"
+VASourceRelative = "res://addons/vaudio-godot-native-openal-3d/icons/VASourceRelative.svg"
+VAStreamSource = "res://addons/vaudio-godot-native-openal-3d/icons/VAStreamSource.svg"
+VAVisualisation = "res://addons/vaudio-godot-native-openal-3d/icons/VAVisualisation.svg"
+VAWorld = "res://addons/vaudio-godot-native-openal-3d/icons/VAWorld.svg"
