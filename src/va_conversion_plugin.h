@@ -8,6 +8,8 @@
 
 #include "va_debugger_plugin.h"
 #include "va_material_inspector_plugin.h"
+#include "va_material_properties_inspector_plugin.h"
+#include "va_node_gizmo.h"
 #include "va_world_gizmo.h"
 
 using namespace godot;
@@ -31,34 +33,37 @@ public:
     void _popup_menu(const PackedStringArray &paths) override;
 };
 
-// Adds a "Refresh Devices" button under VAOpenALSettings in the Inspector -
-// device_name's dropdown (VAOpenALSettings::_validate_property) is only
-// re-queried when Godot rebuilds the node's cached property list, which
-// doesn't happen on its own when a playback device is plugged in/unplugged
-// while the node stays selected. The button calls VAOpenALSettings::refresh_devices,
-// which re-queries the driver and forces that rebuild via notify_property_list_changed.
-class VAOpenALSettingsInspectorPlugin : public EditorInspectorPlugin
+class VADeviceRefreshInspectorPlugin : public EditorInspectorPlugin
 {
-    GDCLASS(VAOpenALSettingsInspectorPlugin, EditorInspectorPlugin);
+    GDCLASS(VADeviceRefreshInspectorPlugin, EditorInspectorPlugin);
 
 protected:
     static void _bind_methods();
 
 public:
     bool _can_handle(Object *object) const override;
-    void _parse_end(Object *object) override;
+    bool _parse_property(Object *object, Variant::Type type, const String &name, PropertyHint hint_type,
+        const String &hint_string, BitField<PropertyUsageFlags> usage_flags, bool wide) override;
 };
 
 class VAConversionPlugin : public EditorPlugin
 {
     GDCLASS(VAConversionPlugin, EditorPlugin);
 
+public:
+    // VAWorld looks this up via Engine::get_singleton to reach debugger_plugin, since VAWorld is instantiated by the user's own scene, not this plugin.
+    static constexpr const char *DEBUGGER_PLUGIN_SINGLETON_NAME = "VADebuggerPlugin";
+
 private:
     Ref<ConversionContextMenuPlugin> context_menu_plugin;
-    Ref<VAOpenALSettingsInspectorPlugin> openal_settings_inspector_plugin;
+    Ref<VADeviceRefreshInspectorPlugin> device_refresh_inspector_plugin;
     Ref<VAMaterialInspectorPlugin> material_inspector_plugin;
+    Ref<VAMaterialPropertiesInspectorPlugin> material_properties_inspector_plugin;
     Ref<VAWorldGizmoPlugin> world_gizmo_plugin;
+    Ref<VANodeGizmoPlugin> node_gizmo_plugin;
     Ref<VADebuggerPlugin> debugger_plugin;
+
+    void refresh_output_device_setting();
 
 protected:
     static void _bind_methods();

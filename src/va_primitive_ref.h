@@ -12,9 +12,7 @@ extern "C"
 
 using namespace godot;
 
-// Which concrete ::VAXxxPrimitive type is stored in VAPrimitiveRef::primitive.
-// Needed because vaWorldRemovePrimitive_/the per-type Destroy calls are typed
-// in the C SDK - there is no single untyped "remove"/"destroy" entry point.
+// Which concrete ::VAXxxPrimitive type is stored in VAPrimitiveRef::primitive - needed since the C SDK's remove/destroy calls are typed, with no single untyped entry point.
 enum class VAPrimitiveKind
 {
     Prism,
@@ -26,9 +24,7 @@ enum class VAPrimitiveKind
     Mesh,
 };
 
-// Stashed as Node metadata (see VAWorld::PRIMITIVE_META_KEY) so a primitive can
-// be removed/updated later when its owning node moves or leaves the scene tree.
-// Mirrors vaudio-godot-mono-openal-3d's VAPrimitiveRef (misc/VAPrimitiveRef.cs).
+// Stashed as Node metadata (see VAWorld::PRIMITIVE_META_KEY) so a primitive can be removed/updated later when its owning node moves or leaves the scene tree.
 class VAPrimitiveRef : public RefCounted
 {
     GDCLASS(VAPrimitiveRef, RefCounted);
@@ -43,8 +39,6 @@ public:
     VAPrimitiveKind kind = VAPrimitiveKind::Prism;
     TransformWatcher *watcher = nullptr;
 
-    // Only set for CollisionShape3D nodes whose Shape3D resource can itself
-    // change (e.g. BoxShape3D's "changed" signal) - not currently connected
-    // to anything in this port, kept for parity with the C# field.
+    // Only set for CollisionShape3D nodes whose Shape3D resource can itself change; not currently wired up, kept for parity with the C# field.
     Ref<Resource> shape_resource;
 };

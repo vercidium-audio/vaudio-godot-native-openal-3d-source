@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VAInputStreamSource" inherits="VAStreamSource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+		A [VAStreamSource] fed automatically by a local input (microphone) capture device, instead of a script manually calling [method VAStreamSource.push_audio_data].
+		No script is required for the common case: as soon as this node enters a running (non-editor) scene tree, it automatically calls [method VAStreamSource.open_stream], [method open_capture], and [method start_capture] itself, using the [member format]/[member sample_rate]/[member device_name]/[member buffer_size_frames] properties below. Every frame after that, captured audio is automatically pushed into the stream. Call [method open_capture]/[method start_capture] manually instead if a script needs to defer capture, switch devices at runtime, or otherwise not use the automatic startup sequence. See [VANetworkedStreamSource] for the equivalent node type meant to be fed from a network connection instead of a local input device.
+		Every captured chunk is also broadcast via the [signal audio_captured] signal, independently of local playback - connect to it to send the microphone data elsewhere, e.g. over the network for VOIP. This node has no networking code of its own (Godot's multiplayer/RPC/ENet/UDP APIs are scripting-only), so a script's job is just to take the [PackedByteArray] each signal emission provides and transmit it however it likes.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="format" type="int" setter="set_format" getter="get_format" default="4353">
+			The OpenAL format of the captured PCM data - see [method VAStreamSource.open_stream]'s [param format]. Used for both the automatic [method VAStreamSource.open_stream] call and the automatic [method open_capture] call this node makes on [code]_ready[/code].
+		</member>
+		<member name="sample_rate" type="int" setter="set_sample_rate" getter="get_sample_rate" default="44100">
+			The sample rate, in Hz, of the captured PCM data - see [method VAStreamSource.open_stream]'s [param frequency]. Used for both the automatic [method VAStreamSource.open_stream] call and the automatic [method open_capture] call this node makes on [code]_ready[/code]. Shown in the Inspector as a dropdown of common rates, but any positive value can still be set via script.
+		</member>
+		<member name="device_name" type="String" setter="set_device_name" getter="get_device_name" default="&quot;&quot;">
+			Which input device to capture from, passed to the automatic [method open_capture] call this node makes on [code]_ready[/code]. Leave empty for the driver's default input device, or use a name returned by [method ALManager.get_available_capture_devices]. Shown in the Inspector as a dropdown of the driver's currently available capture devices (the value is still a plain string, so a device unplugged after being selected here isn't cleared).
+		</member>
+		<member name="buffer_size_frames" type="int" setter="set_buffer_size_frames" getter="get_buffer_size_frames" default="1024">
+			The size, in frames, of the capture device's internal ring buffer, passed to the automatic [method open_capture] call this node makes on [code]_ready[/code].
+		</member>
+		<member name="microphone_threshold" type="int" setter="set_microphone_threshold" getter="get_microphone_threshold" default="0">
+			The minimum peak sample amplitude (0-32767, on a 16-bit PCM scale regardless of [member format]) a captured chunk must reach before it's pushed into the stream. Chunks quieter than this are silently dropped instead of being played/forwarded. [code]0[/code] (the default) forwards every captured chunk, disabling the gate.
+		</member>
+	</members>
+	<methods>
+		<method name="open_capture">
+			<return type="bool" />
+			<param index="0" name="device_name" type="String" />
+			<param index="1" name="format" type="int" />
+			<param index="2" name="frequency" type="int" />
+			<param index="3" name="buffer_size_frames" type="int" />
+			<description>
+				Opens an input device for capturing. [param device_name] selects which device to open - pass an empty string for the driver's default input device, or a name returned by [method ALManager.get_available_capture_devices]. [param format] and [param frequency] should normally match what was passed to [method VAStreamSource.open_stream], since no resampling happens between capture and playback. [param buffer_size_frames] sizes the device's internal ring buffer, in frames.
+				If a capture device is already open, it is closed first. Returns [code]false[/code] if the device could not be opened, e.g. no such device exists, or the current OpenAL device doesn't support capture.
+			</description>
+		</method>
+		<method name="start_capture">
+			<return type="void" />
+			<description>
+				Starts capturing from the device opened by [method open_capture]. Captured audio is automatically pushed into this node's stream every frame from then on, as long as [method VAStreamSource.open_stream] has also been called. Does nothing (with a logged error) if [method open_capture] hasn't been called yet.
+			</description>
+		</method>
+		<method name="stop_capture">
+			<return type="void" />
+			<description>
+				Stops capturing from the device opened by [method open_capture], without closing it - [method start_capture] can be called again later to resume. Safe to call even if capture was never started.
+			</description>
+		</method>
+		<method name="close_capture">
+			<return type="void" />
+			<description>
+				Stops capturing (if active) and closes the input device opened by [method open_capture]. Safe to call even if [method open_capture] was never called or already closed.
+			</description>
+		</method>
+		<method name="is_capture_open">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if [method open_capture] has been called and [method close_capture] hasn't been called since.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="audio_captured">
+			<param index="0" name="data" type="PackedByteArray" />
+			<description>
+				Emitted from [method VAStreamSource._process] whenever this node's capture device (opened via [method open_capture]) produces a new chunk of PCM data, in [member format] at [member sample_rate]. Emitted regardless of whether [method VAStreamSource.open_stream] has been called or the stream is being used for local playback - connect to this signal to get the microphone data itself, e.g. to send it over the network for VOIP. Like local playback, chunks quieter than [member microphone_threshold] are not emitted.
+			</description>
+		</signal>
+	</signals>
+</class>

@@ -7,7 +7,7 @@
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
-#include "al_source_node.h"
+#include "al_source.h"
 #include "va_custom_material.h"
 #include "va_emitter.h"
 #include "va_world.h"
@@ -17,12 +17,9 @@ using namespace va_godot;
 namespace
 {
 
-// "Air" (index 0) is deliberately omitted from the dropdown - it means "no vaudio geometry",
-// which is what leaving the metadata unset already means, so there's no need for an explicit entry.
 const int FIRST_SELECTABLE_BUILTIN_INDEX = 1;
 
-// Custom materials only register their name with the running ::VAWorld at runtime
-// (VACustomMaterial::_enter_tree), so at edit time this walks the scene tree directly instead.
+// Custom materials only register their name with the running ::VAWorld at runtime, so at edit time this walks the scene tree directly instead.
 void find_custom_materials_recursive(Node *node, PackedStringArray &out_names)
 {
     if (VACustomMaterial *material = Object::cast_to<VACustomMaterial>(node))
@@ -42,9 +39,8 @@ void VAMaterialInspectorPlugin::_bind_methods()
 
 bool VAMaterialInspectorPlugin::_can_handle(Object *object) const
 {
-    // VAWorld, VAEmitter/VAListener, and ALSourceNode/VASource* are Node3D too, but they're audio
-    // control nodes, not geometry - a material dropdown on them would just be confusing noise.
-    if (Object::cast_to<VAWorld>(object) || Object::cast_to<VAEmitter>(object) || Object::cast_to<ALSourceNode>(object))
+    // VAWorld, VAEmitter/VAListener, and ALSource/VASource* are Node3D too, but they're audio control nodes, not geometry.
+    if (Object::cast_to<VAWorld>(object) || Object::cast_to<VAEmitter>(object) || Object::cast_to<ALSource>(object))
         return false;
 
     return Object::cast_to<Node3D>(object) != nullptr;
@@ -74,7 +70,9 @@ void VAMaterialInspectorPlugin::_parse_end(Object *object)
 
     OptionButton *option_button = memnew(OptionButton);
     option_button->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    option_button->add_item("Air (no geometry)");
+    // Index 0 ("None") removes the metadata; index 1 ("Air") explicitly stores the "air" material string.
+    option_button->add_item("None");
+    option_button->add_item("Air");
 
     PackedStringArray builtin_names = VAWorld::get_builtin_material_names();
     for (int i = FIRST_SELECTABLE_BUILTIN_INDEX; i < builtin_names.size(); i++)
@@ -141,7 +139,7 @@ void VAMaterialInspectorPlugin::on_material_selected(int32_t index, Node *node, 
     if (index == 0)
         node->remove_meta(material_meta_key);
     else
-        node->set_meta(material_meta_key, option_button->get_item_text(index));
+        node->set_meta(material_meta_key, option_button->get_item_text(index).to_lower());
 
     EditorInterface::get_singleton()->mark_scene_as_unsaved();
 
@@ -152,8 +150,7 @@ void VAMaterialInspectorPlugin::on_use_flat_transmission_toggled(bool toggled_on
 {
     StringName use_flat_transmission_meta_key = VAWorld::get_use_flat_transmission_meta_key();
 
-    // false is the default (see add_primitive), so only store metadata for the non-default value -
-    // matches the "Air (no geometry)" material entry removing its meta key instead of storing it.
+    // false is the default, so only store metadata for the non-default value, matching the "Air" material entry.
     if (!toggled_on)
         node->remove_meta(use_flat_transmission_meta_key);
     else
@@ -166,13 +163,8 @@ void VAMaterialInspectorPlugin::on_use_flat_transmission_toggled(bool toggled_on
 
 void VAMaterialInspectorPlugin::sync_running_game(Node *node)
 {
-    // Custom EditorInspectorPlugin controls only ever run against the editor's local copy of the
-    // scene - there's no way to reach a Node* in the running game's separate process directly, so
-    // this instead sends the node's path (relative to the edited scene root, which the running
-    // game's scene root mirrors) over the debugger protocol - see VADebuggerPlugin. The running
-    // game's copy of this node was never touched by the set_meta/remove_meta call that just ran
-    // above on the editor's local copy, so the current metadata values have to be sent too, for the
-    // receiving end to apply to its own copy before re-adding the primitive.
+    // No way to reach a Node* in the running game's separate process directly, so this sends the node's path (relative to
+    // the edited scene root, which the running game's scene root mirrors) plus the current metadata over the debugger protocol.
     if (!debugger_plugin.is_valid())
         return;
 

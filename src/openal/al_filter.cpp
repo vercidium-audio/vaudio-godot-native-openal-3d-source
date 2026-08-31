@@ -25,8 +25,7 @@ bool ALFilter::create(float initial_gain, float initial_gain_hf)
 
     if (!manager->has_efx())
     {
-        // Not an error - devices without ALC_EXT_EFX just play without
-        // muffling. ALManager::resolve_efx_functions already logged why.
+        // Not an error - devices without ALC_EXT_EFX just play without muffling.
         return false;
     }
 

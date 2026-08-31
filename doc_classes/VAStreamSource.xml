@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VAStreamSource" inherits="VARaytracedSource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+		A spatialised 3D source that casts its own raytracing rays for reverb and ambience (see [VARaytracedSource]), and plays live audio pushed to it at runtime instead of a fixed [AudioStream] resource. Useful for audio whose full length isn't known up front, like a microphone feed or a VOIP network stream.
+		Call [method open_stream] once to start playback, then call [method push_audio_data] each time a new chunk of raw PCM audio is ready. The source plays chunks in the order they were pushed, and plays silence whenever no new chunk has arrived yet, so it never stops on its own. Call [method close_stream] when done.
+		This node does not decode compressed audio (MP3, Ogg, etc). Only raw PCM data is accepted - use [VASource] or [ALSource3D] instead for fixed sound files.
+		This base class has no opinion on where its pushed audio comes from - see [VAInputStreamSource] for a subclass that feeds itself automatically from a local microphone, and [VANetworkedStreamSource] for the equivalent node type meant to be fed from a script's networking code (e.g. an RPC or [PacketPeerUDP] packet handler calling [method push_audio_data] directly). Using this base class directly is also valid for any other custom audio source.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="open_stream">
+			<return type="bool" />
+			<param index="0" name="format" type="int" />
+			<param index="1" name="frequency" type="int" />
+			<description>
+				Starts playback of a new stream. [param format] is an OpenAL format constant describing the layout of the PCM data that will be passed to [method push_audio_data] - typically [code]4353[/code] ([code]AL_FORMAT_MONO16[/code], 16-bit signed mono samples) or [code]4355[/code] ([code]AL_FORMAT_STEREO16[/code], 16-bit signed interleaved stereo samples). [param frequency] is the sample rate of that data, in Hz (e.g. [code]44100[/code]).
+				If a stream is already open, it is closed first. Returns [code]false[/code] if the stream could not be opened, e.g. because the current OpenAL device doesn't support streaming playback.
+			</description>
+		</method>
+		<method name="push_audio_data">
+			<return type="void" />
+			<param index="0" name="data" type="PackedByteArray" />
+			<description>
+				Queues a chunk of raw PCM audio to play next, in the format given to [method open_stream]. The bytes are copied immediately, so [param data] can be freely modified or discarded after this call returns. Does nothing if [method open_stream] hasn't been called yet, or after [method close_stream].
+			</description>
+		</method>
+		<method name="close_stream">
+			<return type="void" />
+			<description>
+				Stops playback and releases the stream opened by [method open_stream]. Safe to call even if no stream is open.
+			</description>
+		</method>
+		<method name="is_stream_open">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if [method open_stream] has been called and [method close_stream] hasn't been called since.
+			</description>
+		</method>
+	</methods>
+</class>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ALManager" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+		Global OpenAL device and mixer control, registered as an [Engine] singleton - reach it from any script as [code]ALManager[/code], at any time, with no scene-tree node required. The output device, sample rate, HRTF, max reverb sends, and max mono/stereo sources used for the one device open at game start come from Project Settings ([code]audio/vaudio/output_device[/code], [code]audio/vaudio/sample_rate[/code], [code]audio/vaudio/hrtf_enabled[/code], [code]audio/vaudio/max_reverb_sends[/code], [code]audio/vaudio/max_mono_sources[/code], [code]audio/vaudio/max_stereo_sources[/code]), not from this singleton - [method set_output_device] is the one exception, letting a shipped game's audio settings menu switch the output device at runtime.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_available_devices">
+			<return type="PackedStringArray" />
+			<description>
+				Returns the names of the playback devices currently available on this machine.
+			</description>
+		</method>
+		<method name="get_available_capture_devices">
+			<return type="PackedStringArray" />
+			<description>
+				Returns the names of the capture (input/microphone) devices currently available on this machine.
+			</description>
+		</method>
+		<method name="set_output_device">
+			<return type="bool" />
+			<param index="0" name="device_name" type="String" />
+			<description>
+				Switches the playback device at runtime, reopening the OpenAL device and context and reusing the current sample rate, HRTF, and max reverb sends settings. Every existing AL object (sources, buffers, filters, effects) is invalidated by this. Pass an empty string to use the driver's default device. Returns [code]false[/code] on failure.
+			</description>
+		</method>
+		<method name="set_master_volume">
+			<return type="void" />
+			<param index="0" name="value" type="float" />
+			<description>
+				Sets the overall output volume, as a linear multiplier. 1.0 is unchanged, 0.0 is silent. Safe to call at any time.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="distance_model" type="int" setter="set_distance_model" getter="get_distance_model" default="53249">
+			How volume attenuates with distance from the listener. One of OpenAL's distance model constants (Inverse Distance Clamped, Inverse Distance, Linear Distance Clamped, Linear Distance, Exponent Distance Clamped, Exponent Distance, or None). Safe to change at any time.
+		</member>
+		<member name="meters_per_unit" type="float" setter="set_meters_per_unit" getter="get_meters_per_unit" default="1.0">
+			How many meters one world unit represents, for OpenAL's own air-absorption and reverb decay calculations. This is separate from [member VAWorld.meters_per_unit], which only affects vaudio's raytracing/acoustics model. Safe to change at any time.
+		</member>
+		<member name="speed_of_sound" type="float" setter="set_speed_of_sound" getter="get_speed_of_sound" default="343.0">
+			The speed of sound, in meters per second, used for OpenAL's Doppler effect calculation. This is separate from [member VAWorld.speed_of_sound], which only affects vaudio's raytracing/acoustics model. Safe to change at any time.
+		</member>
+		<member name="reverb_only" type="bool" setter="set_reverb_only" getter="get_reverb_only" default="false">
+			If [code]true[/code], every sound's direct path is silenced so only reverb is audible. A diagnostic toggle for tuning reverb in isolation.
+		</member>
+	</members>
+</class>

@@ -16,8 +16,7 @@ material_name = "carpet"
 absorption_lf = 0.4
 absorption_hf = 0.6
 
-[node name="Listener" type="VAEmitter" parent="."]
-is_main_listener = true
+[node name="Listener" type="VAListener" parent="."]
 
 [node name="VASource" type="VASource" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -5)

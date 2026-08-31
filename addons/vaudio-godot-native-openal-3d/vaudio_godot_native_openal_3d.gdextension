@@ -2,7 +2,7 @@
 
 entry_symbol = "vaudio_godot_native_openal_3d_library_init"
 compatibility_minimum = "4.5"
-version = "1.7.0"
+version = "1.8.0"
 
 [libraries]
 

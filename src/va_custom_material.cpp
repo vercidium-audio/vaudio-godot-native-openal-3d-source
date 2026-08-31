@@ -9,10 +9,7 @@
 #include "va_world.h"
 #include "va_world_lookup.h"
 
-// Port of vaudio-godot-mono-openal-3d's VACustomMaterial.cs. Only the material-property
-// side is ported here - GetDebugColor/_GetConfigurationWarnings/_ValidateProperty
-// are editor-only visualisation niceties with no SDK-facing behaviour, so they're
-// intentionally left out.
+// Port of VACustomMaterial.cs. GetDebugColor/_GetConfigurationWarnings/_ValidateProperty are editor-only visualisation niceties with no SDK-facing behaviour, so they're left out.
 
 namespace va_godot
 {
@@ -84,9 +81,7 @@ void VACustomMaterial::_enter_tree()
 
     VAWorld *va_world = find_va_world(this);
 
-    // No VAWorld anywhere in the tree yet - this node's scene may have entered the tree before being
-    // parented under the level. Unlike VAEmitter/VASource, materials don't retry via node_added, since
-    // they're expected to be defined alongside (and after) the level's VAWorld.
+    // Unlike VAEmitter/VASource, materials don't retry via node_added - they're expected to be defined alongside (and after) the level's VAWorld.
     if (!va_world)
         return;
 
@@ -134,12 +129,6 @@ String VACustomMaterial::get_material_name() const
 
 void VACustomMaterial::set_material_name(const String &value)
 {
-    if (registered)
-    {
-        VA_WARN("Cannot change the name of VACustomMaterial nodes at runtime. Node: ", get_name());
-        return;
-    }
-
     material_name = value;
 }
 
@@ -245,6 +234,32 @@ void VACustomMaterial::set_color(const Color &value)
 
     if (registered)
         log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(value)), "color", material_name);
+}
+
+void VACustomMaterial::apply_properties_from_editor(float new_absorption_lf, float new_absorption_hf, float new_scattering,
+    float new_transmission_lf, float new_transmission_hf, float new_flat_transmission_lf,
+    float new_flat_transmission_hf, const Color &new_color)
+{
+    absorption_lf = new_absorption_lf;
+    absorption_hf = new_absorption_hf;
+    scattering = new_scattering;
+    transmission_lf = new_transmission_lf;
+    transmission_hf = new_transmission_hf;
+    flat_transmission_lf = new_flat_transmission_lf;
+    flat_transmission_hf = new_flat_transmission_hf;
+    color = new_color;
+
+    if (!registered)
+        return;
+
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, absorption_lf), "absorption_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, absorption_hf), "absorption_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, scattering), "scattering", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, transmission_lf), "transmission_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, transmission_hf), "transmission_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(va_world_handle, material_type, flat_transmission_lf), "flat_transmission_lf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(va_world_handle, material_type, flat_transmission_hf), "flat_transmission_hf", material_name);
+    log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(color)), "color", material_name);
 }
 
 } // namespace va_godot

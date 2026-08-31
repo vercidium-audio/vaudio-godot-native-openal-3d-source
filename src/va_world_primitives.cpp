@@ -2,7 +2,10 @@
 
 #include <godot_cpp/classes/box_shape3d.hpp>
 #include <godot_cpp/classes/capsule_shape3d.hpp>
+#include <godot_cpp/classes/concave_polygon_shape3d.hpp>
+#include <godot_cpp/classes/convex_polygon_shape3d.hpp>
 #include <godot_cpp/classes/cylinder_shape3d.hpp>
+#include <godot_cpp/classes/height_map_shape3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/shape3d.hpp>
@@ -16,16 +19,9 @@
 #include "va_custom_material.h"
 #include "va_engine_util.h"
 
-// Port of vaudio-godot-mono-openal-3d's VAWorldPrimitives.cs. CSG box/cylinder/sphere,
-// CollisionShape3D box/sphere/capsule/cylinder/world-boundary shapes, and
-// MeshInstance3D (via ConvertMeshToVAudio in va_conversions.h) are covered.
-// CsgPolygon3D/CsgMesh3D and the ConvexPolygon/Concave/HeightMap
-// CollisionShape3D variants still need their own mesh-to-triangle-list
-// conversion helpers and are left as a no-op fallthrough for now.
+// Port of VAWorldPrimitives.cs. CSG box/cylinder/sphere, CollisionShape3D box/sphere/capsule/cylinder/world-boundary/concave-polygon/convex-polygon/height-map, and MeshInstance3D are covered; CsgPolygon3D/CsgMesh3D still need their own mesh-to-triangle-list conversion helpers and are left as a no-op fallthrough for now.
 
-// Function-local statics (not namespace-scope) so the StringName isn't
-// constructed at static-init time, before Godot's API is bound - doing so
-// crashed the extension's DLL init routine.
+// Function-local statics (not namespace-scope) so the StringName isn't constructed at static-init time, before Godot's API is bound - doing so crashed the extension's DLL init routine.
 static const StringName &PrimitiveMetaKey()
 {
     static StringName key = "vercidium_audio_primitive";
@@ -47,9 +43,7 @@ static const StringName &UseFlatTransmissionMetaKey()
 namespace va_godot
 {
 
-// Names of the built-in VAMaterialType values, indexed by VAMaterialType. The single source of
-// truth for both VAWorld::get_material's matching below and get_builtin_material_names/
-// get_builtin_material_names_array, which expose this list to the "Vercidium Audio" editor plugin.
+// Names of the built-in VAMaterialType values, indexed by VAMaterialType - the single source of truth for VAWorld::get_material's matching and get_builtin_material_names, which exposes this list to the editor plugin.
 static const char *const BUILTIN_MATERIAL_NAMES[] = {
     "air", "brick", "cloth", "concrete", "concretepolished", "dirt",
     "glass", "grass", "gravel", "gyprock", "ice", "leaf", "marble",
@@ -87,8 +81,7 @@ VAMaterialType VAWorld::get_material(Node *node)
     String material_string = node->get_meta(MaterialMetaKey());
     String lower = material_string.to_lower();
 
-    // Match custom materials first (VAWorldMaterials.cs's GetMaterial does the
-    // same - custom materials take priority over built-ins).
+    // Match custom materials first - custom materials take priority over built-ins.
     for (const auto &kvp : custom_materials)
     {
         if (kvp.second->get_material_name().to_lower() == lower)
@@ -97,7 +90,6 @@ VAMaterialType VAWorld::get_material(Node *node)
         }
     }
 
-    // Match built-in materials.
     for (int i = 0; i < VAMaterialTypeCount; i++)
     {
         if (lower == String(BUILTIN_MATERIAL_NAMES[i]))
@@ -164,10 +156,7 @@ void VAWorld::create_primitive(CSGBox3D *csg_box, VAMaterialType material)
         Transform3D updated_transform = RemoveScale(csg_box->get_global_transform(), updated_scale);
         VAVector updated_size = ToVAudio(csg_box->get_size() * updated_scale);
 
-        // TransformWatcher only fires on an actual transform change, so
-        // VA_UNCHANGED here just means this particular setter's value (e.g.
-        // size when only rotation changed) happened to stay the same - not
-        // an error.
+        // TransformWatcher only fires on an actual transform change, so VA_UNCHANGED just means this setter's value happened to stay the same - not an error.
         VAResult size_result = vaPrismPrimitiveSetSize(prim, updated_size);
         if (size_result != VA_SUCCESS && size_result != VA_UNCHANGED)
         {
@@ -198,9 +187,7 @@ void VAWorld::create_primitive(CSGCylinder3D *csg_cylinder, VAMaterialType mater
 
     if (csg_cylinder->is_cone())
     {
-        // Godot's CsgCylinder3D cone is centered at origin (base at -Height/2,
-        // apex at +Height/2). VAudio's ConePrimitive has base at Y=0, apex at
-        // Y=height - offset the transform down by Height/2 so the base aligns.
+        // Godot's CsgCylinder3D cone is centered at origin (base at -Height/2, apex at +Height/2); VAudio's ConePrimitive has base at Y=0, apex at Y=height - offset down by Height/2 so the base aligns.
         Transform3D offset_transform = csg_cylinder->get_global_transform().translated_local(Vector3(0, -csg_cylinder->get_height() / 2, 0));
 
         VAConePrimitive *prim = vaConePrimitiveCreate();
@@ -232,9 +219,7 @@ void VAWorld::create_primitive(CSGCylinder3D *csg_cylinder, VAMaterialType mater
         {
             Transform3D updated_offset = csg_cylinder->get_global_transform().translated_local(Vector3(0, -csg_cylinder->get_height() / 2, 0));
 
-            // TransformWatcher only fires on an actual transform change, so
-            // VA_UNCHANGED here just means this setter's own value happened
-            // to stay the same - not an error.
+            // TransformWatcher only fires on an actual transform change, so VA_UNCHANGED just means this setter's value happened to stay the same - not an error.
             VAResult radius_result = vaConePrimitiveSetRadius(prim, csg_cylinder->get_radius());
             if (radius_result != VA_SUCCESS && radius_result != VA_UNCHANGED)
             {
@@ -292,9 +277,7 @@ void VAWorld::create_primitive(CSGCylinder3D *csg_cylinder, VAMaterialType mater
 
         VAPrimitiveRef *ref = attach_watcher(csg_cylinder, prim, VAPrimitiveKind::Cylinder, [this, csg_cylinder, prim]()
         {
-            // TransformWatcher only fires on an actual transform change, so
-            // VA_UNCHANGED here just means this setter's own value happened
-            // to stay the same - not an error.
+            // TransformWatcher only fires on an actual transform change, so VA_UNCHANGED just means this setter's value happened to stay the same - not an error.
             VAResult radius_result = vaCylinderPrimitiveSetRadius(prim, csg_cylinder->get_radius());
             if (radius_result != VA_SUCCESS && radius_result != VA_UNCHANGED)
             {
@@ -357,9 +340,7 @@ void VAWorld::create_primitive(CSGSphere3D *csg_sphere, VAMaterialType material)
 
     VAPrimitiveRef *ref = attach_watcher(csg_sphere, prim, VAPrimitiveKind::Sphere, [this, csg_sphere, prim]()
     {
-        // TransformWatcher only fires on an actual transform change, so
-        // VA_UNCHANGED here just means this setter's own value happened to
-        // stay the same - not an error.
+        // TransformWatcher only fires on an actual transform change, so VA_UNCHANGED just means this setter's value happened to stay the same - not an error.
         VAResult center_result = vaSpherePrimitiveSetCenter(prim, ToVAudio(csg_sphere->get_global_transform().origin));
         if (center_result != VA_SUCCESS && center_result != VA_UNCHANGED)
         {
@@ -396,12 +377,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
     Transform3D global_transform = collision_shape->get_global_transform();
     Vector3 position = global_transform.origin;
 
-    // get_global_transform() bakes in any non-uniform scale inherited from
-    // parent Node3Ds, not just this CollisionShape3D's own local scale - so
-    // RemoveScale (which reads it back off the basis) is what must drive
-    // radius/length, and orthonormalized_transform (scale-free basis) is
-    // what must go to Set*Transform - passing a non-uniformly-scaled basis
-    // there is what caused VA_INVALID_VALUE.
+    // get_global_transform() bakes in non-uniform scale inherited from parent Node3Ds, not just this shape's own local scale, so RemoveScale must drive radius/length and the scale-free orthonormalized_transform must go to Set*Transform - passing a non-uniformly-scaled basis there caused VA_INVALID_VALUE.
     Vector3 scale;
     Transform3D orthonormalized_transform = RemoveScale(global_transform, scale);
 
@@ -497,9 +473,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
     }
     else if (Ref<CapsuleShape3D> capsule = shape; capsule.is_valid())
     {
-        // Godot CapsuleShape3D: height is total height including hemispherical
-        // caps, radius is the radius. vaudio.CapsulePrimitive: length is the
-        // cylinder portion (not including caps). cylinder length = total height - 2 * radius.
+        // Godot's CapsuleShape3D height includes the hemispherical caps; vaudio's CapsulePrimitive length is the cylinder portion only, so cylinder length = total height - 2 * radius.
         float cylinder_length = capsule->get_height() - 2 * capsule->get_radius();
         if (cylinder_length < 0)
         {
@@ -606,13 +580,11 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
     }
     else if (Ref<WorldBoundaryShape3D> world_boundary = shape; world_boundary.is_valid())
     {
-        // WorldBoundaryShape3D represents an infinite plane - approximate with
-        // a large finite plane sized to the raytracing world.
+        // WorldBoundaryShape3D represents an infinite plane - approximate with a large finite plane sized to the raytracing world.
         Plane plane = world_boundary->get_plane();
         Vector3 normal = plane.normal;
 
-        // vaudio.PlanePrimitive lies in the XZ plane at Y=0 in local space,
-        // with Y-up as the normal - so basis_y must be the plane normal.
+        // vaudio.PlanePrimitive lies in the XZ plane at Y=0 in local space with Y-up as the normal, so basis_y must be the plane normal.
         Vector3 basis_y = normal;
         Vector3 basis_x = basis_y.cross(Vector3(0, 0, -1)).normalized();
 
@@ -623,8 +595,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
 
         Vector3 basis_z = basis_x.cross(basis_y).normalized();
 
-        // The plane position is: point on plane (normal * D) + the collision
-        // shape's global position.
+        // The plane position is: point on plane (normal * D) + the collision shape's global position.
         Vector3 plane_position = normal * plane.d + global_transform.origin;
 
         Basis plane_basis;
@@ -647,8 +618,7 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
                 collision_shape->get_name(), "' (VAResult=", VAResultToString(material_result), ")");
         }
 
-        // Use the max world size to ensure the plane covers the raytracing
-        // scene, *2 in case the plane is positioned in the corner of the world.
+        // Use the max world size to ensure the plane covers the raytracing scene, *2 in case the plane is positioned in the corner of the world.
         VAResult width_result = vaPlanePrimitiveSetWidth(p, world_magnitude * 2);
         if (width_result != VA_SUCCESS && width_result != VA_UNCHANGED)
         {
@@ -687,10 +657,116 @@ void VAWorld::create_primitive(CollisionShape3D *collision_shape, VAMaterialType
         prim = p;
         kind = VAPrimitiveKind::Plane;
     }
+    else if (Ref<ConcavePolygonShape3D> concave_polygon = shape; concave_polygon.is_valid())
+    {
+        VAVector min, max;
+        std::vector<VAVector> triangles = ConvertConcavePolygonToVAudio(concave_polygon, min, max);
+
+        if (triangles.empty())
+        {
+            VA_WARN("ConcavePolygonShape3D ", collision_shape->get_name(), " will not affect raytracing as it has no faces");
+            return;
+        }
+
+        VAMatrix mat = ToVAudio(global_transform);
+
+        VAMeshPrimitive *p = nullptr;
+        VAResult create_result = vaMeshPrimitiveCreate(material, triangles.data(), (int)triangles.size(), min, max, &mat, &p);
+        if (create_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D concave polygon) failed to create the mesh primitive for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(create_result), ")");
+            return;
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D concave polygon) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaMeshPrimitiveDestroy(p);
+            return;
+        }
+
+        prim = p;
+        kind = VAPrimitiveKind::Mesh;
+    }
+    else if (Ref<ConvexPolygonShape3D> convex_polygon = shape; convex_polygon.is_valid())
+    {
+        VAVector min, max;
+        std::vector<VAVector> triangles = ConvertConvexPolygonToVAudio(convex_polygon, min, max);
+
+        if (triangles.empty())
+        {
+            VA_WARN("ConvexPolygonShape3D ", collision_shape->get_name(), " will not affect raytracing as it cannot be triangulated");
+            return;
+        }
+
+        VAMatrix mat = ToVAudio(global_transform);
+
+        VAMeshPrimitive *p = nullptr;
+        VAResult create_result = vaMeshPrimitiveCreate(material, triangles.data(), (int)triangles.size(), min, max, &mat, &p);
+        if (create_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D convex polygon) failed to create the mesh primitive for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(create_result), ")");
+            return;
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D convex polygon) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaMeshPrimitiveDestroy(p);
+            return;
+        }
+
+        prim = p;
+        kind = VAPrimitiveKind::Mesh;
+    }
+    else if (Ref<HeightMapShape3D> height_map = shape; height_map.is_valid())
+    {
+        VAVector min, max;
+        std::vector<VAVector> triangles = ConvertHeightMapToVAudio(height_map, min, max);
+
+        if (triangles.empty())
+        {
+            VA_WARN("HeightMapShape3D ", collision_shape->get_name(), " will not affect raytracing as its dimensions are less than 2x2");
+            return;
+        }
+
+        VAMatrix mat = ToVAudio(global_transform);
+
+        VAMeshPrimitive *p = nullptr;
+        VAResult create_result = vaMeshPrimitiveCreate(material, triangles.data(), (int)triangles.size(), min, max, &mat, &p);
+        if (create_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D height map) failed to create the mesh primitive for '",
+                collision_shape->get_name(), "' (VAResult=", VAResultToString(create_result), ")");
+            return;
+        }
+
+        VAResult add_result = vaWorldAddPrimitive_(world, p);
+        if (add_result != VA_SUCCESS)
+        {
+            VA_ERROR(
+                "VAWorld::create_primitive(CollisionShape3D height map) failed to add '",
+                collision_shape->get_name(), "' to the world (VAResult=", VAResultToString(add_result), ")");
+            vaMeshPrimitiveDestroy(p);
+            return;
+        }
+
+        prim = p;
+        kind = VAPrimitiveKind::Mesh;
+    }
     else
     {
-        // ConvexPolygonShape3D / ConcavePolygonShape3D / HeightMapShape3D all
-        // need mesh-to-triangle-list conversion - separate checklist item.
         return;
     }
 
@@ -764,8 +840,7 @@ void VAWorld::create_primitive(MeshInstance3D *mesh_instance, VAMaterialType mat
     {
         VAMatrix updated_mat = ToVAudio(mesh_instance->get_global_transform());
 
-        // TransformWatcher only fires on an actual transform change, so
-        // VA_UNCHANGED is not expected here, but isn't an error either.
+        // TransformWatcher only fires on an actual transform change, so VA_UNCHANGED is not expected here, but isn't an error either.
         VAResult transform_result = vaMeshPrimitiveSetTransform(prim, &updated_mat);
         if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
         {
@@ -782,11 +857,7 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
 {
     Transform3D global_transform = collision_shape->get_global_transform();
 
-    // See create_primitive(CollisionShape3D)'s comment: scale here must be
-    // read back off the global transform's basis (which bakes in inherited
-    // parent scale too), not collision_shape->get_scale() alone, and
-    // orthonormalized_transform (not global_transform) is what's safe to
-    // pass to Set*Transform.
+    // Same as create_primitive(CollisionShape3D): scale must be read off the global transform's basis (which bakes in inherited parent scale), and orthonormalized_transform is what's safe to pass to Set*Transform.
     Vector3 scale;
     Transform3D orthonormalized_transform = RemoveScale(global_transform, scale);
     Ref<Shape3D> shape = collision_shape->get_shape();
@@ -798,9 +869,7 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
             VASpherePrimitive *p = (VASpherePrimitive *)ref->primitive;
             Ref<SphereShape3D> sphere = shape;
 
-            // TransformWatcher only fires on an actual transform change, so
-            // VA_UNCHANGED here just means this setter's own value happened
-            // to stay the same - not an error.
+            // TransformWatcher only fires on an actual transform change, so VA_UNCHANGED just means this setter's value happened to stay the same - not an error.
             VAResult center_result = vaSpherePrimitiveSetCenter(p, ToVAudio(global_transform.origin));
             if (center_result != VA_SUCCESS && center_result != VA_UNCHANGED)
             {
@@ -944,6 +1013,20 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
             }
             break;
         }
+        case VAPrimitiveKind::Mesh:
+        {
+            VAMeshPrimitive *p = (VAMeshPrimitive *)ref->primitive;
+            VAMatrix mat = ToVAudio(global_transform);
+
+            VAResult transform_result = vaMeshPrimitiveSetTransform(p, &mat);
+            if (transform_result != VA_SUCCESS && transform_result != VA_UNCHANGED)
+            {
+                VA_ERROR(
+                    "VAWorld::update_collision_shape_primitive(mesh) failed to update transform for '",
+                    collision_shape->get_name(), "' (VAResult=", VAResultToString(transform_result), ")");
+            }
+            break;
+        }
         default:
             break;
     }
@@ -990,31 +1073,19 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_t
 
 void VAWorld::sync_primitive(Node *node)
 {
-    // Guards against being called on a VAWorld whose world hasn't been created yet (e.g. init_scene
-    // hasn't run this frame yet) - should always be non-null in practice, since this is only called
-    // via the debugger-message capture in register_types.cpp, which only exists in a running game.
+    // Guards being called on a VAWorld whose world hasn't been created yet; should always be non-null in practice since this is only called via the debugger-message capture in register_types.cpp.
     if (!world)
         return;
 
-    // Recursive, matching init_scene's own top-level add_primitive calls - the edited node itself
-    // often has no geometry of its own (e.g. a plain Node3D grouping node like "Tunnel" in the demo
-    // project), with the material/transmission override only taking effect on its descendants (see
-    // add_primitive's "Use this specific material/transmission override" comments below). Unlike
-    // on_node_added/on_node_removed (non-recursive - the node_added/node_removed signals they
-    // handle already fire once per node), this is a single one-shot call for the whole edited
-    // subtree, so it has to walk it itself.
+    // Recursive, matching init_scene's own top-level add_primitive calls - the edited node itself often has no geometry of its own, with the material/transmission override taking effect on descendants. Unlike on_node_added/on_node_removed (non-recursive, since those signals already fire once per node), this is a single one-shot call for the whole edited subtree.
     remove_primitive(node, true);
 
-    // add_primitive re-reads each node's current vercidium_audio_material/
-    // vercidium_audio_use_flat_transmission metadata itself (see its "Use this specific..." comments
-    // below) - VAMaterialAir/false here are just the fallback for a node with no metadata at all.
+    // add_primitive re-reads each node's own material/transmission metadata itself - VAMaterialAir/false here are just the fallback for a node with no metadata at all.
     add_primitive(node, VAMaterialAir, false, true);
 }
 
 void VAWorld::remove_primitive(Node *node, bool recursive)
 {
-    // When a node is removed from the scene, remove it from the raytracing
-    // simulation too.
     if (node->has_meta(PrimitiveMetaKey()))
     {
         Ref<VAPrimitiveRef> ref = node->get_meta(PrimitiveMetaKey());
@@ -1026,10 +1097,7 @@ void VAWorld::remove_primitive(Node *node, bool recursive)
                 ref->watcher->queue_free();
             }
 
-            // vaWorldRemovePrimitive_ failing with VA_NOT_ADDED_TO_WORLD means
-            // our bookkeeping (VAPrimitiveRef) disagrees with the SDK about
-            // this primitive's membership - still proceed to Destroy so we
-            // don't leak the primitive, but surface the mismatch.
+            // vaWorldRemovePrimitive_ failing with VA_NOT_ADDED_TO_WORLD means our bookkeeping disagrees with the SDK about this primitive's membership - still proceed to Destroy so we don't leak it, but surface the mismatch.
             switch (ref->kind)
             {
                 case VAPrimitiveKind::Prism:
@@ -1183,8 +1251,7 @@ void VAWorld::remove_primitive(Node *node, bool recursive)
 
 void VAWorld::validate_materials_in_editor(Node *node)
 {
-    // get_material already pushes a warning for an unrecognized string - just
-    // need to trigger it for every node carrying the metadata.
+    // get_material already pushes a warning for an unrecognized string - just need to trigger it for every node carrying the metadata.
     if (node->has_meta(MaterialMetaKey()))
     {
         get_material(node);
@@ -1199,13 +1266,7 @@ void VAWorld::validate_materials_in_editor(Node *node)
 
 void VAWorld::init_scene()
 {
-    // Scans from get_tree()->get_root() rather than get_current_scene() - a
-    // VAWorld's own subtree isn't always get_current_scene() itself (e.g.
-    // truck_town's car_select.gd adds its level scene as a sibling of the
-    // current scene via get_parent().add_child(town), so get_current_scene()
-    // would stay pointed at the menu and miss every primitive already baked
-    // into the level's .tscn). See va_world_lookup.h's find_va_world for the
-    // same fix applied to VAWorld discovery.
+    // Scans from get_tree()->get_root() rather than get_current_scene() - some scenes add their level as a sibling of the current scene rather than a child, so get_current_scene() would miss primitives already baked into it. See va_world_lookup.h's find_va_world for the same fix applied to VAWorld discovery.
     Node *root = get_tree()->get_root();
     if (!root)
     {
@@ -1222,17 +1283,10 @@ void VAWorld::init_scene()
     get_tree()->connect("node_removed", callable_mp(this, &VAWorld::on_node_removed));
 }
 
-// This fires for the new parent node AND each of its child nodes separately -
-// parent node is invoked first.
+// This fires for the new parent node AND each of its child nodes separately - parent node is invoked first.
 void VAWorld::on_node_added(Node *node)
 {
-    // Godot's node duplication (e.g. editor copy-paste) copies metadata
-    // along with it, so a freshly duplicated node can arrive here already
-    // carrying its source node's PrimitiveMetaKey ref (same VAPrimitiveRef
-    // instance, watcher and all). create_primitive's has_meta guard would
-    // then skip it as "already added", leaving the duplicate without its
-    // own primitive/watcher entirely. Strip any inherited primitive meta
-    // before add_primitive runs so duplicates always get created fresh.
+    // Godot's node duplication (e.g. editor copy-paste) copies metadata too, so a duplicate can arrive already carrying its source's PrimitiveMetaKey ref - create_primitive's has_meta guard would then skip it, leaving the duplicate without its own primitive/watcher. Strip any inherited primitive meta first so duplicates always get created fresh.
     if (node->has_meta(PrimitiveMetaKey()))
     {
         node->remove_meta(PrimitiveMetaKey());
@@ -1241,8 +1295,7 @@ void VAWorld::on_node_added(Node *node)
     add_primitive(node, VAMaterialAir, false, false);
 }
 
-// This fires for the new parent node AND each of its child nodes separately -
-// child nodes are invoked first.
+// This fires for the new parent node AND each of its child nodes separately - child nodes are invoked first.
 void VAWorld::on_node_removed(Node *node)
 {
     remove_primitive(node, false);

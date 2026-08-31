@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="ALSourceNode3D" inherits="ALSourceNode" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+<class name="ALSource3D" inherits="ALSource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
@@ -11,7 +11,7 @@
 			The distance in meters at which the sound becomes inaudible.
 		</member>
 		<member name="reference_distance" type="float" setter="set_reference_distance" getter="get_reference_distance" default="8.0">
-			The distance in meters at which the sound is heard at its unattenuated [member ALSourceNode.gain]. Volume falls off with distance beyond this point.
+			The distance in meters at which the sound is heard at its unattenuated [member ALSource.gain]. Volume falls off with distance beyond this point.
 		</member>
 	</members>
 </class>

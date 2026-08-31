@@ -1,0 +1,67 @@
+#pragma once
+
+#include "al_functions.h"
+
+#include <deque>
+#include <mutex>
+#include <vector>
+
+class ALStreamBuffer
+{
+private:
+    // One caller-pushed chunk of raw PCM bytes, plus how much of it is still unconsumed by the callback. Discarded, not recycled, once fully consumed.
+    struct Chunk
+    {
+        std::vector<uint8_t> data;
+        int offset = 0;
+        int length = 0;
+    };
+
+    ALuint handle = 0;
+
+    std::mutex chunks_mutex;
+    std::deque<Chunk> pending_chunks;
+    std::deque<Chunk> used_chunks;
+
+    // Chunk the callback only partially consumed on a previous call, carried over so the next call resumes where it
+    // left off. Only ever touched from the AL mixer thread inside on_buffer_callback, so it needs no locking of its own.
+    Chunk partial_chunk;
+    bool has_partial_chunk = false;
+
+    // Free function OpenAL invokes (ALBUFFERCALLBACKTYPESOFT signature); userptr is always `this`, forwards straight into on_buffer_callback.
+    static ALsizei AL_APIENTRY buffer_callback(ALvoid *userptr, ALvoid *sampledata, ALsizei numbytes) noexcept;
+
+    // Copies from pending_chunks (and any carried-over partial_chunk) into sampledata until numbytes is satisfied or
+    // pending_chunks runs dry, in which case the remainder is filled with silence. Fully-consumed chunks move to used_chunks.
+    ALsizei on_buffer_callback(ALvoid *sampledata, ALsizei numbytes);
+
+public:
+    ALStreamBuffer() = default;
+    ~ALStreamBuffer();
+
+    ALStreamBuffer(const ALStreamBuffer &) = delete;
+    ALStreamBuffer &operator=(const ALStreamBuffer &) = delete;
+
+    // Allocates the OpenAL buffer and registers this instance's callback via alBufferCallbackSOFT. Returns false (with a
+    // Godot error already logged) if AL_SOFT_callback_buffer isn't available or buffer creation fails. Destroys any existing buffer first.
+    bool create(ALenum format, int frequency);
+
+    // Deletes the OpenAL buffer (if any) and drops every pending/used/partial chunk. Safe to call more than once, even if create() was never called or failed.
+    void destroy();
+
+    // Copies length bytes starting at data into a new pending chunk. Safe to call from any thread; the caller retains ownership of data.
+    void enqueue(const uint8_t *data, int length);
+
+    // Pops one fully-consumed chunk into out_data, if ready, and returns true - call in a loop until false to drain every ready chunk.
+    bool try_get_used_chunk(std::vector<uint8_t> &out_data);
+
+    ALuint get_handle() const
+    {
+        return handle;
+    }
+
+    bool is_valid() const
+    {
+        return handle != 0;
+    }
+};

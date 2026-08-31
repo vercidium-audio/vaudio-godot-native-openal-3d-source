@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VANetworkedStreamSource" inherits="VAStreamSource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+		A [VAStreamSource] intended to be fed by audio arriving over the network, instead of a local input device - see [VAInputStreamSource] for the microphone equivalent.
+		This class adds no methods of its own - Godot's networking APIs ([MultiplayerAPI], high-level multiplayer RPCs, [PacketPeerUDP], etc.) are entirely scripting-layer, so there's nothing for this node to wrap in native code. It exists as its own node type purely so a scene reads clearly (this source is fed by network code, not a microphone) and so this page can document the intended wiring.
+		Call [method VAStreamSource.open_stream] once to start playback. Then, in whatever script receives audio over the network - an [code]@rpc[/code]-annotated method, a [PacketPeerUDP] read loop, or similar - call [method VAStreamSource.push_audio_data] directly on this node each time a chunk of PCM audio arrives, in the same format passed to [method VAStreamSource.open_stream]. This plugin has no opinion on the wire protocol, packet framing, or reliability/ordering guarantees used to get bytes from the sending peer's microphone (see [VAInputStreamSource]) to this node - that is left entirely up to the calling script.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>

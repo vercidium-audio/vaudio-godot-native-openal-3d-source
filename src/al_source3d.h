@@ -1,15 +1,15 @@
 #pragma once
 
-#include "al_source_node.h"
+#include "al_source.h"
 
 using namespace godot;
 
-class ALSource;
+class ALSourceHandle;
 
 // Spatialised AL source
-class ALSourceNode3D : public ALSourceNode
+class ALSource3D : public ALSource
 {
-    GDCLASS(ALSourceNode3D, ALSourceNode);
+    GDCLASS(ALSource3D, ALSource);
 
 private:
     float max_distance = 100.0f;
@@ -18,11 +18,11 @@ private:
 protected:
     static void _bind_methods();
 
-    void configure_source(ALSource &source) override;
+    void configure_source(ALSourceHandle &source) override;
 
 public:
-    ALSourceNode3D();
-    ~ALSourceNode3D();
+    ALSource3D();
+    ~ALSource3D();
 
     void _process(double delta) override;
 
@@ -39,10 +39,7 @@ public:
         return reference_distance;
     }
 
-    // Script-only alias for `reference_distance`, matching AudioStreamPlayer3D's
-    // `unit_size` - lets a script written against AudioStreamPlayer3D keep
-    // working unmodified after converting to this node (see
-    // va_conversion_plugin.cpp, which does the same remap at conversion time).
+    // Script-only alias for `reference_distance` matching AudioStreamPlayer3D's `unit_size` (see va_conversion_plugin.cpp's matching remap).
     float get_unit_size() const
     {
         return get_reference_distance();

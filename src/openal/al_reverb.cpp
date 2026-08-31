@@ -24,8 +24,7 @@ bool ALReverbEffect::create()
 
     if (!manager->has_efx())
     {
-        // Not an error - devices without ALC_EXT_EFX just play without
-        // reverb. ALManager::resolve_efx_functions already logged why.
+        // Not an error - devices without ALC_EXT_EFX just play without reverb.
         return false;
     }
 
@@ -119,8 +118,7 @@ void ALReverbEffect::set_params(const VAEAXReverbParams &params)
     effectf(effect_handle, AL_EAXREVERB_ROOM_ROLLOFF_FACTOR, params.roomRolloffFactor);
     effecti(effect_handle, AL_EAXREVERB_DECAY_HFLIMIT, params.decayHFLimit);
 
-    // Re-bind: effect parameter edits only take effect on the slot once
-    // AL_EFFECTSLOT_EFFECT is re-written, per EFX semantics.
+    // Re-bind: effect parameter edits only take effect on the slot once AL_EFFECTSLOT_EFFECT is re-written, per EFX semantics.
     manager->al_auxiliary_effect_sloti()(slot_handle, AL_EFFECTSLOT_EFFECT, (ALint)effect_handle);
 
     manager->al_auxiliary_effect_slotf()(slot_handle, AL_EFFECTSLOT_GAIN, params.effectSlotGain);

@@ -20,10 +20,7 @@
 namespace va_godot
 {
 
-// Handle IDs identify which face is being dragged - the handle sits at the midpoint of that
-// face. Dragging a MAX_* handle only changes bounds_size along that axis; dragging a MIN_*
-// handle moves bounds_position along that axis too, so the opposite (fixed) face stays put in
-// world space.
+// Handle IDs identify which face is being dragged. Dragging MAX_* only changes bounds_size on that axis; dragging MIN_* also moves bounds_position so the opposite face stays fixed in world space.
 enum VAWorldBoundsHandle
 {
     VA_WORLD_BOUNDS_HANDLE_MAX_X,
@@ -61,9 +58,7 @@ void VAWorldGizmoPlugin::_redraw(const Ref<EditorNode3DGizmo> &gizmo)
     if (!world)
         return;
 
-    // The node's own position is the AABB's world-space origin (see VAWorld::set_position);
-    // rotation/scale are locked out (see VAWorld::_validate_property), so the box is simply
-    // [0, bounds_size] in this node's local space.
+    // The node's own position is the AABB's world-space origin; rotation/scale are locked out (see VAWorld::_validate_property), so the box is [0, bounds_size] in local space.
     Vector3 min = Vector3();
     Vector3 max = world->get_bounds_size();
 
@@ -92,8 +87,7 @@ void VAWorldGizmoPlugin::_redraw(const Ref<EditorNode3DGizmo> &gizmo)
         lines.push_back(corners[edges[i][1]]);
     }
 
-    // Built per-instance (rather than via the plugin-wide create_material cache) since each
-    // VAWorld can have its own user-set bounds_color.
+    // Built per-instance rather than via the plugin-wide create_material cache, since each VAWorld can have its own user-set bounds_color.
     Color line_color = world->get_bounds_color();
 
     Ref<StandardMaterial3D> line_material;
@@ -112,8 +106,7 @@ void VAWorldGizmoPlugin::_redraw(const Ref<EditorNode3DGizmo> &gizmo)
     face_material->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
     gizmo->add_mesh(build_face_mesh(corners), face_material);
 
-    // One drag handle per axis per side, at the midpoint of that face, so each handle only ever
-    // resizes bounds_size (and, for the -face handles, bounds_position) along its own axis.
+    // One drag handle per axis per side, at the midpoint of that face, so each only ever resizes along its own axis.
     PackedVector3Array handles;
     handles.push_back(Vector3(max.x, max.y * 0.5f, max.z * 0.5f));
     handles.push_back(Vector3(max.x * 0.5f, max.y, max.z * 0.5f));
@@ -194,11 +187,7 @@ Variant VAWorldGizmoPlugin::_get_handle_value(const Ref<EditorNode3DGizmo> &gizm
     if (!world)
         return Variant();
 
-    // Snapshotted here and handed back to _commit_handle/_set_handle as p_restore, so a
-    // cancelled drag (e.g. Escape) can restore the exact pre-drag bounds_position/bounds_size -
-    // both, since a -face drag changes both together. Note this is called on every _set_handle
-    // frame (not just once at drag start) to refresh the editor's own cached restore value, so
-    // drag-start detection must not live here - see _begin_handle_action.
+    // Snapshotted here and handed back as p_restore so a cancelled drag can restore the exact pre-drag values. Called every _set_handle frame, not just once - drag-start detection must live in _begin_handle_action instead.
     Array restore;
     restore.push_back(world->get_position());
     restore.push_back(world->get_bounds_size());
@@ -207,9 +196,7 @@ Variant VAWorldGizmoPlugin::_get_handle_value(const Ref<EditorNode3DGizmo> &gizm
 
 void VAWorldGizmoPlugin::_begin_handle_action(const Ref<EditorNode3DGizmo> &gizmo, int32_t handle_id, bool secondary)
 {
-    // Fires exactly once per drag, at mouse-down, before the first _set_handle call - the
-    // reliable place to reset drag_click_offset and snapshot drag_start_position/drag_start_size
-    // for a fresh drag (see their header doc comments).
+    // Fires exactly once per drag, at mouse-down - the reliable place to reset drag_click_offset and snapshot the drag-start bounds.
     drag_click_offset = NAN;
 
     VAWorld *world = Object::cast_to<VAWorld>(gizmo->get_node_3d());
@@ -258,25 +245,8 @@ void VAWorldGizmoPlugin::_set_handle(const Ref<EditorNode3DGizmo> &gizmo, int32_
             return;
     }
 
-    // Drag is constrained to the world-space line through the box's pre-drag min corner along
-    // the chosen axis. Anchored to drag_start_position (rather than world->get_global_transform(),
-    // which is live) because a -face drag moves bounds_position every frame - if the ray math
-    // re-read the live origin, the axis line itself would shift out from under the drag each
-    // frame instead of staying fixed for its duration.
-    //
-    // Cast the mouse position into a 3D ray and intersect it with a *plane* through the handle's
-    // pre-drag world position - not the closest point on the ray to the axis *line* (what this
-    // used to do, mirroring Gizmo3DHelper::box_set_handle at a glance). That line-based approach
-    // is only exact when the handle sits on the axis itself (true for CSGBox3D/CollisionShape3D,
-    // whose extent handles are at e.g. (size.x/2, 0, 0)) - ours sit at face centres, off-axis
-    // (e.g. (max.x, max.y * 0.5, max.z * 0.5)), and for an off-axis handle the
-    // closest-point-on-line solution advances faster than the cursor's actual on-screen motion
-    // (verified numerically: a cursor moving a world-space delta of 2 units produced a
-    // closest-point delta of 2.39, growing with distance from the axis and view angle) - this was
-    // the "outruns the cursor" bug. Intersecting a camera-facing plane through the handle's actual
-    // position instead makes the hit point track the cursor exactly 1:1 regardless of how far the
-    // handle sits from the axis, because the ray always lands exactly where the cursor is
-    // pointing on that plane.
+    // Drag is constrained to the world-space line through the box's pre-drag min corner along the chosen axis, anchored to drag_start_position rather than the live global_transform - otherwise a -face drag (which moves bounds_position every frame) would shift the axis line out from under itself mid-drag.
+    // Intersect the mouse ray with a *plane* through the handle's pre-drag position, not the closest point on the ray to the axis *line* (the old approach, mirroring Gizmo3DHelper::box_set_handle). The line-based approach is only exact when the handle sits on the axis itself; ours sit at off-axis face centres, where it made the hit point outrun the cursor's actual on-screen motion (verified numerically: a 2-unit cursor move produced a 2.39-unit closest-point delta, growing with distance/angle). A camera-facing plane through the handle's actual position instead tracks the cursor exactly 1:1.
     Node3D *parent = world->get_parent_node_3d();
     Transform3D parent_transform = parent ? parent->get_global_transform() : Transform3D();
     Vector3 axis_origin = parent_transform.xform(drag_start_position);
@@ -290,9 +260,7 @@ void VAWorldGizmoPlugin::_set_handle(const Ref<EditorNode3DGizmo> &gizmo, int32_
     Vector3 ray_origin = camera->project_ray_origin(screen_pos);
     Vector3 ray_direction = camera->project_ray_normal(screen_pos);
 
-    // Plane contains the axis line and is tilted to face the camera as much as possible while
-    // still containing that line - the standard construction for a view-aligned axis-constrained
-    // drag plane (used by e.g. Blender/Unity's axis gizmos).
+    // Plane contains the axis line, tilted to face the camera as much as possible - the standard construction for a view-aligned axis-constrained drag plane (e.g. Blender/Unity's axis gizmos).
     Vector3 view_direction = handle_position - camera->get_global_transform().get_origin();
     Vector3 plane_normal = axis_direction.cross(view_direction.cross(axis_direction));
     float plane_normal_length = plane_normal.length();
@@ -302,9 +270,7 @@ void VAWorldGizmoPlugin::_set_handle(const Ref<EditorNode3DGizmo> &gizmo, int32_
 
     plane_normal /= plane_normal_length;
 
-    // Camera looking straight down the axis - the plane is edge-on to the ray, so moving the
-    // mouse can't meaningfully change the position along the axis. Leave bounds_size/position
-    // untouched this frame rather than dividing by ~zero.
+    // Camera looking straight down the axis - the plane is edge-on to the ray. Leave bounds unchanged this frame rather than dividing by ~zero.
     float ray_dot_plane = ray_direction.dot(plane_normal);
     if (std::abs(ray_dot_plane) < 0.0001f)
         return;
@@ -312,18 +278,10 @@ void VAWorldGizmoPlugin::_set_handle(const Ref<EditorNode3DGizmo> &gizmo, int32_
     float t = (handle_position - ray_origin).dot(plane_normal) / ray_dot_plane;
     Vector3 hit_point = ray_origin + ray_direction * t;
 
-    // new_length is world-space distance from drag_start_position along the axis. Note this makes
-    // the drag speed vary with distance from the camera (the face sweeps more world-space per
-    // on-screen pixel the further it recedes along the view direction) - that's expected
-    // perspective foreshortening inherent to any true 3D-space axis drag, not a bug.
+    // new_length is world-space distance from drag_start_position along the axis. Drag speed varying with camera distance is expected perspective foreshortening, not a bug.
     float new_length = (hit_point - axis_origin).dot(axis_direction);
 
-    // Preserve the offset between where the user clicked and the handle's exact position (rather
-    // than snapping the box edge to exactly under the cursor), so the drag starts smoothly from
-    // the current face position instead of jumping - see drag_click_offset's doc comment. For a
-    // +face handle the pre-drag face position (in the same "distance from drag_start_position"
-    // units as new_length) is bounds_size[axis]; for a -face handle it's 0, since the min face
-    // starts exactly at drag_start_position.
+    // Preserve the click-to-handle offset so the drag starts smoothly from the current face position instead of snapping under the cursor. Pre-drag face position (same units as new_length) is bounds_size[axis] for a +face handle, 0 for a -face handle (min face starts at drag_start_position).
     if (std::isnan(drag_click_offset))
     {
         float start_face_length = is_min_face ? 0.0f : drag_start_size[axis];
@@ -334,10 +292,7 @@ void VAWorldGizmoPlugin::_set_handle(const Ref<EditorNode3DGizmo> &gizmo, int32_
 
     if (is_min_face)
     {
-        // The min face moves to track the cursor and can grow outward without limit - the only
-        // constraint is it can't cross the fixed max face, which would make bounds_size
-        // negative. new_min is measured in parent-space units along the axis (same assumption
-        // bounds_size itself already makes elsewhere in this file: no parent scale).
+        // The min face tracks the cursor but can't cross the fixed max face, which would make bounds_size negative.
         float max_face_length = drag_start_size[axis];
         float new_min = std::min(dragged_length, max_face_length);
 
@@ -363,8 +318,7 @@ void VAWorldGizmoPlugin::_commit_handle(const Ref<EditorNode3DGizmo> &gizmo, int
     if (!world)
         return;
 
-    // restore is [position, bounds_size] as snapshotted by _get_handle_value - both are needed
-    // since a -face drag changes both together.
+    // restore is [position, bounds_size] as snapshotted by _get_handle_value - both are needed since a -face drag changes both together.
     Array restore_array = restore;
     Vector3 restore_position = restore_array[0];
     Vector3 restore_size = restore_array[1];
@@ -376,10 +330,7 @@ void VAWorldGizmoPlugin::_commit_handle(const Ref<EditorNode3DGizmo> &gizmo, int
         return;
     }
 
-    // bounds_position/bounds_size already hold the final dragged values (set continuously by
-    // _set_handle) - so register the UndoRedo action without re-executing the "do" step
-    // (commit_action(false)), matching Godot's own built-in gizmos (e.g. GPUParticles3D's
-    // extents handles).
+    // bounds already hold the final dragged values (set continuously by _set_handle), so register the UndoRedo action without re-executing the "do" step, matching Godot's own built-in gizmos.
     Vector3 final_position = world->get_position();
     Vector3 final_size = world->get_bounds_size();
     if (final_position == restore_position && final_size == restore_size)

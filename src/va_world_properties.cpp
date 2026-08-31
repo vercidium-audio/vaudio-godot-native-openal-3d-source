@@ -1,3 +1,4 @@
+#include "openal/al_manager.h"
 #include "va_conversions.h"
 #include "va_engine_util.h"
 #include "va_world.h"
@@ -7,20 +8,9 @@
 
 #include <algorithm>
 
-// VAWorldProperties.cs port. Only pending_shutdown's bind/get/set live in
-// va_world.cpp/_bind_methods (it was already there before this file existed);
-// everything else the C# exposes under [ExportGroup] is added here. Each
-// setter clamps/validates the same way its C# counterpart does before
-// forwarding to the native handle, which always exists by the time these run
-// (world is created in VAWorld::VAWorld() itself - see va_world.cpp).
-
 namespace va_godot
 {
 
-// Shadows the inherited Node3D::set_position (see _bind_methods) so that moving this node - via
-// the viewport gizmo, the Inspector's Position field, or code - also updates vaWorldSetPosition.
-// The bounds are always axis-aligned starting at this position (see _validate_property, which
-// hides rotation/scale), so the node's position doubles as the AABB's world-space origin.
 void VAWorld::set_position(const Vector3 &value)
 {
     Node3D::set_position(value);
@@ -49,7 +39,6 @@ void VAWorld::set_bounds_size(Vector3 value)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world size (may be negative or NaN/Infinity)");
 }
 
-// Editor-only visualization setting, not forwarded to the SDK - just recolors the viewport gizmo.
 void VAWorld::set_bounds_color(Color value)
 {
     bounds_color = value;
@@ -82,9 +71,6 @@ void VAWorld::set_world_is_indoors(bool value)
 
 void VAWorld::set_maximum_grouped_eax_count(int value)
 {
-    // Editor field has a range hint of 1+, but callers can still pass 0 or below via code.
-    // SDK requires >= 1 (VA_OUT_OF_RANGE otherwise); only the negative side is clamped here,
-    // so a caller passing 0 will still be rejected by the SDK and reported below.
     maximum_grouped_eax_count = std::max(0, value);
 
     if (!world)
@@ -98,32 +84,58 @@ void VAWorld::set_maximum_grouped_eax_count(int value)
 
 void VAWorld::set_meters_per_unit(float value)
 {
-    // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     meters_per_unit = std::max(0.0001f, value);
 
-    if (!world)
+    if (world)
     {
-        return;
+        VAResult result = vaWorldSetMetersPerUnit(world, meters_per_unit);
+
+        if (result != VA_SUCCESS && result != VA_UNCHANGED)
+            VA_ERROR_NAMED_RESULT(result, "Failed to set world meters per unit (may be <= 0, NaN or Infinity)");
     }
 
-    VAResult result = vaWorldSetMetersPerUnit(world, meters_per_unit);
-
-    if (result != VA_SUCCESS)
-        VA_ERROR_NAMED_RESULT(result, "Failed to set world meters per unit (may be <= 0, NaN or Infinity)");
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_meters_per_unit(meters_per_unit);
 }
 
 void VAWorld::set_speed_of_sound(float value)
 {
-    // Matches the editor range hint's minimum; also guards values set via code, which bypass that hint.
     speed_of_sound = std::max(0.0001f, value);
 
-    if (!world)
-        return;
+    if (world)
+    {
+        VAResult result = vaWorldSetInverseSpeedOfSound(world, 1.0f / speed_of_sound);
 
-    VAResult result = vaWorldSetInverseSpeedOfSound(world, 1.0f / speed_of_sound);
+        if (result != VA_SUCCESS && result != VA_UNCHANGED)
+            VA_ERROR_NAMED_RESULT(result, "Failed to set world speed of sound (may be <= 0, NaN or Infinity)");
+    }
 
-    if (result != VA_SUCCESS)
-        VA_ERROR_NAMED_RESULT(result, "Failed to set world speed of sound (may be <= 0, NaN or Infinity)");
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_speed_of_sound(speed_of_sound);
+}
+
+void VAWorld::set_master_volume(float value)
+{
+    master_volume = value;
+
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_master_volume(master_volume);
+}
+
+void VAWorld::set_distance_model(int value)
+{
+    distance_model = value;
+
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_distance_model(static_cast<ALenum>(distance_model));
+}
+
+void VAWorld::set_reverb_only(bool value)
+{
+    reverb_only = value;
+
+    if (ALManager::get_singleton())
+        ALManager::get_singleton()->set_reverb_only(reverb_only);
 }
 
 void VAWorld::set_humidity(float value)

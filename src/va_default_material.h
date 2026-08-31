@@ -18,8 +18,7 @@ class VADefaultMaterial : public Node
 private:
     VAMaterialType material_type = VAMaterialMetal;
 
-    // Matches VAMaterialMetal, the default material_type above.
-    float absorption_lf = 0.05f;
+    float absorption_lf = 0.05f; // Matches VAMaterialMetal, the default material_type above.
     float absorption_hf = 0.02f;
     float scattering = 0.01f;
     float transmission_lf = 0.1f;
@@ -28,14 +27,10 @@ private:
     float flat_transmission_hf = 0.25f;
     Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
 
-    // true once the material has been configured at runtime by _enter_tree()
-    bool registered = false;
+    bool registered = false; // true once the material has been configured at runtime by _enter_tree()
+    ::VAWorld *va_world_handle = nullptr; // Cached handle of the owning VAWorld
 
-    // Cached handle of the owning VAWorld
-    ::VAWorld *va_world_handle = nullptr;
-
-    // Reverts all properties back to the SDK's built-in defaults
-    void reset_properties_to_material_defaults();
+    void reset_properties_to_material_defaults(); // Reverts all properties back to the SDK's built-in defaults
 
 protected:
     static void _bind_methods();
@@ -72,4 +67,8 @@ public:
 
     Color get_color() const;
     void set_color(const Color &value);
+
+    void apply_properties_from_editor(float new_absorption_lf, float new_absorption_hf, float new_scattering,
+        float new_transmission_lf, float new_transmission_hf, float new_flat_transmission_lf,
+        float new_flat_transmission_hf, const Color &new_color);
 };

@@ -1,4 +1,4 @@
-#include "al_source.h"
+#include "al_source_handle.h"
 
 #include "../va_engine_util.h"
 #include "al_manager.h"
@@ -7,18 +7,18 @@
 
 using namespace godot;
 
-ALSource::~ALSource()
+ALSourceHandle::~ALSourceHandle()
 {
     destroy();
 }
 
-bool ALSource::create()
+bool ALSourceHandle::create()
 {
     ALManager *manager = ALManager::get_singleton();
 
     if (!manager || !manager->is_initialized())
     {
-        VA_ERROR("ALSource::create called before the OpenAL device is initialized");
+        VA_ERROR("ALSourceHandle::create called before the OpenAL device is initialized");
         return false;
     }
 
@@ -33,20 +33,14 @@ bool ALSource::create()
 
     handle = new_handle;
 
-    // Every buffer this plugin uploads is stereo (ALBuffer::load always
-    // uploads AL_FORMAT_STEREO16 - Godot's mix_audio pull API upmixes mono
-    // sources internally before we ever see the samples). OpenAL Soft's
-    // default AL_AUTO spatialize mode leaves stereo sources unspatialized
-    // (direct L/R passthrough with only distance attenuation, no panning),
-    // so without this every VASource/VASourceRelative would be audible but
-    // never directional. AL_SOFT_source_spatialize (AL_SOURCE_SPATIALIZE_SOFT)
-    // forces 3D spatialization regardless of channel count.
+    // Every buffer this plugin uploads is stereo (ALBuffer::load always uploads AL_FORMAT_STEREO16), and OpenAL Soft's
+    // default AL_AUTO spatialize mode leaves stereo sources unspatialized - AL_SOURCE_SPATIALIZE_SOFT forces 3D spatialization regardless of channel count.
     ALManager::get_singleton()->al_sourcei()(handle, AL_SOURCE_SPATIALIZE_SOFT, AL_TRUE);
 
     return true;
 }
 
-void ALSource::destroy()
+void ALSourceHandle::destroy()
 {
     ALManager *manager = ALManager::get_singleton();
 
@@ -59,22 +53,22 @@ void ALSource::destroy()
     handle = 0;
 }
 
-void ALSource::set_buffer(ALuint buffer_handle)
+void ALSourceHandle::set_buffer(ALuint buffer_handle)
 {
     ALManager::get_singleton()->al_sourcei()(handle, AL_BUFFER, (ALint)buffer_handle);
 }
 
-void ALSource::play()
+void ALSourceHandle::play()
 {
     ALManager::get_singleton()->al_source_play()(handle);
 }
 
-void ALSource::stop()
+void ALSourceHandle::stop()
 {
     ALManager::get_singleton()->al_source_stop()(handle);
 }
 
-bool ALSource::is_finished() const
+bool ALSourceHandle::is_finished() const
 {
     if (looping)
     {
@@ -86,49 +80,49 @@ bool ALSource::is_finished() const
     return state == AL_STOPPED;
 }
 
-void ALSource::set_gain(float gain)
+void ALSourceHandle::set_gain(float gain)
 {
     ALManager::get_singleton()->al_sourcef()(handle, AL_GAIN, gain);
 }
 
-void ALSource::set_pitch(float pitch)
+void ALSourceHandle::set_pitch(float pitch)
 {
     ALManager::get_singleton()->al_sourcef()(handle, AL_PITCH, pitch);
 }
 
-void ALSource::set_looping(bool value)
+void ALSourceHandle::set_looping(bool value)
 {
     looping = value;
     ALManager::get_singleton()->al_sourcei()(handle, AL_LOOPING, value ? 1 : 0);
 }
 
-void ALSource::set_relative(bool value)
+void ALSourceHandle::set_relative(bool value)
 {
     ALManager::get_singleton()->al_sourcei()(handle, AL_SOURCE_RELATIVE, value ? 1 : 0);
 }
 
-void ALSource::set_max_distance(float value)
+void ALSourceHandle::set_max_distance(float value)
 {
     ALManager::get_singleton()->al_sourcef()(handle, AL_MAX_DISTANCE, value);
 }
 
-void ALSource::set_reference_distance(float value)
+void ALSourceHandle::set_reference_distance(float value)
 {
     ALManager::get_singleton()->al_sourcef()(handle, AL_REFERENCE_DISTANCE, value);
 }
 
-void ALSource::set_position(const Vector3 &position)
+void ALSourceHandle::set_position(const Vector3 &position)
 {
     ALfloat values[3] = {position.x, position.y, position.z};
     ALManager::get_singleton()->al_sourcefv()(handle, AL_POSITION, values);
 }
 
-void ALSource::set_direct_filter(ALuint filter_handle)
+void ALSourceHandle::set_direct_filter(ALuint filter_handle)
 {
     ALManager::get_singleton()->al_sourcei()(handle, AL_DIRECT_FILTER, (ALint)filter_handle);
 }
 
-void ALSource::set_reverb_send(ALuint effect_slot_handle, ALuint reverb_filter_handle)
+void ALSourceHandle::set_reverb_send(ALuint effect_slot_handle, ALuint reverb_filter_handle)
 {
     ALManager::get_singleton()->al_source3i()(
         handle, AL_AUXILIARY_SEND_FILTER,

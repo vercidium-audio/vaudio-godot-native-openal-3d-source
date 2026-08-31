@@ -20,14 +20,6 @@ namespace va_godot
 
 class VAEmitter;
 
-// Renders vaEmitterSetVisualisationCallback's ray-bounce results as fading diamond sprites.
-// Add as a child of any VAEmitter (or VASource/VAListener, both of which are VAEmitters) - this
-// node finds that parent, registers itself as the visualisation callback target, and pushes the
-// exported ray_count/bounce_count/update_frequency onto the parent's handle. Each callback
-// invocation (every update_frequency ms) writes one MultiMesh instance per VAVisualisationData
-// entry; per-frame fading is entirely GPU-side (a ShaderMaterial reads each instance's spawn time
-// out of its custom data and the fade_in_ms/fade_out_ms/duration_ms/colour uniforms below), so
-// nothing here does per-instance work outside the callback itself.
 class VAVisualisation : public Node3D
 {
     GDCLASS(VAVisualisation, Node3D);
@@ -39,11 +31,8 @@ private:
     MultiMeshInstance3D *multimesh_instance = nullptr;
     Ref<ShaderMaterial> shader_material;
 
-    // Ring-buffer write cursor into multimesh's instances - each callback invocation appends
-    // ray_count * bounce_count new instances here, wrapping once the buffer is full. The buffer
-    // is sized (see required_instance_count) to hold every batch still fading at once, so by the
-    // time the cursor wraps back around to overwrite an instance, that instance has already
-    // faded out - no bookkeeping needed to free instances early.
+    // Ring-buffer write cursor into multimesh's instances; sized (see required_instance_count) to hold every batch
+    // still fading at once, so by the time the cursor wraps around an instance has already faded out.
     int next_instance = 0;
 
     int ray_count = 32;
@@ -66,10 +55,7 @@ private:
     void apply_properties_to_emitter();
     void apply_shader_uniforms();
 
-    // Diamonds must stay alive (fading) for duration_ms while new callbacks arrive every
-    // update_frequency_ms, so the ring buffer needs room for every batch still fading at once -
-    // not just the latest one - or a new callback's writes stomp on still-visible instances from
-    // a few callbacks ago. See on_visualisation_data/create_multimesh.
+    // Ring buffer needs room for every batch still fading at once (duration_ms / update_frequency_ms), not just the latest.
     int required_instance_count() const;
 
     static Ref<ArrayMesh> build_diamond_mesh();

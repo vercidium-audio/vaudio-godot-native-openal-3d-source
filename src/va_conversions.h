@@ -1,10 +1,15 @@
 #pragma once
 
 #include <cfloat>
+#include <cmath>
 #include <vector>
 
+#include <godot_cpp/classes/concave_polygon_shape3d.hpp>
+#include <godot_cpp/classes/convex_polygon_shape3d.hpp>
+#include <godot_cpp/classes/height_map_shape3d.hpp>
 #include <godot_cpp/classes/mesh.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/packed_vector3_array.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -112,7 +117,7 @@ inline std::vector<VAVector> ConvertMeshToVAudio(const Ref<Mesh> &mesh, VAVector
 
             if (calculated_normal.dot(mesh_normal) < 0)
             {
-                // Flip winding to match the mesh's own normal direction.
+                // Flip winding to match the mesh's own normal direction
                 Vector3 temp = v1;
                 v1 = v2;
                 v2 = temp;
@@ -185,4 +190,125 @@ inline std::vector<VAVector> ConvertMeshToVAudio(const Ref<Mesh> &mesh, VAVector
     out_max = ToVAudio(max);
 
     return vertices;
+}
+
+// ConcavePolygonShape3D::get_faces() already returns a flat CW-wound triangle vertex list (unlike Mesh, which is CCW and needs flipping) - just accumulate bounds.
+inline std::vector<VAVector> ConvertConcavePolygonToVAudio(const Ref<ConcavePolygonShape3D> &shape, VAVector &out_min, VAVector &out_max)
+{
+    PackedVector3Array faces = shape->get_faces();
+
+    std::vector<VAVector> vertices;
+
+    if (faces.is_empty())
+    {
+        out_min = ToVAudio(Vector3());
+        out_max = ToVAudio(Vector3());
+        return vertices;
+    }
+
+    Vector3 min(FLT_MAX, FLT_MAX, FLT_MAX);
+    Vector3 max(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+    vertices.reserve(faces.size());
+
+    for (int i = 0; i < faces.size(); i++)
+    {
+        const Vector3 &v = faces[i];
+        vertices.push_back(ToVAudio(v));
+
+        min.x = MIN(min.x, v.x);
+        min.y = MIN(min.y, v.y);
+        min.z = MIN(min.z, v.z);
+        max.x = MAX(max.x, v.x);
+        max.y = MAX(max.y, v.y);
+        max.z = MAX(max.z, v.z);
+    }
+
+    out_min = ToVAudio(min);
+    out_max = ToVAudio(max);
+
+    return vertices;
+}
+
+// ConvexPolygonShape3D has no direct triangle list of its own - triangulate via its debug mesh, same as the Mono plugin's ConvertConvexPolygonToVector3FList.
+inline std::vector<VAVector> ConvertConvexPolygonToVAudio(const Ref<ConvexPolygonShape3D> &shape, VAVector &out_min, VAVector &out_max)
+{
+    Ref<Mesh> debug_mesh = shape->get_debug_mesh();
+
+    if (debug_mesh.is_null())
+    {
+        out_min = ToVAudio(Vector3());
+        out_max = ToVAudio(Vector3());
+        return std::vector<VAVector>();
+    }
+
+    return ConvertMeshToVAudio(debug_mesh, out_min, out_max);
+}
+
+// HeightMapShape3D is centered at the origin, spanning -width/2..+width/2 and -depth/2..+depth/2 - triangulate each 2x2 cell of the grid into two CW-wound triangles.
+inline std::vector<VAVector> ConvertHeightMapToVAudio(const Ref<HeightMapShape3D> &shape, VAVector &out_min, VAVector &out_max)
+{
+    int map_width = shape->get_map_width();
+    int map_depth = shape->get_map_depth();
+    PackedFloat32Array map_data = shape->get_map_data();
+
+    std::vector<VAVector> triangles;
+
+    if (map_width < 2 || map_depth < 2 || map_data.size() < map_width * map_depth)
+    {
+        out_min = ToVAudio(Vector3());
+        out_max = ToVAudio(Vector3());
+        return triangles;
+    }
+
+    Vector3 min(FLT_MAX, FLT_MAX, FLT_MAX);
+    Vector3 max(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+    float half_width = (map_width - 1) / 2.0f;
+    float half_depth = (map_depth - 1) / 2.0f;
+
+    for (int z = 0; z < map_depth - 1; z++)
+    {
+        for (int x = 0; x < map_width - 1; x++)
+        {
+            float h00 = map_data[x + 0 + map_width * (z + 0)];
+            float h10 = map_data[x + 1 + map_width * (z + 0)];
+            float h01 = map_data[x + 0 + map_width * (z + 1)];
+            float h11 = map_data[x + 1 + map_width * (z + 1)];
+
+            if (!isfinite(h00) || !isfinite(h10) || !isfinite(h01) || !isfinite(h11))
+                continue;
+
+            Vector3 v00(x - half_width, h00, z - half_depth);
+            Vector3 v10(x + 1 - half_width, h10, z - half_depth);
+            Vector3 v01(x - half_width, h01, z + 1 - half_depth);
+            Vector3 v11(x + 1 - half_width, h11, z + 1 - half_depth);
+
+            // Clockwise winding for upward-facing normals, matching the Mono plugin's ConvertHeightMapToVector3FList.
+            triangles.push_back(ToVAudio(v00));
+            triangles.push_back(ToVAudio(v01));
+            triangles.push_back(ToVAudio(v10));
+            triangles.push_back(ToVAudio(v10));
+            triangles.push_back(ToVAudio(v01));
+            triangles.push_back(ToVAudio(v11));
+
+            min.x = MIN(min.x, MIN(v00.x, MIN(v10.x, MIN(v01.x, v11.x))));
+            min.y = MIN(min.y, MIN(v00.y, MIN(v10.y, MIN(v01.y, v11.y))));
+            min.z = MIN(min.z, MIN(v00.z, MIN(v10.z, MIN(v01.z, v11.z))));
+            max.x = MAX(max.x, MAX(v00.x, MAX(v10.x, MAX(v01.x, v11.x))));
+            max.y = MAX(max.y, MAX(v00.y, MAX(v10.y, MAX(v01.y, v11.y))));
+            max.z = MAX(max.z, MAX(v00.z, MAX(v10.z, MAX(v01.z, v11.z))));
+        }
+    }
+
+    if (triangles.empty())
+    {
+        min = Vector3();
+        max = Vector3();
+    }
+
+    out_min = ToVAudio(min);
+    out_max = ToVAudio(max);
+
+    return triangles;
 }
