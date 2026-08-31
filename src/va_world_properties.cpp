@@ -90,7 +90,7 @@ void VAWorld::set_meters_per_unit(float value)
     {
         VAResult result = vaWorldSetMetersPerUnit(world, meters_per_unit);
 
-        if (result != VA_SUCCESS)
+        if (result != VA_SUCCESS && result != VA_UNCHANGED)
             VA_ERROR_NAMED_RESULT(result, "Failed to set world meters per unit (may be <= 0, NaN or Infinity)");
     }
 
@@ -106,7 +106,7 @@ void VAWorld::set_speed_of_sound(float value)
     {
         VAResult result = vaWorldSetInverseSpeedOfSound(world, 1.0f / speed_of_sound);
 
-        if (result != VA_SUCCESS)
+        if (result != VA_SUCCESS && result != VA_UNCHANGED)
             VA_ERROR_NAMED_RESULT(result, "Failed to set world speed of sound (may be <= 0, NaN or Infinity)");
     }
 
