@@ -9,9 +9,6 @@
 
 using namespace godot;
 
-// A VAStreamSource fed automatically by a local input (microphone) capture device, instead of a script manually calling
-// push_audio_data() - VANetworkedStreamSource is the sibling for audio arriving over the network instead. Besides feeding
-// its own playback, this node also emits "audio_captured" with every chunk, for a script to forward over the network itself.
 class VAInputStreamSource : public VAStreamSource
 {
     GDCLASS(VAInputStreamSource, VAStreamSource);
@@ -97,9 +94,6 @@ public:
         microphone_threshold = value < 0 ? 0 : value;
     }
 
-    // Opens a microphone/input device (device_name empty for the driver's default) and, once start_capture() is called, feeds
-    // every captured chunk into this stream automatically each _process. format/frequency should match open_stream() since
-    // no resampling happens between capture and playback. Returns false (with a Godot error already logged) on failure.
     bool open_capture(const String &device_name, int format, int frequency, int buffer_size_frames);
 
     void start_capture();

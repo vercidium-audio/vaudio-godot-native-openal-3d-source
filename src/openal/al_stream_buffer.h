@@ -6,10 +6,6 @@
 #include <mutex>
 #include <vector>
 
-// Owns one OpenAL buffer whose samples are pulled from a callback instead of a fixed alBufferData upload - used by
-// VAStreamSource to let a script push live PCM chunks (e.g. microphone/VOIP audio) into a source while it plays.
-// OpenAL Soft can invoke the buffer callback from its own mixer thread, not just the main thread the rest of this
-// plugin's AL calls run on, so pending_chunks/used_chunks are guarded by a mutex.
 class ALStreamBuffer
 {
 private:

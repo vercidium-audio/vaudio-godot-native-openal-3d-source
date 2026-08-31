@@ -15,10 +15,6 @@ using namespace godot;
 namespace va_godot
 {
 
-// Adds a "Vercidium Audio" group with a material dropdown and a "Use Flat Transmission" checkbox to the Inspector for every
-// Node3D, so geometry can be configured without hand-typing the metadata. Shown on all Node3D (not just mesh/CSG types)
-// because VAWorld::add_primitive applies a node's material/transmission override to every descendant that doesn't override
-// it itself - setting either on a plain Node3D group configures an entire subtree at once.
 class VAMaterialInspectorPlugin : public EditorInspectorPlugin
 {
     GDCLASS(VAMaterialInspectorPlugin, EditorInspectorPlugin);

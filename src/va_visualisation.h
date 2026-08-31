@@ -20,9 +20,6 @@ namespace va_godot
 
 class VAEmitter;
 
-// Renders vaEmitterSetVisualisationCallback's ray-bounce results as fading diamond sprites. Add as a child of any
-// VAEmitter (or VASource/VAListener) - this node finds that parent and registers itself as the visualisation callback
-// target. Per-frame fading is entirely GPU-side via a ShaderMaterial reading each instance's spawn time.
 class VAVisualisation : public Node3D
 {
     GDCLASS(VAVisualisation, Node3D);

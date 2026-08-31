@@ -69,12 +69,6 @@ static Node *find_child_named_recursive(Node *node, const StringName &name)
     return nullptr;
 }
 
-// VADefaultMaterial/VACustomMaterial nodes are always direct children of a VAWorld node (see both classes' doc
-// comments). existing_node is either nullptr (nothing at node_path at all) or a plain Node the editor's own Live
-// Edit already created there (see on_sync_material_properties) - either way it's replaced with a freshly
-// constructed, correctly typed node under the same parent, so the new node's own _enter_tree runs and registers it
-// with the running ::VAWorld. Returns nullptr (with no node created) if the parent isn't a VAWorld already present
-// in the running scene.
 static Node *replace_with_material_node(Node *scene_root, const NodePath &node_path, Node *existing_node, const String &node_name,
     bool is_custom_material, int material_type, const String &custom_material_name)
 {
@@ -122,17 +116,6 @@ static Node *replace_with_material_node(Node *scene_root, const NodePath &node_p
     return node;
 }
 
-// Relays a VADefaultMaterial/VACustomMaterial property edit made in the Inspector while the game is running - see
-// VAMaterialPropertiesInspectorPlugin. Unlike on_debugger_message's "sync_primitive" handling below, this never
-// touches node metadata: the target node's own apply_properties_from_editor pushes the new values straight into
-// the ::VAWorld material already tracking it.
-//
-// If the node doesn't exist yet, or exists but is a plain Node rather than a VADefaultMaterial/VACustomMaterial,
-// it's (re)created here so its own _enter_tree can register it with the running ::VAWorld the normal way. The
-// "exists but plain Node" case isn't a custom-protocol gap like sync_primitive's - the editor's own Live Edit
-// feature already creates a matching node in the running game whenever one is added in the editor's local scene
-// copy, but Live Edit only replicates the node's built-in Godot class, not any script/GDExtension class attached
-// to it, so the node Live Edit creates is always a plain Node.
 static bool on_sync_material_properties(const Array &data)
 {
     // scene_root_name, node_path, node_name, is_custom_material, material_type, custom_material_name,
@@ -223,10 +206,6 @@ static bool on_sync_viewport_camera(const Array &data)
     return true;
 }
 
-// Receiving end of VADebuggerPlugin::sync_primitive - the editor sends a "vaudio:sync_primitive" debugger message
-// with the edited scene's root node name and a NodePath relative to it, whenever the "Vercidium Audio" Inspector
-// material dropdown or permeation checkbox changes while the game is running. EditorInspectorPlugin controls can only
-// edit the editor's own local copy of the scene, so this debugger-message capture is the only way those edits reach the running game's actual VAWorld.
 static bool on_debugger_message(const String &message, const Array &data)
 {
     if (message == "sync_material_properties")
@@ -298,11 +277,6 @@ static bool on_debugger_message(const String &message, const Array &data)
     return true;
 }
 
-// Rebuilds audio/vaudio/output_device's PROPERTY_HINT_ENUM hint_string from ALManager::get_available_devices(). Split
-// out from register_project_settings() so the "Refresh OpenAL Devices" tool menu item can re-run just this part after
-// soft_oal.dll has loaded; an already-open Project Settings dialog only shows the new list after its row is redrawn.
-// Strict enum, not PROPERTY_HINT_ENUM_SUGGESTION: Godot's editor unconditionally injects a blank "" entry into an
-// ENUM_SUGGESTION dropdown for a Variant::STRING property, with no way to suppress it.
 void refresh_output_device_hint()
 {
     ProjectSettings *settings = ProjectSettings::get_singleton();
@@ -333,12 +307,6 @@ static void register_project_settings()
 
     refresh_output_device_hint();
 
-    // max_reverb_sends: dev-only setting (not end-user-facing), default 1. Floor of 1, not 0 - a
-    // value of 0 requests zero auxiliary sends from the driver, which makes every
-    // AL_AUXILIARY_SEND_FILTER call on any source fail with "Invalid send 0"
-    // (al_manager.cpp's read_settings_from_project_settings() clamps this the same way at read
-    // time, in case an existing project.godot already has an explicit 0 saved from before this
-    // floor existed).
     if (!settings->has_setting("audio/vaudio/max_reverb_sends"))
         settings->set_setting("audio/vaudio/max_reverb_sends", 1);
 

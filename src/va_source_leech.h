@@ -15,9 +15,6 @@ class VAWorld;
 class VAEmitter;
 }
 
-// A VASource that leeches raytracing results off a parent VAEmitter instead of owning/casting its own rays - e.g. an enemy's
-// constantly-raytraced VAEmitter can have multiple VASourceLeech children (footsteps, gunshots) heard through it without each
-// casting their own rays or being individually registered as a listener target (see the unreal plugin's equivalent pattern).
 class VASourceLeech : public ALSource3D
 {
     GDCLASS(VASourceLeech, ALSource3D);

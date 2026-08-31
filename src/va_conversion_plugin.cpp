@@ -53,11 +53,6 @@ bool copy_property(Object *source, Object *target, const StringName &from, const
     return true;
 }
 
-// AudioStreamPlayer(3D) has no Looping property of its own - Godot loops based on the imported stream's own loop
-// setting: AudioStreamWAV's "Loop Mode" (Import tab), exposed here as AudioStreamWAV::loop_mode, or
-// AudioStreamOggVorbis's "Loop" checkbox, exposed as AudioStreamOggVorbis::has_loop(). Ping pong / backwards aren't
-// representable by OpenAL/FMOD's simple looping flag, so any non-disabled WAV loop mode, or an enabled Ogg loop flag,
-// is treated as "should loop".
 bool any_stream_wants_looping(const TypedArray<AudioStream> &streams)
 {
     for (int i = 0; i < streams.size(); i++)
@@ -198,9 +193,6 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
     copy_property(old_node, new_base_node, "pitch_scale", "pitch");
     copy_property(old_node, new_base_node, "autoplay", "autoplay");
 
-    // AudioStreamPlayer3D has a single `stream` property; ALSource only has `streams` now, so wrap it as a one-entry
-    // array. AudioStreamRandomizer picks a random sub-stream/pitch/volume at playback time, which ALSource has no
-    // equivalent resource for, so instead expand its sub-streams into `streams` and copy its randomisation settings.
     if (has_property(old_node, "stream"))
     {
         Ref<AudioStream> old_stream = old_node->get("stream");
@@ -259,10 +251,6 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
         }
     }
 
-    // AudioStreamPlayer(3D) has no `looping` property of its own - Godot instead loops based on the imported .wav's
-    // "Loop Mode" (Import tab). Derive `looping` from that when converting from one of those. Only applies when
-    // old_node didn't already have its own `looping` property (i.e. wasn't itself an ALSource) - that value already
-    // won above.
     if (!has_property(old_node, "looping"))
     {
         TypedArray<AudioStream> streams = new_base_node->get("streams");
@@ -330,9 +318,6 @@ void VAConversionPlugin::_bind_methods()
 {
 }
 
-// audio/vaudio/output_device's Project Settings dropdown is built once at module load, before soft_oal.dll has loaded
-// any devices, so it only ever shows "System Default" until something re-queries ALManager - this tool menu item is
-// that something, since ProjectSettingsEditor isn't a GDExtension-exposed class an EditorInspectorPlugin can hook into.
 void VAConversionPlugin::refresh_output_device_setting()
 {
     refresh_output_device_hint();

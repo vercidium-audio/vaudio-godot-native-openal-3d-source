@@ -10,10 +10,6 @@
 
 using namespace godot;
 
-// Owns one OpenAL buffer's worth of fully-decoded PCM data, native equivalent of ALBuffer.cs.
-// Decoding goes through Godot's own AudioStream/AudioStreamPlayback pull-based mix API rather than a bundled decoder.
-// decode()/upload() are split so a long stream's decode can run on a WorkerThreadPool task (see ALSource::play())
-// without touching OpenAL off the main thread: decode() only pulls PCM (thread-safe), upload() does the AL calls.
 class ALBuffer
 {
 private:
@@ -31,7 +27,6 @@ public:
     ALBuffer(const ALBuffer &) = delete;
     ALBuffer &operator=(const ALBuffer &) = delete;
 
-    // Movable so a decoded ALBuffer can be stored directly in a std::vector (see ALSource::decoded_buffers); moving leaves the source's handle at 0.
     ALBuffer(ALBuffer &&other) noexcept
     {
         *this = std::move(other);
@@ -53,13 +48,10 @@ public:
         return *this;
     }
 
-    // Decodes p_stream and uploads it as one OpenAL buffer; equivalent to decode()+upload(), for callers that don't need the two steps split across threads.
     bool load(const Ref<AudioStream> &p_stream);
 
-    // Pulls p_stream's PCM data via AudioStreamPlayback::mix_audio. Safe to call from a background thread - touches no OpenAL state. Call upload() afterwards on the main thread.
     bool decode(const Ref<AudioStream> &p_stream);
 
-    // Uploads the PCM data a prior decode() call pulled, as one OpenAL buffer. Must run on the main thread (calls alGenBuffers/alBufferData).
     bool upload();
 
     ALuint get_handle() const

@@ -17,9 +17,6 @@ using namespace va_godot;
 namespace
 {
 
-// The dropdown's index 0 is a literal "None" entry (removes the metadata) and index 1 a literal
-// "Air" entry (stores "air"), so the built-in name at index 0 ("air") is added by hand rather than
-// through the BUILTIN_MATERIAL_NAMES loop, which starts at index 1.
 const int FIRST_SELECTABLE_BUILTIN_INDEX = 1;
 
 // Custom materials only register their name with the running ::VAWorld at runtime, so at edit time this walks the scene tree directly instead.

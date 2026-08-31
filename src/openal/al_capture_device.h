@@ -9,17 +9,6 @@
 
 using namespace godot;
 
-// Opens an OpenAL input (microphone) capture device and polls it for new samples, native equivalent of ALCaptureDevice.cs.
-// Deliberately not a Godot Node: a plain object owned by whichever script/node wants microphone input.
-//
-// Typical usage:
-//   ALCaptureDevice mic;
-//   mic.open("", AL_FORMAT_MONO16, 44100, 1024, [&](const uint8_t *data, int num_bytes) {
-//       stream_source->push_audio_data(data, num_bytes);
-//   });
-//   mic.start();
-//   // each frame:
-//   mic.update();
 class ALCaptureDevice
 {
 private:

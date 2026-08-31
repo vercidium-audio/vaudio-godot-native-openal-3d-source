@@ -294,9 +294,6 @@ void VAVisualisation::visualisation_callback_trampoline(::VAEmitter *emitter, VA
         self->get_visualisation()->on_visualisation_data(data, count);
 }
 
-// Called on the main thread from inside VAWorld::_process's vaWorldUpdate() call (see the threading note above
-// vaWorldUpdate/vaWorldWait in vaudio.h). Wraps the ring-buffer cursor rather than doing any per-instance cleanup -
-// a stale instance simply keeps rendering until overwritten, by which point the shader has faded it to zero alpha.
 void VAVisualisation::on_visualisation_data(VAVisualisationData *data, int count)
 {
     if (!multimesh.is_valid() || count <= 0)

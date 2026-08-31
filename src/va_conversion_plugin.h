@@ -33,10 +33,6 @@ public:
     void _popup_menu(const PackedStringArray &paths) override;
 };
 
-// Adds a "Refresh OpenAL Devices" button right below device_name under VAInputStreamSource in the Inspector - that
-// property's dropdown is only re-queried when Godot rebuilds the node's cached property list, which doesn't happen on
-// its own when a device is plugged in/unplugged. The button calls refresh_devices() to force that rebuild. Placed via
-// _parse_property (per-property, in list order) instead of _parse_end so it lands inline instead of at the bottom - see the .cpp for why it matches the NEXT property.
 class VADeviceRefreshInspectorPlugin : public EditorInspectorPlugin
 {
     GDCLASS(VADeviceRefreshInspectorPlugin, EditorInspectorPlugin);

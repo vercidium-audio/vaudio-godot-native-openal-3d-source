@@ -277,9 +277,6 @@ void VARaytracedSource::process_raytracing(double delta)
     }
 }
 
-// VASource.cs's ApplyRaytracingResults port: resolves this node's reverb slot via its child emitter's AffectsGroupedEAX/
-// GroupedEAXIndex, then if the listener has raytraced this emitter as a target, pushes the muffling gain with fullReverb=true
-// (reverb send always gets the clean/unfiltered signal; only the direct path is muffled).
 void VARaytracedSource::apply_raytracing_results(va_godot::VAEmitter *other)
 {
     effect = va_world->get_reverb_effect(emitter->get_handle());

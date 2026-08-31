@@ -30,9 +30,6 @@ void VAMaterialPropertiesInspectorPlugin::set_debugger_plugin(const Ref<VADebugg
         inspector->connect("property_edited", callable_mp(this, &VAMaterialPropertiesInspectorPlugin::on_property_edited));
 }
 
-// property_edited only reports the edited property's name, not which object it belongs to - current_node (set by
-// _can_handle just before this plugin drew that object's properties) is used as a best-effort match. Fires for every
-// Inspector edit in the editor, not just our own node types, so the _can_handle-style type check has to be repeated here.
 void VAMaterialPropertiesInspectorPlugin::on_property_edited(const String &property_name)
 {
     if (!current_node)
@@ -44,14 +41,6 @@ void VAMaterialPropertiesInspectorPlugin::on_property_edited(const String &prope
     sync_running_game(current_node);
 }
 
-// Mirrors VAMaterialInspectorPlugin::sync_running_game - see its header comment for why the debugger protocol is the
-// only bridge between the editor's local copy of this node and the running game's separate process/copy.
-//
-// node->get_name()/is_custom_material/material_type/custom_material_name let the receiving end
-// (on_sync_material_properties in register_types.cpp) create the node itself if it doesn't exist in the running
-// game yet - e.g. a VADefaultMaterial/VACustomMaterial added in the editor while the game is already running never
-// enters the running game's own scene tree (the debugger protocol only relays property edits, not new nodes), so
-// without this the sync would just fail with "no matching node exists".
 void VAMaterialPropertiesInspectorPlugin::sync_running_game(Node *node)
 {
     if (!debugger_plugin.is_valid())

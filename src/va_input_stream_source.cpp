@@ -142,9 +142,6 @@ bool VAInputStreamSource::open_capture(const String &device_name, int format, in
 {
     close_capture();
 
-    // Captured audio is dropped (not errored) until a stream is opened, so open_capture()/start_capture() may legitimately
-    // run before open_stream(). "audio_captured" is emitted independently of is_stream_open() so a script can use this node
-    // purely to get at the microphone (e.g. for VOIP), gated on microphone_threshold the same as local playback.
     bool opened = capture_device.open(device_name, (ALenum)format, frequency, buffer_size_frames,
         [this, format](const uint8_t *data, int num_bytes)
         {
