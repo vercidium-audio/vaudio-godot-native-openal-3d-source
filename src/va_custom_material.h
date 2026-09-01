@@ -18,7 +18,8 @@ class VACustomMaterial : public Node
     GDCLASS(VACustomMaterial, Node);
 
 private:
-    int material_type = 0; // Auto-assigned by VAWorld::register_custom_material, not user-facing
+    // Auto-assigned by VAWorld::register_custom_material, not user-facing
+    int material_type = 0;
     String material_name = "CustomMaterial";
 
     float absorption_lf = 0.02f;
@@ -47,13 +48,11 @@ public:
 
     // Set the internal ID of the VA material
     void set_material_type(int value);
-
     // Get the internal ID of the VA material
     int get_material_type() const;
 
     // Set the name of the custom material
     void set_material_name(const String &value);
-
     // Get the name of the custom material
     String get_material_name() const;
 

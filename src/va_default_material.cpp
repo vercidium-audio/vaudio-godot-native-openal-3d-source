@@ -135,29 +135,27 @@ VADefaultMaterial::~VADefaultMaterial()
 void VADefaultMaterial::_enter_tree()
 {
     if (IS_EDITOR_HINT())
-    {
         return;
-    }
 
     va_godot::VAWorld *va_world = va_godot::find_va_world(this);
+
     if (!va_world)
     {
+        VA_WARN_NAMED("this node must be a direct child of a VAWorld node");
         return;
     }
 
-    ::VAWorld *world = va_world->get_handle(); // Built-in materials already exist in every ::VAWorld, so just override the properties
-
-    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(world, material_type, absorption_lf), "absorption_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(world, material_type, absorption_hf), "absorption_hf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialScattering(world, material_type, scattering), "scattering", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(world, material_type, transmission_lf), "transmission_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(world, material_type, transmission_hf), "transmission_hf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(world, material_type, flat_transmission_lf), "flat_transmission_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(world, material_type, flat_transmission_hf), "flat_transmission_hf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialColor(world, material_type, ToVAudio(color)), "color", material_type);
-
-    va_world_handle = world;
+    va_world_handle = va_world->get_handle();
     registered = true;
+
+    set_absorption_lf(absorption_lf);
+    set_absorption_hf(absorption_hf);
+    set_scattering(scattering);
+    set_transmission_lf(transmission_lf);
+    set_transmission_hf(transmission_hf);
+    set_flat_transmission_lf(flat_transmission_lf);
+    set_flat_transmission_hf(flat_transmission_hf);
+    set_color(color);
 }
 
 int VADefaultMaterial::get_material_type() const
@@ -176,26 +174,14 @@ void VADefaultMaterial::reset_properties_to_material_defaults()
 {
     const MaterialDefaults &defaults = get_material_defaults(material_type);
 
-    absorption_lf = defaults.absorption_lf;
-    absorption_hf = defaults.absorption_hf;
-    scattering = defaults.scattering;
-    transmission_lf = defaults.transmission_lf;
-    transmission_hf = defaults.transmission_hf;
-    flat_transmission_lf = defaults.flat_transmission_lf;
-    flat_transmission_hf = defaults.flat_transmission_hf;
-    color = defaults.color;
-
-    if (registered)
-    {
-        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, absorption_lf), "absorption_lf", material_type);
-        log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, absorption_hf), "absorption_hf", material_type);
-        log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, scattering), "scattering", material_type);
-        log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, transmission_lf), "transmission_lf", material_type);
-        log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, transmission_hf), "transmission_hf", material_type);
-        log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(va_world_handle, material_type, flat_transmission_lf), "flat_transmission_lf", material_type);
-        log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(va_world_handle, material_type, flat_transmission_hf), "flat_transmission_hf", material_type);
-        log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(color)), "color", material_type);
-    }
+    set_absorption_lf(defaults.absorption_lf);
+    set_absorption_hf(defaults.absorption_hf);
+    set_scattering(defaults.scattering);
+    set_transmission_lf(defaults.transmission_lf);
+    set_transmission_hf(defaults.transmission_hf);
+    set_flat_transmission_lf(defaults.flat_transmission_lf);
+    set_flat_transmission_hf(defaults.flat_transmission_hf);
+    set_color(defaults.color);
 
     notify_property_list_changed();
 }
@@ -324,24 +310,12 @@ void VADefaultMaterial::apply_properties_from_editor(float new_absorption_lf, fl
     float new_transmission_lf, float new_transmission_hf, float new_flat_transmission_lf,
     float new_flat_transmission_hf, const Color &new_color)
 {
-    absorption_lf = new_absorption_lf;
-    absorption_hf = new_absorption_hf;
-    scattering = new_scattering;
-    transmission_lf = new_transmission_lf;
-    transmission_hf = new_transmission_hf;
-    flat_transmission_lf = new_flat_transmission_lf;
-    flat_transmission_hf = new_flat_transmission_hf;
-    color = new_color;
-
-    if (!registered)
-        return;
-
-    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionLF(va_world_handle, material_type, absorption_lf), "absorption_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialAbsorptionHF(va_world_handle, material_type, absorption_hf), "absorption_hf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialScattering(va_world_handle, material_type, scattering), "scattering", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialTransmissionLF(va_world_handle, material_type, transmission_lf), "transmission_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialTransmissionHF(va_world_handle, material_type, transmission_hf), "transmission_hf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionLF(va_world_handle, material_type, flat_transmission_lf), "flat_transmission_lf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialFlatTransmissionHF(va_world_handle, material_type, flat_transmission_hf), "flat_transmission_hf", material_type);
-    log_if_material_setter_failed(vaWorldSetMaterialColor(va_world_handle, material_type, ToVAudio(color)), "color", material_type);
+    set_absorption_lf(new_absorption_lf);
+    set_absorption_hf(new_absorption_hf);
+    set_scattering(new_scattering);
+    set_transmission_lf(new_transmission_lf);
+    set_transmission_hf(new_transmission_hf);
+    set_flat_transmission_lf(new_flat_transmission_lf);
+    set_flat_transmission_hf(new_flat_transmission_hf);
+    set_color(new_color);
 }
