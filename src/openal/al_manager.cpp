@@ -63,8 +63,7 @@ static const char *OPENAL_LIBRARY_NAME = "libopenal.1.dylib";
 static const char *OPENAL_LIBRARY_NAME = "libopenal.so.1";
 #endif
 
-// A bare load of "soft_oal.dll" / "libopenal.so.1" only searches the OS's default paths, not this GDExtension binary's own directory, so it misses the
-// copy SConstruct places alongside it - resolve our own module's path and load the OpenAL library from beside it instead.
+// Need to resolve our own module's path - directly loading soft_oal.dll or libopenal.so.1 only searches the OS's default paths, not this GDExtension's directory
 static std::string get_own_module_directory()
 {
 #ifdef _WIN32
@@ -130,7 +129,7 @@ bool ALManager::load_library()
 
     library = open_library(full_path.c_str());
 
-    // Fall back to the OS's default search path - covers a system-provided OpenAL install when the vendored copy is absent.
+    // Fall back to the OS's default search path if the binary isn't next in this GDExtension's folder
     if (!library)
         library = open_library(OPENAL_LIBRARY_NAME);
 

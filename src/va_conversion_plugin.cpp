@@ -335,7 +335,6 @@ void VAConversionPlugin::_enter_tree()
     debugger_plugin.instantiate();
     add_debugger_plugin(debugger_plugin);
 
-    // Expose it to VAWorld via a plain-Object bridge singleton - see DEBUGGER_BRIDGE_SINGLETON_NAME. VADebuggerPlugin itself is RefCounted and can't be registered as a singleton without Godot warning about a dangling raw pointer.
     debugger_bridge = memnew(VADebuggerBridge);
     debugger_bridge->set_debugger_plugin(debugger_plugin.ptr());
     Engine::get_singleton()->register_singleton(DEBUGGER_BRIDGE_SINGLETON_NAME, debugger_bridge);

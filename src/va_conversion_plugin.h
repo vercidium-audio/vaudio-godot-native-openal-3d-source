@@ -48,7 +48,7 @@ public:
         const String &hint_string, BitField<PropertyUsageFlags> usage_flags, bool wide) override;
 };
 
-// Plain Object (not RefCounted) so it can be an Engine singleton without Godot's "raw pointer will dangle" warning. Just forwards to the Ref-counted VADebuggerPlugin, whose lifetime VAConversionPlugin owns.
+// Plain Object (not RefCounted) so it can be an Engine singleton without Godot's "raw pointer will dangle" warning.
 class VADebuggerBridge : public Object
 {
     GDCLASS(VADebuggerBridge, Object);
@@ -68,7 +68,6 @@ class VAConversionPlugin : public EditorPlugin
     GDCLASS(VAConversionPlugin, EditorPlugin);
 
 public:
-    // VAWorld looks this up via Engine::get_singleton to reach the debugger plugin, since VAWorld is instantiated by the user's own scene, not this plugin.
     static constexpr const char *DEBUGGER_BRIDGE_SINGLETON_NAME = "VADebuggerBridge";
 
 private:

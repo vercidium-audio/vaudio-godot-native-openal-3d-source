@@ -20,8 +20,6 @@ if env["target"] in ["editor", "template_debug"]:
 
 platform = env["platform"]
 
-# Per-platform layout of the vendored vaudionative and OpenAL Soft binaries. Each dict entry is (libdir, vaudio_shared_lib, openal_shared_lib) - the
-# import lib to link vaudionative against (vaudio_link_lib) is win64-only; on Linux/macOS the SharedLibrary is linked directly against the .so/.dylib.
 if platform == "windows":
     vaudio_libdir = "thirdparty/vaudio/lib/win64/"
     vaudio_link_lib = "vaudionative"
@@ -48,9 +46,7 @@ else:
 env.Append(LIBPATH=[vaudio_libdir])
 env.Append(LIBS=[vaudio_link_lib])
 
-# godot-cpp already adds an $ORIGIN rpath on Linux; add the @loader_path equivalent on macOS so the libvaudionative / libopenal
-# copies SConstruct drops beside the plugin are found at load time. build-unix.sh additionally rewrites libvaudionative's recorded
-# path to @loader_path (it's linked with no -install_name).
+# godot-cpp already adds an $ORIGIN rpath on Linux; add the @loader_path equivalent on macOS so the libvaudionative / libopenal copies SConstruct drops beside the plugin are found at load time. build-unix.sh additionally rewrites libvaudionative's recorded path to @loader_path (it's linked with no -install_name).
 if platform == "macos":
     env.Append(LINKFLAGS=["-Wl,-rpath,@loader_path"])
 
@@ -61,8 +57,7 @@ library = env.SharedLibrary(
     source=sources,
 )
 
-# Keep the vaudionative shared library alongside the plugin binary so the loader finds it at runtime (win64: next to the import lib; Linux/macOS: via
-# the $ORIGIN / @loader_path rpath added above).
+# Keep the vaudionative shared library alongside the plugin binary so the loader finds it at runtime (win64: next to the import lib; Linux/macOS: via the $ORIGIN / @loader_path rpath added above).
 vaudio_dll_copy = env.Command(
     bin_dir + vaudio_runtime_lib,
     vaudio_libdir + vaudio_runtime_lib,
@@ -70,8 +65,7 @@ vaudio_dll_copy = env.Command(
 )
 env.Depends(library, vaudio_dll_copy)
 
-# OpenAL Soft is loaded at runtime via LoadLibrary / dlopen, not linked against an import lib - see src/openal/al_manager.cpp. It still needs to be
-# alongside the built extension so the load-from-beside-our-own-module path resolves.
+# OpenAL Soft is loaded at runtime via LoadLibrary / dlopen, not linked against an import lib - see src/openal/al_manager.cpp. It still needs to be alongside the built extension so the load-from-beside-our-own-module path resolves.
 openal_dll_copy = env.Command(
     bin_dir + openal_runtime_lib,
     openal_libdir + openal_runtime_lib,
