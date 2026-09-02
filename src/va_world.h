@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/csg_sphere3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/color.hpp>
@@ -169,6 +170,13 @@ public:
     void set_rendering_enabled(bool value)
     {
         rendering_enabled = value;
+
+        if (value && OS::get_singleton()->get_name() == "macOS")
+        {
+            UtilityFunctions::push_warning("VAWorld: the debug window is not yet available on macOS. Read more: https://github.com/vercidium-audio/support/issues/52");
+            rendering_enabled = false;
+            return;
+        }
 
         if (value && RenderingServer::get_singleton()->get_current_rendering_method() == "gl_compatibility")
         {
