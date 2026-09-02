@@ -408,6 +408,16 @@ Dictionary VAEmitter::get_eax_debug_info() const
 
 void VAEmitter::add_target(VAEmitter *target)
 {
+    if (!vaEmitterGetOcclusionEnabled(emitter) && !vaEmitterGetPermeationEnabled(emitter))
+    {
+        VA_ERROR(
+            "VAListener '", get_name(),
+            "' cannot determine how muffled other sounds are. Please increase its occlusion or permeation ray counts and try again.");
+
+        return;
+    }
+
+
     VAResult result = vaEmitterAddTarget(emitter, target->get_handle());
 
     switch (result)
