@@ -234,8 +234,28 @@ void VAWorld::_validate_property(PropertyInfo &p_property) const
     }
 }
 
+void VAWorld::_notification(int what)
+{
+    if (what == NOTIFICATION_TRANSFORM_CHANGED)
+        normalize_transform();
+}
+
+void VAWorld::normalize_transform()
+{
+    Transform3D t = get_transform();
+
+    if (t.basis.is_equal_approx(Basis()))
+        return;
+
+    set_transform(Transform3D(Basis(), t.origin));
+}
+
 void VAWorld::_ready()
 {
+    set_notify_transform(true);
+
+    normalize_transform();
+
     if (IS_EDITOR_HINT())
     {
         // Scan for unknown vercidium_audio_material values, so warnings appear while editing. get_tree() can be null if this node isn't inside the scene tree yet.

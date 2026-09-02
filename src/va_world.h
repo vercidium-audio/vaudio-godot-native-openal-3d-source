@@ -79,6 +79,9 @@ private:
     void on_node_added(Node *node);
     void on_node_removed(Node *node);
 
+    // If this node was rotated or scaled while parented to another node and then unparented, we need to reset rotation and scale back to default
+    void normalize_transform();
+
     // Reports unknown material metadata strings when in the editor, not used at runtime.
     void validate_materials_in_editor(Node *node);
 
@@ -107,6 +110,7 @@ public:
     void _ready() override;
     void _exit_tree() override;
     void _process(double delta) override;
+    void _notification(int what);
     void _validate_property(PropertyInfo &p_property) const;
 
     ::VAWorld *get_handle() const
