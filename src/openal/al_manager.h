@@ -1,7 +1,12 @@
 #pragma once
 
-// TODO: Windows-only. soft_oal.dll is loaded via LoadLibrary/GetProcAddress since no import .lib is vendored.
+// OpenAL Soft is loaded manually (LoadLibrary/GetProcAddress on Windows, dlopen/dlsym elsewhere) rather than linked, since no import lib is vendored.
+#ifdef _WIN32
 #include <windows.h>
+using va_dynamic_library = HMODULE;
+#else
+using va_dynamic_library = void *;
+#endif
 
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -20,7 +25,7 @@ class ALManager : public Object
     GDCLASS(ALManager, Object);
 
 private:
-    HMODULE library = nullptr;
+    va_dynamic_library library = nullptr;
 
     ALCdevice *device = nullptr;
     ALCcontext *context = nullptr;
