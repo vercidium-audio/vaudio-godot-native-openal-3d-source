@@ -14,7 +14,13 @@ git submodule update --init --recursive
 
 case "$(uname -s)" in
     Linux) PLATFORM=linux; ARCH=x86_64; LIBEXT=".so" ;;
-    Darwin) PLATFORM=macos; ARCH=arm64; LIBEXT=".dylib" ;;
+    Darwin)
+        PLATFORM=macos; ARCH=arm64; LIBEXT=".dylib"
+        # Non-interactive SSH gets a bare PATH without Homebrew, where scons lives.
+        for brew_bin in /opt/homebrew/bin /usr/local/bin; do
+            [ -x "$brew_bin/scons" ] && case ":$PATH:" in *":$brew_bin:"*) ;; *) PATH="$brew_bin:$PATH" ;; esac
+        done
+        ;;
     *) echo "Unsupported host: $(uname -s)" >&2; exit 1 ;;
 esac
 
