@@ -283,17 +283,6 @@ static bool on_debugger_message(const String &message, const Array &data)
             node->set_meta(propagate_meta_key, propagate);
     }
 
-    if (data.size() > 5)
-    {
-        Variant propagate_layer = data[5];
-        StringName propagate_layer_meta_key = va_godot::VAWorld::get_propagate_layer_meta_key();
-
-        if (propagate_layer.get_type() == Variant::NIL)
-            node->remove_meta(propagate_layer_meta_key);
-        else
-            node->set_meta(propagate_layer_meta_key, propagate_layer);
-    }
-
     va_world->sync_primitive(node);
 
     return true;

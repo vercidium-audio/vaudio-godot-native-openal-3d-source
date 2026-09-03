@@ -40,6 +40,10 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_epsilon", "value"), &VAWorld::set_epsilon);
     ClassDB::bind_method(D_METHOD("get_world_is_indoors"), &VAWorld::get_world_is_indoors);
     ClassDB::bind_method(D_METHOD("set_world_is_indoors", "value"), &VAWorld::set_world_is_indoors);
+    ClassDB::bind_method(D_METHOD("get_render_layers"), &VAWorld::get_render_layers);
+    ClassDB::bind_method(D_METHOD("set_render_layers", "value"), &VAWorld::set_render_layers);
+    ClassDB::bind_method(D_METHOD("get_collision_layers"), &VAWorld::get_collision_layers);
+    ClassDB::bind_method(D_METHOD("set_collision_layers", "value"), &VAWorld::set_collision_layers);
 
     ADD_GROUP("World", "");
 
@@ -50,6 +54,10 @@ void VAWorld::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::COLOR, "bounds_color"), "set_bounds_color", "get_bounds_color");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "epsilon"), "set_epsilon", "get_epsilon");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "world_is_indoors"), "set_world_is_indoors", "get_world_is_indoors");
+
+    ADD_GROUP("Layers", "");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "render_layers", PROPERTY_HINT_LAYERS_3D_RENDER), "set_render_layers", "get_render_layers");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_layers", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_collision_layers", "get_collision_layers");
 
     ClassDB::bind_method(D_METHOD("get_master_volume"), &VAWorld::get_master_volume);
     ClassDB::bind_method(D_METHOD("set_master_volume", "value"), &VAWorld::set_master_volume);
@@ -394,7 +402,7 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         {
             listener = emitter;
 
-            // Wire up every source registered so far, in either order - some may have registered before this listener existed, instead of leaving them permanently untargeted.
+            // Set up the sources that were created before the listener existed
             wire_pending_targets();
         }
         else
@@ -403,7 +411,7 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         return;
     }
 
-    // Recorded before the listener check so a listener whose register_emitter runs later this same frame still sees this source when it walks registered_emitters.
+    // Keep track of all emitters
     registered_emitters.push_back(emitter);
 
     if (listener)
@@ -412,7 +420,7 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         return;
     }
 
-    // No listener registered yet. If a VAListener node is in the tree but its own register_emitter simply hasn't run this frame (child-emitter registration order vs sibling _enter_tree), the walk it does on registering already covers us. This deferred re-walk is the belt-and-braces path for any other ordering where neither immediate wiring nor the listener's walk reached this source.
+    // If this node was added before the VAlistener was created, we need to defer-process all sources/emitters later
     if (!wire_pending_targets_queued)
     {
         wire_pending_targets_queued = true;

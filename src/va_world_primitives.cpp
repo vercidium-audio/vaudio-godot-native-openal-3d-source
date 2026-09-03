@@ -48,12 +48,6 @@ static const StringName &PropagateMetaKey()
     return key;
 }
 
-static const StringName &PropagateLayerMetaKey()
-{
-    static StringName key = "vercidium_audio_propagate_layer";
-    return key;
-}
-
 namespace va_godot
 {
 
@@ -90,57 +84,40 @@ String VAWorld::get_propagate_meta_key()
     return PropagateMetaKey();
 }
 
-String VAWorld::get_propagate_layer_meta_key()
+PropagateMode VAWorld::read_propagate_filter(Node *node, PropagateMode inherited)
 {
-    return PropagateLayerMetaKey();
+    if (!node->has_meta(PropagateMetaKey()))
+        return inherited;
+
+    String mode = String(node->get_meta(PropagateMetaKey())).to_lower();
+
+    if (mode == "colliders")
+        return PropagateMode::Colliders;
+    if (mode == "visuals")
+        return PropagateMode::Visuals;
+    return PropagateMode::All;
 }
 
-PropagateFilter VAWorld::read_propagate_filter(Node *node, PropagateFilter inherited)
-{
-    PropagateFilter filter = inherited;
-
-    if (node->has_meta(PropagateMetaKey()))
-    {
-        String mode = String(node->get_meta(PropagateMetaKey())).to_lower();
-
-        if (mode == "colliders")
-            filter.mode = PropagateMode::Colliders;
-        else if (mode == "visuals")
-            filter.mode = PropagateMode::Visuals;
-        else
-            filter.mode = PropagateMode::All;
-    }
-
-    if (node->has_meta(PropagateLayerMetaKey()))
-        filter.layer = (uint32_t)(int64_t)node->get_meta(PropagateLayerMetaKey());
-
-    return filter;
-}
-
-bool VAWorld::passes_propagate_filter(Node *node, const PropagateFilter &filter)
+bool VAWorld::passes_propagate_filter(Node *node, PropagateMode filter)
 {
     bool is_collider = Object::cast_to<CollisionShape3D>(node) != nullptr;
 
-    if (filter.mode == PropagateMode::Colliders && !is_collider)
+    if (filter == PropagateMode::Colliders && !is_collider)
         return false;
-    if (filter.mode == PropagateMode::Visuals && is_collider)
+    if (filter == PropagateMode::Visuals && is_collider)
         return false;
 
-    if (filter.layer == 0)
-        return true;
-
-    // Match against the node's own render layers, or the parent body's collision layers.
+    // The VAWorld's render/collision layer masks control which nodes an inherited material is applied to.
     if (VisualInstance3D *visual = Object::cast_to<VisualInstance3D>(node))
-        return (visual->get_layer_mask() & filter.layer) != 0;
+        return (visual->get_layer_mask() & render_layers) != 0;
 
     if (is_collider)
     {
         if (CollisionObject3D *body = Object::cast_to<CollisionObject3D>(node->get_parent()))
-            return (body->get_collision_layer() & filter.layer) != 0;
+            return (body->get_collision_layer() & collision_layers) != 0;
     }
 
-    // A layer filter is set but this node has no applicable layer - exclude it.
-    return false;
+    return true;
 }
 
 VAMaterialType VAWorld::get_material(Node *node)
@@ -1104,7 +1081,7 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
     }
 }
 
-void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, PropagateFilter filter, bool recursive)
+void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, PropagateMode filter, bool recursive)
 {
     // A node's own material meta always wins and resets the propagation filter for its subtree.
     bool has_own_material = node->has_meta(MaterialMetaKey());
@@ -1112,7 +1089,7 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_t
     if (has_own_material)
     {
         material = get_material(node);
-        filter = PropagateFilter();
+        filter = PropagateMode::All;
     }
 
     // Use this specific transmission override rather than the parent's.
@@ -1162,7 +1139,7 @@ void VAWorld::sync_primitive(Node *node)
     remove_primitive(node, true);
 
     // add_primitive re-reads each node's own material/transmission/propagate metadata itself - the defaults here are just the fallback for a node with no metadata at all.
-    add_primitive(node, VAMaterialAir, false, PropagateFilter(), true);
+    add_primitive(node, VAMaterialAir, false, PropagateMode::All, true);
 }
 
 void VAWorld::remove_primitive(Node *node, bool recursive)
@@ -1357,11 +1334,31 @@ void VAWorld::init_scene()
     TypedArray<Node> children = root->get_children();
     for (int i = 0; i < children.size(); i++)
     {
-        add_primitive(Object::cast_to<Node>(children[i]), VAMaterialAir, false, PropagateFilter(), true);
+        add_primitive(Object::cast_to<Node>(children[i]), VAMaterialAir, false, PropagateMode::All, true);
     }
 
     get_tree()->connect("node_added", callable_mp(this, &VAWorld::on_node_added));
     get_tree()->connect("node_removed", callable_mp(this, &VAWorld::on_node_removed));
+}
+
+// Re-evaluate every node against the current layer masks - invoked when render_layers / collision_layers change at runtime.
+void VAWorld::rebuild_primitives()
+{
+    // Godot runs property setters during scene deserialization, before _ready. The world/tree aren't ready then, so bail early.
+    if (!world || !is_inside_tree() || !get_tree())
+        return;
+
+    Node *root = get_tree()->get_root();
+    if (!root)
+        return;
+
+    TypedArray<Node> children = root->get_children();
+    for (int i = 0; i < children.size(); i++)
+    {
+        Node *child = Object::cast_to<Node>(children[i]);
+        remove_primitive(child, true);
+        add_primitive(child, VAMaterialAir, false, PropagateMode::All, true);
+    }
 }
 
 // This fires for the new parent node AND each of its child nodes separately - parent node is invoked first.
@@ -1373,7 +1370,7 @@ void VAWorld::on_node_added(Node *node)
         node->remove_meta(PrimitiveMetaKey());
     }
 
-    add_primitive(node, VAMaterialAir, false, PropagateFilter(), false);
+    add_primitive(node, VAMaterialAir, false, PropagateMode::All, false);
 }
 
 // This fires for the new parent node AND each of its child nodes separately - child nodes are invoked first.

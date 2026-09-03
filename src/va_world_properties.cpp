@@ -69,6 +69,24 @@ void VAWorld::set_world_is_indoors(bool value)
     vaWorldSetWorldIsIndoors(world, value);
 }
 
+void VAWorld::set_render_layers(uint32_t value)
+{
+    if (render_layers == value)
+        return;
+
+    render_layers = value;
+    rebuild_primitives();
+}
+
+void VAWorld::set_collision_layers(uint32_t value)
+{
+    if (collision_layers == value)
+        return;
+
+    collision_layers = value;
+    rebuild_primitives();
+}
+
 void VAWorld::set_maximum_grouped_eax_count(int value)
 {
     maximum_grouped_eax_count = std::max(0, value);

@@ -36,19 +36,12 @@ namespace va_godot
 class VACustomMaterial;
 class VAEmitter;
 
-// Constrains which descendants a cascading material applies to. Set on an ancestor; a node with its own material meta ignores an inherited filter and resets it for its subtree.
+// Controls which child nodes a material applies to. Does not affect child nodes that have their own material
 enum class PropagateMode
 {
     All,
     Colliders,
     Visuals,
-};
-
-// Layer 0 means "no layer restriction".
-struct PropagateFilter
-{
-    PropagateMode mode = PropagateMode::All;
-    uint32_t layer = 0;
 };
 
 // Name collision: the vaudio C SDK's opaque handle type is also called "VAWorld" (global namespace); inside va_godot, 'VAWorld' means this class and '::VAWorld' the SDK handle.
@@ -64,7 +57,7 @@ private:
 
     va_godot::VAEmitter *listener = nullptr;
 
-    // Every non-listener emitter currently registered with this world, in registration order. Re-walked to wire listener targets whenever the listener appears (or re-appears after a scene reload), so VASource/VAListener/VAWorld can enter the tree in any order.
+    // Contains every non-listener emitter. When the listener is finally added, this list is processed
     std::vector<va_godot::VAEmitter *> registered_emitters;
 
     // (Re-)adds every registered_emitters entry as a target of the current listener. Safe to call repeatedly - vaEmitterAddTarget treats an existing target as a no-op.
@@ -102,14 +95,17 @@ private:
 
     VAMaterialType get_material(Node *node);
 
-    void add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, PropagateFilter filter, bool recursive);
+    void add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, PropagateMode filter, bool recursive);
     void remove_primitive(Node *node, bool recursive);
 
-    // Reads this node's own propagate metadata, layering it onto the filter inherited from an ancestor.
-    static PropagateFilter read_propagate_filter(Node *node, PropagateFilter inherited);
+    // Re-scans the scene tree and rebuilds every primitive. Invoked when render_layers / collision_layers change at runtime.
+    void rebuild_primitives();
 
-    // Whether a cascading material reaches this node, given a filter declared on an ancestor.
-    static bool passes_propagate_filter(Node *node, const PropagateFilter &filter);
+    // Reads this node's own propagate metadata, falling back to the mode inherited from an ancestor.
+    static PropagateMode read_propagate_filter(Node *node, PropagateMode inherited);
+
+    // Whether a cascading material reaches this node, given a filter declared on an ancestor. Not static - reads render_layers / collision_layers.
+    bool passes_propagate_filter(Node *node, PropagateMode filter);
 
     VAPrimitiveRef *attach_watcher(Node3D *node, void *primitive, VAPrimitiveKind kind, std::function<void()> update);
 
@@ -150,8 +146,6 @@ public:
     static String get_use_flat_transmission_meta_key();
 
     static String get_propagate_meta_key();
-
-    static String get_propagate_layer_meta_key();
 
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
 
@@ -261,6 +255,18 @@ public:
     }
     void set_world_is_indoors(bool value);
 
+    uint32_t get_render_layers() const
+    {
+        return render_layers;
+    }
+    void set_render_layers(uint32_t value);
+
+    uint32_t get_collision_layers() const
+    {
+        return collision_layers;
+    }
+    void set_collision_layers(uint32_t value);
+
     int get_maximum_grouped_eax_count() const
     {
         return maximum_grouped_eax_count;
@@ -355,6 +361,9 @@ private:
     Color bounds_color = Color(0.0f, 0.0f, 0.0f, 0.25f);
     float epsilon = 0.01f;
     bool world_is_indoors = false;
+    // A node only inherits a cascading material if its visual render layer / body collision layer is in these masks. A node with its own material is always included. 0xFFFFF = all 20 layers.
+    uint32_t render_layers = 0xFFFFF;
+    uint32_t collision_layers = 0xFFFFF;
     int maximum_grouped_eax_count = 3;
     float meters_per_unit = 1.0f;
     float speed_of_sound = 343.0f;
