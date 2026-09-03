@@ -2,6 +2,7 @@
 
 #include <godot_cpp/classes/box_shape3d.hpp>
 #include <godot_cpp/classes/capsule_shape3d.hpp>
+#include <godot_cpp/classes/collision_object3d.hpp>
 #include <godot_cpp/classes/concave_polygon_shape3d.hpp>
 #include <godot_cpp/classes/convex_polygon_shape3d.hpp>
 #include <godot_cpp/classes/cylinder_shape3d.hpp>
@@ -10,6 +11,7 @@
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/shape3d.hpp>
 #include <godot_cpp/classes/sphere_shape3d.hpp>
+#include <godot_cpp/classes/visual_instance3d.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/classes/world_boundary_shape3d.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -37,6 +39,18 @@ static const StringName &MaterialMetaKey()
 static const StringName &UseFlatTransmissionMetaKey()
 {
     static StringName key = "vercidium_audio_use_flat_transmission";
+    return key;
+}
+
+static const StringName &PropagateMetaKey()
+{
+    static StringName key = "vercidium_audio_propagate";
+    return key;
+}
+
+static const StringName &PropagateLayerMetaKey()
+{
+    static StringName key = "vercidium_audio_propagate_layer";
     return key;
 }
 
@@ -69,6 +83,64 @@ String VAWorld::get_material_meta_key()
 String VAWorld::get_use_flat_transmission_meta_key()
 {
     return UseFlatTransmissionMetaKey();
+}
+
+String VAWorld::get_propagate_meta_key()
+{
+    return PropagateMetaKey();
+}
+
+String VAWorld::get_propagate_layer_meta_key()
+{
+    return PropagateLayerMetaKey();
+}
+
+PropagateFilter VAWorld::read_propagate_filter(Node *node, PropagateFilter inherited)
+{
+    PropagateFilter filter = inherited;
+
+    if (node->has_meta(PropagateMetaKey()))
+    {
+        String mode = String(node->get_meta(PropagateMetaKey())).to_lower();
+
+        if (mode == "colliders")
+            filter.mode = PropagateMode::Colliders;
+        else if (mode == "visuals")
+            filter.mode = PropagateMode::Visuals;
+        else
+            filter.mode = PropagateMode::All;
+    }
+
+    if (node->has_meta(PropagateLayerMetaKey()))
+        filter.layer = (uint32_t)(int64_t)node->get_meta(PropagateLayerMetaKey());
+
+    return filter;
+}
+
+bool VAWorld::passes_propagate_filter(Node *node, const PropagateFilter &filter)
+{
+    bool is_collider = Object::cast_to<CollisionShape3D>(node) != nullptr;
+
+    if (filter.mode == PropagateMode::Colliders && !is_collider)
+        return false;
+    if (filter.mode == PropagateMode::Visuals && is_collider)
+        return false;
+
+    if (filter.layer == 0)
+        return true;
+
+    // Match against the node's own render layers, or the parent body's collision layers.
+    if (VisualInstance3D *visual = Object::cast_to<VisualInstance3D>(node))
+        return (visual->get_layer_mask() & filter.layer) != 0;
+
+    if (is_collider)
+    {
+        if (CollisionObject3D *body = Object::cast_to<CollisionObject3D>(node->get_parent()))
+            return (body->get_collision_layer() & filter.layer) != 0;
+    }
+
+    // A layer filter is set but this node has no applicable layer - exclude it.
+    return false;
 }
 
 VAMaterialType VAWorld::get_material(Node *node)
@@ -1032,12 +1104,15 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
     }
 }
 
-void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, bool recursive)
+void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, PropagateFilter filter, bool recursive)
 {
-    // Use this specific material rather than the parent material.
-    if (node->has_meta(MaterialMetaKey()))
+    // A node's own material meta always wins and resets the propagation filter for its subtree.
+    bool has_own_material = node->has_meta(MaterialMetaKey());
+
+    if (has_own_material)
     {
         material = get_material(node);
+        filter = PropagateFilter();
     }
 
     // Use this specific transmission override rather than the parent's.
@@ -1046,19 +1121,25 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_t
         use_flat_transmission = node->get_meta(UseFlatTransmissionMetaKey());
     }
 
+    // A propagation filter declared here constrains the cascade into this node's descendants.
+    filter = read_propagate_filter(node, filter);
+
+    // An inherited material only applies to this node if it passes the inherited filter. The cascade into children still uses the unfiltered material - a filtered-out mesh can still have a collider descendant that should receive the material.
+    VAMaterialType effective_material = (has_own_material || passes_propagate_filter(node, filter)) ? material : VAMaterialAir;
+
     // Ignore nodes without materials.
-    if (material != VAMaterialAir)
+    if (effective_material != VAMaterialAir)
     {
         if (CSGBox3D *csg_box = Object::cast_to<CSGBox3D>(node))
-            create_primitive(csg_box, material);
+            create_primitive(csg_box, effective_material);
         else if (CSGCylinder3D *csg_cylinder = Object::cast_to<CSGCylinder3D>(node))
-            create_primitive(csg_cylinder, material);
+            create_primitive(csg_cylinder, effective_material);
         else if (CSGSphere3D *csg_sphere = Object::cast_to<CSGSphere3D>(node))
-            create_primitive(csg_sphere, material);
+            create_primitive(csg_sphere, effective_material);
         else if (CollisionShape3D *collision_shape = Object::cast_to<CollisionShape3D>(node))
-            create_primitive(collision_shape, material);
+            create_primitive(collision_shape, effective_material);
         else if (MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(node))
-            create_primitive(mesh_instance, material, use_flat_transmission);
+            create_primitive(mesh_instance, effective_material, use_flat_transmission);
     }
 
     if (recursive)
@@ -1066,7 +1147,7 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_t
         TypedArray<Node> children = node->get_children();
         for (int i = 0; i < children.size(); i++)
         {
-            add_primitive(Object::cast_to<Node>(children[i]), material, use_flat_transmission, true);
+            add_primitive(Object::cast_to<Node>(children[i]), material, use_flat_transmission, filter, true);
         }
     }
 }
@@ -1080,8 +1161,8 @@ void VAWorld::sync_primitive(Node *node)
     // Recursive, matching init_scene's own top-level add_primitive calls - the edited node itself often has no geometry of its own, with the material/transmission override taking effect on descendants. Unlike on_node_added/on_node_removed (non-recursive, since those signals already fire once per node), this is a single one-shot call for the whole edited subtree.
     remove_primitive(node, true);
 
-    // add_primitive re-reads each node's own material/transmission metadata itself - VAMaterialAir/false here are just the fallback for a node with no metadata at all.
-    add_primitive(node, VAMaterialAir, false, true);
+    // add_primitive re-reads each node's own material/transmission/propagate metadata itself - the defaults here are just the fallback for a node with no metadata at all.
+    add_primitive(node, VAMaterialAir, false, PropagateFilter(), true);
 }
 
 void VAWorld::remove_primitive(Node *node, bool recursive)
@@ -1276,7 +1357,7 @@ void VAWorld::init_scene()
     TypedArray<Node> children = root->get_children();
     for (int i = 0; i < children.size(); i++)
     {
-        add_primitive(Object::cast_to<Node>(children[i]), VAMaterialAir, false, true);
+        add_primitive(Object::cast_to<Node>(children[i]), VAMaterialAir, false, PropagateFilter(), true);
     }
 
     get_tree()->connect("node_added", callable_mp(this, &VAWorld::on_node_added));
@@ -1292,7 +1373,7 @@ void VAWorld::on_node_added(Node *node)
         node->remove_meta(PrimitiveMetaKey());
     }
 
-    add_primitive(node, VAMaterialAir, false, false);
+    add_primitive(node, VAMaterialAir, false, PropagateFilter(), false);
 }
 
 // This fires for the new parent node AND each of its child nodes separately - child nodes are invoked first.

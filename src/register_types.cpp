@@ -197,7 +197,6 @@ static bool on_sync_viewport_camera(const Array &data)
     Vector3 rotation = data[1];
     float fov_degrees = data[2];
 
-    vaWorldSetManualCamera(va_world->get_handle(), false);
     vaWorldSetCameraPosition(va_world->get_handle(), ToVAudio(position));
     vaWorldSetCameraYaw(va_world->get_handle(), rotation.y);
     vaWorldSetCameraPitch(va_world->get_handle(), rotation.x);
@@ -271,6 +270,29 @@ static bool on_debugger_message(const String &message, const Array &data)
         node->remove_meta(use_flat_transmission_meta_key);
     else
         node->set_meta(use_flat_transmission_meta_key, use_flat_transmission);
+
+    // Propagation filter (optional - older editor builds send a 4-element payload).
+    if (data.size() > 4)
+    {
+        String propagate = data[4];
+        StringName propagate_meta_key = va_godot::VAWorld::get_propagate_meta_key();
+
+        if (propagate.is_empty())
+            node->remove_meta(propagate_meta_key);
+        else
+            node->set_meta(propagate_meta_key, propagate);
+    }
+
+    if (data.size() > 5)
+    {
+        Variant propagate_layer = data[5];
+        StringName propagate_layer_meta_key = va_godot::VAWorld::get_propagate_layer_meta_key();
+
+        if (propagate_layer.get_type() == Variant::NIL)
+            node->remove_meta(propagate_layer_meta_key);
+        else
+            node->set_meta(propagate_layer_meta_key, propagate_layer);
+    }
 
     va_world->sync_primitive(node);
 

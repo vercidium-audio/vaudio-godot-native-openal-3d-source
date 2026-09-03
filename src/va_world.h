@@ -36,6 +36,21 @@ namespace va_godot
 class VACustomMaterial;
 class VAEmitter;
 
+// Constrains which descendants a cascading material applies to. Set on an ancestor; a node with its own material meta ignores an inherited filter and resets it for its subtree.
+enum class PropagateMode
+{
+    All,
+    Colliders,
+    Visuals,
+};
+
+// Layer 0 means "no layer restriction".
+struct PropagateFilter
+{
+    PropagateMode mode = PropagateMode::All;
+    uint32_t layer = 0;
+};
+
 // Name collision: the vaudio C SDK's opaque handle type is also called "VAWorld" (global namespace); inside va_godot, 'VAWorld' means this class and '::VAWorld' the SDK handle.
 // This is a Node3D purely so the editor can draw a gizmo for the bounds_position/bounds_size AABB (see VAWorldGizmoPlugin) - the node's own transform is otherwise unused by vaudio.
 class VAWorld : public Node3D
@@ -87,8 +102,14 @@ private:
 
     VAMaterialType get_material(Node *node);
 
-    void add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, bool recursive);
+    void add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, PropagateFilter filter, bool recursive);
     void remove_primitive(Node *node, bool recursive);
+
+    // Reads this node's own propagate metadata, layering it onto the filter inherited from an ancestor.
+    static PropagateFilter read_propagate_filter(Node *node, PropagateFilter inherited);
+
+    // Whether a cascading material reaches this node, given a filter declared on an ancestor.
+    static bool passes_propagate_filter(Node *node, const PropagateFilter &filter);
 
     VAPrimitiveRef *attach_watcher(Node3D *node, void *primitive, VAPrimitiveKind kind, std::function<void()> update);
 
@@ -127,6 +148,10 @@ public:
     static String get_material_meta_key();
 
     static String get_use_flat_transmission_meta_key();
+
+    static String get_propagate_meta_key();
+
+    static String get_propagate_layer_meta_key();
 
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
 
