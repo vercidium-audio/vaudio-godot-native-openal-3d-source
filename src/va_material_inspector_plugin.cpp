@@ -22,7 +22,7 @@ const int FIRST_SELECTABLE_BUILTIN_INDEX = 1;
 // Index 0 is the default ("All") and is never written as metadata - it's the absence of the key.
 const char *const PROPAGATE_MODES[] = {"Inherit", "All", "Colliders only", "Visuals only"};
 const char *const PROPAGATE_MODE_META_VALUES[] = {"", "all", "colliders", "visuals"};
-const int PROPAGATE_MODE_COUNT = 3;
+const int PROPAGATE_MODE_COUNT = 4;
 
 // Custom materials only register their name with the running ::VAWorld at runtime, so at edit time this walks the scene tree directly instead.
 void find_custom_materials_recursive(Node *node, PackedStringArray &out_names)
