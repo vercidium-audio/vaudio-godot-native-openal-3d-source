@@ -6,8 +6,6 @@
 #include <godot_cpp/classes/csg_sphere3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/node3d.hpp>
-#include <godot_cpp/classes/os.hpp>
-#include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -196,23 +194,6 @@ public:
     void set_rendering_enabled(bool value)
     {
         rendering_enabled = value;
-
-        if (value && OS::get_singleton()->get_name() == "macOS")
-        {
-            UtilityFunctions::push_warning("VAWorld: the debug window is not yet available on macOS. Read more: https://github.com/vercidium-audio/support/issues/52");
-            rendering_enabled = false;
-            return;
-        }
-
-        if (value && RenderingServer::get_singleton()->get_current_rendering_method() == "gl_compatibility")
-        {
-            UtilityFunctions::push_warning("VAWorld: rendering_enabled was not applied because the "
-                "project's renderer is gl_compatibility - the vaudio debug render window uses its own "
-                "native OpenGL context, which is known to crash the engine when the project also uses "
-                "gl_compatibility. Switch to Forward+ or Mobile to use the debug render window.");
-            rendering_enabled = false;
-            return;
-        }
 
         if (world)
             vaWorldSetRenderingEnabled(world, value);
