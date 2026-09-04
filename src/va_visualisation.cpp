@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/surface_tool.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -332,7 +333,7 @@ void VAVisualisation::on_visualisation_data(VAVisualisationData *data, int count
         normal = normal.length_squared() > 0.00001f ? normal.normalized() : Vector3(0, 1, 0);
 
         // Avoid a degenerate basis when the normal is parallel to the up hint.
-        Vector3 basis_up = ABS(normal.dot(up_hint)) > 0.999f ? Vector3(1, 0, 0) : up_hint;
+        Vector3 basis_up = Math::abs(normal.dot(up_hint)) > 0.999f ? Vector3(1, 0, 0) : up_hint;
 
         Basis basis = Basis::looking_at(normal, basis_up, true);
         basis.scale(Vector3(size, size, size));
