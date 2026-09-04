@@ -20,8 +20,8 @@ namespace
 const int FIRST_SELECTABLE_BUILTIN_INDEX = 1;
 
 // Index 0 is the default ("All") and is never written as metadata - it's the absence of the key.
-const char *const PROPAGATE_MODES[] = {"All", "Colliders only", "Visuals only"};
-const char *const PROPAGATE_MODE_META_VALUES[] = {"", "colliders", "visuals"};
+const char *const PROPAGATE_MODES[] = {"Inherit", "All", "Colliders only", "Visuals only"};
+const char *const PROPAGATE_MODE_META_VALUES[] = {"", "all", "colliders", "visuals"};
 const int PROPAGATE_MODE_COUNT = 3;
 
 // Custom materials only register their name with the running ::VAWorld at runtime, so at edit time this walks the scene tree directly instead.
@@ -144,7 +144,7 @@ void VAMaterialInspectorPlugin::_parse_end(Object *object)
 
         Label *propagate_label = memnew(Label);
         propagate_label->set_text("Propagate To");
-        propagate_label->set_tooltip_text("Which child nodes a material set on this node cascades down to.\n\nAll: every child (default)\nColliders only: only collision shape children - skips the visual mesh of a mesh + collider pair\nVisuals only: only mesh / non-collision children");
+        propagate_label->set_tooltip_text("Which child nodes a material set on this node cascades down to.\n\nInherit: use the parent node's setting\nAll: every child\nColliders only: only collision shape children - skips the visual mesh of a mesh + collider pair\nVisuals only: only mesh / non-collision children");
         propagate_label->set_custom_minimum_size(Vector2(140, 0));
         propagate_row->add_child(propagate_label);
 

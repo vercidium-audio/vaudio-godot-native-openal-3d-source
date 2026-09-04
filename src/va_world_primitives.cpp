@@ -1083,14 +1083,16 @@ void VAWorld::update_collision_shape_primitive(CollisionShape3D *collision_shape
 
 void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, PropagateMode filter, bool recursive)
 {
-    // A node's own material meta always wins and resets the propagation filter for its subtree.
+    // A node's own material meta always wins.
     bool has_own_material = node->has_meta(MaterialMetaKey());
 
     if (has_own_material)
     {
         material = get_material(node);
-        filter = PropagateMode::All;
     }
+
+    // A propagation filter declared here constrains the cascade into this node's descendants. Defaults to the inherited filter.
+    filter = read_propagate_filter(node, filter);
 
     // Use this specific transmission override rather than the parent's.
     if (node->has_meta(UseFlatTransmissionMetaKey()))
@@ -1098,25 +1100,23 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_t
         use_flat_transmission = node->get_meta(UseFlatTransmissionMetaKey());
     }
 
-    // A propagation filter declared here constrains the cascade into this node's descendants.
-    filter = read_propagate_filter(node, filter);
-
-    // An inherited material only applies to this node if it passes the inherited filter. The cascade into children still uses the unfiltered material - a filtered-out mesh can still have a collider descendant that should receive the material.
-    VAMaterialType effective_material = (has_own_material || passes_propagate_filter(node, filter)) ? material : VAMaterialAir;
-
     // Ignore nodes without materials.
-    if (effective_material != VAMaterialAir)
+    if (material != VAMaterialAir)
     {
-        if (CSGBox3D *csg_box = Object::cast_to<CSGBox3D>(node))
-            create_primitive(csg_box, effective_material);
-        else if (CSGCylinder3D *csg_cylinder = Object::cast_to<CSGCylinder3D>(node))
-            create_primitive(csg_cylinder, effective_material);
-        else if (CSGSphere3D *csg_sphere = Object::cast_to<CSGSphere3D>(node))
-            create_primitive(csg_sphere, effective_material);
-        else if (CollisionShape3D *collision_shape = Object::cast_to<CollisionShape3D>(node))
-            create_primitive(collision_shape, effective_material);
-        else if (MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(node))
-            create_primitive(mesh_instance, effective_material, use_flat_transmission);
+        // An inherited material only applies to this node if it passes the inherited filter. The cascade into children still uses the unfiltered material - a filtered-out mesh can still have a collider descendant that should receive the material.
+        if (has_own_material || passes_propagate_filter(node, filter))
+        {
+            if (CSGBox3D *csg_box = Object::cast_to<CSGBox3D>(node))
+                create_primitive(csg_box, material);
+            else if (CSGCylinder3D *csg_cylinder = Object::cast_to<CSGCylinder3D>(node))
+                create_primitive(csg_cylinder, material);
+            else if (CSGSphere3D *csg_sphere = Object::cast_to<CSGSphere3D>(node))
+                create_primitive(csg_sphere, material);
+            else if (CollisionShape3D *collision_shape = Object::cast_to<CollisionShape3D>(node))
+                create_primitive(collision_shape, material);
+            else if (MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(node))
+                create_primitive(mesh_instance, material, use_flat_transmission);
+        }
     }
 
     if (recursive)
@@ -1129,17 +1129,38 @@ void VAWorld::add_primitive(Node *node, VAMaterialType material, bool use_flat_t
     }
 }
 
+Node *VAWorld::top_level_scene_node(Node *node)
+{
+    SceneTree *tree = get_tree();
+    Node *root = tree ? tree->get_root() : nullptr;
+
+    if (!root)
+        return nullptr;
+
+    Node *current = node;
+
+    while (current->get_parent() && current->get_parent() != root)
+        current = current->get_parent();
+
+    return current->get_parent() == root ? current : nullptr;
+}
+
 void VAWorld::sync_primitive(Node *node)
 {
     // Guards being called on a VAWorld whose world hasn't been created yet; should always be non-null in practice since this is only called via the debugger-message capture in register_types.cpp.
     if (!world)
         return;
 
+    // The material that governs the edited node can live on an ancestor (e.g. a Node3D with material=concrete above a StaticBody3D whose propagate mode is being edited). add_primitive only sees that material if the walk starts at or above the node owning it, so restart from the top-level scene node instead of the edited node - otherwise the primitive is removed below and never re-added.
+    Node *sync_root = top_level_scene_node(node);
+    if (!sync_root)
+        sync_root = node;
+
     // Recursive, matching init_scene's own top-level add_primitive calls - the edited node itself often has no geometry of its own, with the material/transmission override taking effect on descendants. Unlike on_node_added/on_node_removed (non-recursive, since those signals already fire once per node), this is a single one-shot call for the whole edited subtree.
-    remove_primitive(node, true);
+    remove_primitive(sync_root, true);
 
     // add_primitive re-reads each node's own material/transmission/propagate metadata itself - the defaults here are just the fallback for a node with no metadata at all.
-    add_primitive(node, VAMaterialAir, false, PropagateMode::All, true);
+    add_primitive(sync_root, VAMaterialAir, false, PropagateMode::All, true);
 }
 
 void VAWorld::remove_primitive(Node *node, bool recursive)

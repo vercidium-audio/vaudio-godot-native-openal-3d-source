@@ -98,6 +98,9 @@ private:
     void add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, PropagateMode filter, bool recursive);
     void remove_primitive(Node *node, bool recursive);
 
+    // The highest ancestor of node sitting directly under the scene tree root, or nullptr if node isn't under the tree.
+    Node *top_level_scene_node(Node *node);
+
     // Re-scans the scene tree and rebuilds every primitive. Invoked when render_layers / collision_layers change at runtime.
     void rebuild_primitives();
 
