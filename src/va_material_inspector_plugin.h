@@ -25,6 +25,7 @@ private:
 
     void on_material_selected(int32_t index, Node *node, OptionButton *option_button);
     void on_use_flat_transmission_toggled(bool toggled_on, Node *node);
+    void on_propagate_selected(int32_t index, Node *node);
 
     void sync_running_game(Node *node);
 

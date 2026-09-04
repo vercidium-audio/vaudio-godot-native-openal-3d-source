@@ -40,6 +40,10 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_epsilon", "value"), &VAWorld::set_epsilon);
     ClassDB::bind_method(D_METHOD("get_world_is_indoors"), &VAWorld::get_world_is_indoors);
     ClassDB::bind_method(D_METHOD("set_world_is_indoors", "value"), &VAWorld::set_world_is_indoors);
+    ClassDB::bind_method(D_METHOD("get_render_layers"), &VAWorld::get_render_layers);
+    ClassDB::bind_method(D_METHOD("set_render_layers", "value"), &VAWorld::set_render_layers);
+    ClassDB::bind_method(D_METHOD("get_collision_layers"), &VAWorld::get_collision_layers);
+    ClassDB::bind_method(D_METHOD("set_collision_layers", "value"), &VAWorld::set_collision_layers);
 
     ADD_GROUP("World", "");
 
@@ -50,6 +54,10 @@ void VAWorld::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::COLOR, "bounds_color"), "set_bounds_color", "get_bounds_color");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "epsilon"), "set_epsilon", "get_epsilon");
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "world_is_indoors"), "set_world_is_indoors", "get_world_is_indoors");
+
+    ADD_GROUP("Layers", "");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "render_layers", PROPERTY_HINT_LAYERS_3D_RENDER), "set_render_layers", "get_render_layers");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "collision_layers", PROPERTY_HINT_LAYERS_3D_PHYSICS), "set_collision_layers", "get_collision_layers");
 
     ClassDB::bind_method(D_METHOD("get_master_volume"), &VAWorld::get_master_volume);
     ClassDB::bind_method(D_METHOD("set_master_volume", "value"), &VAWorld::set_master_volume);
@@ -234,8 +242,28 @@ void VAWorld::_validate_property(PropertyInfo &p_property) const
     }
 }
 
+void VAWorld::_notification(int what)
+{
+    if (what == NOTIFICATION_TRANSFORM_CHANGED)
+        normalize_transform();
+}
+
+void VAWorld::normalize_transform()
+{
+    Transform3D t = get_transform();
+
+    if (t.basis.is_equal_approx(Basis()))
+        return;
+
+    set_transform(Transform3D(Basis(), t.origin));
+}
+
 void VAWorld::_ready()
 {
+    set_notify_transform(true);
+
+    normalize_transform();
+
     if (IS_EDITOR_HINT())
     {
         // Scan for unknown vercidium_audio_material values, so warnings appear while editing. get_tree() can be null if this node isn't inside the scene tree yet.
@@ -312,7 +340,7 @@ void VAWorld::_process(double delta)
 
 void VAWorld::send_viewport_camera_to_running_game()
 {
-    if (!Engine::get_singleton()->has_singleton(VAConversionPlugin::DEBUGGER_PLUGIN_SINGLETON_NAME))
+    if (!Engine::get_singleton()->has_singleton(VAConversionPlugin::DEBUGGER_BRIDGE_SINGLETON_NAME))
         return;
 
     SubViewport *viewport = EditorInterface::get_singleton()->get_editor_viewport_3d(0);
@@ -321,8 +349,9 @@ void VAWorld::send_viewport_camera_to_running_game()
     if (!camera)
         return;
 
-    Object *singleton_object = Engine::get_singleton()->get_singleton(VAConversionPlugin::DEBUGGER_PLUGIN_SINGLETON_NAME);
-    VADebuggerPlugin *debugger_plugin = Object::cast_to<VADebuggerPlugin>(singleton_object);
+    Object *singleton_object = Engine::get_singleton()->get_singleton(VAConversionPlugin::DEBUGGER_BRIDGE_SINGLETON_NAME);
+    VADebuggerBridge *bridge = Object::cast_to<VADebuggerBridge>(singleton_object);
+    VADebuggerPlugin *debugger_plugin = bridge ? bridge->get_debugger_plugin() : nullptr;
 
     if (!debugger_plugin)
         return;
@@ -373,11 +402,8 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         {
             listener = emitter;
 
-            // Wire up any emitters that registered before this listener existed, instead of leaving them permanently untargeted.
-            for (va_godot::VAEmitter *pending_target : pending_targets)
-                listener->add_target(pending_target);
-
-            pending_targets.clear();
+            // Set up the sources that were created before the listener existed
+            wire_pending_targets();
         }
         else
             VA_WARN_NAMED("This world can only have one VAListener node. Current listener: '", listener->get_name(), "' Second listener: '", emitter->get_name(), "'");
@@ -385,20 +411,41 @@ void VAWorld::register_emitter(va_godot::VAEmitter *emitter, bool is_main_listen
         return;
     }
 
-    if (!listener)
-    {
-        // The scene added this emitter before the main listener node - hold onto it and add it as a target once the listener registers, instead of dropping it.
-        pending_targets.push_back(emitter);
+    // Keep track of all emitters
+    registered_emitters.push_back(emitter);
 
+    if (listener)
+    {
+        listener->add_target(emitter);
         return;
     }
 
-    listener->add_target(emitter);
+    // If this node was added before the VAlistener was created, we need to defer-process all sources/emitters later
+    if (!wire_pending_targets_queued)
+    {
+        wire_pending_targets_queued = true;
+        callable_mp(this, &VAWorld::wire_pending_targets).call_deferred();
+    }
+}
+
+void VAWorld::wire_pending_targets()
+{
+    wire_pending_targets_queued = false;
+
+    if (!listener)
+        return;
+
+    for (va_godot::VAEmitter *emitter : registered_emitters)
+    {
+        // Skip a source whose SDK handle has already been torn down (raytrace_once removal, pending destroy) but whose node is still briefly in registered_emitters.
+        if (emitter->get_handle())
+            listener->add_target(emitter);
+    }
 }
 
 void VAWorld::unregister_pending_target(va_godot::VAEmitter *emitter)
 {
-    pending_targets.erase(std::remove(pending_targets.begin(), pending_targets.end(), emitter), pending_targets.end());
+    registered_emitters.erase(std::remove(registered_emitters.begin(), registered_emitters.end(), emitter), registered_emitters.end());
 }
 
 void VAWorld::unregister_listener(va_godot::VAEmitter *emitter)

@@ -10,6 +10,7 @@
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -334,8 +335,9 @@ void VAConversionPlugin::_enter_tree()
     debugger_plugin.instantiate();
     add_debugger_plugin(debugger_plugin);
 
-    // Also an Engine singleton so VAWorld can reach it - see DEBUGGER_PLUGIN_SINGLETON_NAME.
-    Engine::get_singleton()->register_singleton(DEBUGGER_PLUGIN_SINGLETON_NAME, debugger_plugin.ptr());
+    debugger_bridge = memnew(VADebuggerBridge);
+    debugger_bridge->set_debugger_plugin(debugger_plugin.ptr());
+    Engine::get_singleton()->register_singleton(DEBUGGER_BRIDGE_SINGLETON_NAME, debugger_bridge);
 
     material_inspector_plugin.instantiate();
     material_inspector_plugin->set_debugger_plugin(debugger_plugin);
@@ -376,8 +378,14 @@ void VAConversionPlugin::_exit_tree()
     remove_node_3d_gizmo_plugin(node_gizmo_plugin);
     node_gizmo_plugin.unref();
 
-    if (Engine::get_singleton()->has_singleton(DEBUGGER_PLUGIN_SINGLETON_NAME))
-        Engine::get_singleton()->unregister_singleton(DEBUGGER_PLUGIN_SINGLETON_NAME);
+    if (Engine::get_singleton()->has_singleton(DEBUGGER_BRIDGE_SINGLETON_NAME))
+        Engine::get_singleton()->unregister_singleton(DEBUGGER_BRIDGE_SINGLETON_NAME);
+
+    if (debugger_bridge)
+    {
+        memdelete(debugger_bridge);
+        debugger_bridge = nullptr;
+    }
 
     remove_debugger_plugin(debugger_plugin);
     debugger_plugin.unref();

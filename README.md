@@ -7,9 +7,9 @@ Raytraced audio GDExtension with realistic muffling, reverb, ambience and visual
 
 For Mono Godot (C#), please use [this plugin](https://github.com/vercidium-audio/vaudio-godot-mono-openal-3d/releases).
 
-This repository requires Vercidium Audio v1.8.0 and OpenAL Soft to run:
+This repository requires Vercidium Audio v1.8.1 and OpenAL Soft to run. Windows, Linux and macOS are supported.
 - Download the Vercidium Audio SDK from [vercidium.com](https://vercidium.com)
-- Download the OpenAL Soft DLL from [github.com/kcat/openal-soft](https://github.com/kcat/openal-soft/releases/tag/1.25.2)
+- Download OpenAL Soft from [github.com/kcat/openal-soft](https://github.com/kcat/openal-soft/releases/tag/1.25.2)
 
 > Please note that the Vercidium Audio SDK is not free for commercial use. See [vercidium.com/eula](https://vercidium.com/eula)
 
@@ -27,7 +27,9 @@ This repository requires Vercidium Audio v1.8.0 and OpenAL Soft to run:
 
 ## Building
 
-Run `build.bat` to build the plugin. To automatically copy the plugin to your game, add your game's path to `.env`, e.g. `VAUDIO_RELEASE_DIR=your-godot-game\addons\vaudio-godot-native-openal-3d-release`
+On Windows, run `build.bat`. On Linux/macOS, run `build-unix.sh` (auto-detects the host - Linux builds an x86_64 `.so`, macOS builds an arm64 `.dylib`).
+
+To automatically copy the plugin to your game, add your game's path to `.env`, e.g. `VAUDIO_RELEASE_DIR=your-godot-game\addons\vaudio-godot-native-openal-3d-release`
 
 ## Licencing
 

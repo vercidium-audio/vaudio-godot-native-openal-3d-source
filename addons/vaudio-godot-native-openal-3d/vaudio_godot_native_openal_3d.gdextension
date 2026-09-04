@@ -2,9 +2,29 @@
 
 entry_symbol = "vaudio_godot_native_openal_3d_library_init"
 compatibility_minimum = "4.5"
-version = "1.8.0"
+version = "1.8.1"
 
 [libraries]
 
 windows.debug.x86_64 = "res://addons/vaudio-godot-native-openal-3d/bin/libvaudiogodotnativeopenal3d.windows.template_debug.x86_64.dll"
 windows.release.x86_64 = "res://addons/vaudio-godot-native-openal-3d/bin/libvaudiogodotnativeopenal3d.windows.template_release.x86_64.dll"
+linux.debug.x86_64 = "res://addons/vaudio-godot-native-openal-3d/bin/libvaudiogodotnativeopenal3d.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "res://addons/vaudio-godot-native-openal-3d/bin/libvaudiogodotnativeopenal3d.linux.template_release.x86_64.so"
+macos.debug.arm64 = "res://addons/vaudio-godot-native-openal-3d/bin/libvaudiogodotnativeopenal3d.macos.template_debug.arm64.dylib"
+macos.release.arm64 = "res://addons/vaudio-godot-native-openal-3d/bin/libvaudiogodotnativeopenal3d.macos.template_release.arm64.dylib"
+
+[icons]
+
+VACustomMaterial = "res://addons/vaudio-godot-native-openal-3d/icons/VACustomMaterial.svg"
+VADefaultMaterial = "res://addons/vaudio-godot-native-openal-3d/icons/VADefaultMaterial.svg"
+VAEmitter = "res://addons/vaudio-godot-native-openal-3d/icons/VAEmitter.svg"
+VAInputStreamSource = "res://addons/vaudio-godot-native-openal-3d/icons/VAInputStreamSource.svg"
+VAListener = "res://addons/vaudio-godot-native-openal-3d/icons/VAListener.svg"
+VANetworkedStreamSource = "res://addons/vaudio-godot-native-openal-3d/icons/VANetworkedStreamSource.svg"
+VASource = "res://addons/vaudio-godot-native-openal-3d/icons/VASource.svg"
+VASourceAmbient = "res://addons/vaudio-godot-native-openal-3d/icons/VASourceAmbient.svg"
+VASourceLeech = "res://addons/vaudio-godot-native-openal-3d/icons/VASourceLeech.svg"
+VASourceRelative = "res://addons/vaudio-godot-native-openal-3d/icons/VASourceRelative.svg"
+VAStreamSource = "res://addons/vaudio-godot-native-openal-3d/icons/VAStreamSource.svg"
+VAVisualisation = "res://addons/vaudio-godot-native-openal-3d/icons/VAVisualisation.svg"
+VAWorld = "res://addons/vaudio-godot-native-openal-3d/icons/VAWorld.svg"

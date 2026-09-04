@@ -21,3 +21,8 @@ user_context.md
 
 # Claude permissions
 .claude/**
+
+# Mac
+.DS_Store
+addons/.DS_Store
+addons/vaudio-godot-native-openal-3d/.DS_Store

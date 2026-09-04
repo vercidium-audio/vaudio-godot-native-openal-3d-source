@@ -9,7 +9,8 @@ void VADebuggerPlugin::_bind_methods()
 {
 }
 
-void VADebuggerPlugin::sync_primitive(const String &scene_root_name, const NodePath &node_path, const String &material, const Variant &use_flat_transmission)
+void VADebuggerPlugin::sync_primitive(const String &scene_root_name, const NodePath &node_path, const String &material,
+    const Variant &use_flat_transmission, const String &propagate)
 {
     Array sessions = get_sessions();
 
@@ -25,6 +26,7 @@ void VADebuggerPlugin::sync_primitive(const String &scene_root_name, const NodeP
             data.push_back(node_path);
             data.push_back(material);
             data.push_back(use_flat_transmission);
+            data.push_back(propagate);
             session->send_message("vaudio:sync_primitive", data);
         }
     }

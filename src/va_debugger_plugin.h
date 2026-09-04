@@ -20,7 +20,8 @@ protected:
     static void _bind_methods();
 
 public:
-    void sync_primitive(const String &scene_root_name, const NodePath &node_path, const String &material, const Variant &use_flat_transmission);
+    void sync_primitive(const String &scene_root_name, const NodePath &node_path, const String &material,
+        const Variant &use_flat_transmission, const String &propagate);
 
     void sync_material_properties(const String &scene_root_name, const NodePath &node_path, const String &node_name,
         bool is_custom_material, int material_type, const String &custom_material_name, float absorption_lf,

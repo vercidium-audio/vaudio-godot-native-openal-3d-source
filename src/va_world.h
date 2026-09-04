@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/csg_sphere3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/color.hpp>
@@ -35,6 +36,14 @@ namespace va_godot
 class VACustomMaterial;
 class VAEmitter;
 
+// Controls which child nodes a material applies to. Does not affect child nodes that have their own material
+enum class PropagateMode
+{
+    All,
+    Colliders,
+    Visuals,
+};
+
 // Name collision: the vaudio C SDK's opaque handle type is also called "VAWorld" (global namespace); inside va_godot, 'VAWorld' means this class and '::VAWorld' the SDK handle.
 // This is a Node3D purely so the editor can draw a gizmo for the bounds_position/bounds_size AABB (see VAWorldGizmoPlugin) - the node's own transform is otherwise unused by vaudio.
 class VAWorld : public Node3D
@@ -48,8 +57,13 @@ private:
 
     va_godot::VAEmitter *listener = nullptr;
 
-    // Emitters that invoked register_emitter() before the listener existed; drained when the main listener registers.
-    std::vector<va_godot::VAEmitter *> pending_targets;
+    // Contains every non-listener emitter. When the listener is finally added, this list is processed
+    std::vector<va_godot::VAEmitter *> registered_emitters;
+
+    // (Re-)adds every registered_emitters entry as a target of the current listener. Safe to call repeatedly - vaEmitterAddTarget treats an existing target as a no-op.
+    void wire_pending_targets();
+
+    bool wire_pending_targets_queued = false;
 
     ALReverbEffect listener_reverb_effect;
     std::vector<std::unique_ptr<ALReverbEffect>> grouped_reverb_effects;
@@ -73,13 +87,28 @@ private:
     void on_node_added(Node *node);
     void on_node_removed(Node *node);
 
+    // If this node was rotated or scaled while parented to another node and then unparented, we need to reset rotation and scale back to default
+    void normalize_transform();
+
     // Reports unknown material metadata strings when in the editor, not used at runtime.
     void validate_materials_in_editor(Node *node);
 
     VAMaterialType get_material(Node *node);
 
-    void add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, bool recursive);
+    void add_primitive(Node *node, VAMaterialType material, bool use_flat_transmission, PropagateMode filter, bool recursive);
     void remove_primitive(Node *node, bool recursive);
+
+    // The highest ancestor of node sitting directly under the scene tree root, or nullptr if node isn't under the tree.
+    Node *top_level_scene_node(Node *node);
+
+    // Re-scans the scene tree and rebuilds every primitive. Invoked when render_layers / collision_layers change at runtime.
+    void rebuild_primitives();
+
+    // Reads this node's own propagate metadata, falling back to the mode inherited from an ancestor.
+    static PropagateMode read_propagate_filter(Node *node, PropagateMode inherited);
+
+    // Whether a cascading material reaches this node, given a filter declared on an ancestor. Not static - reads render_layers / collision_layers.
+    bool passes_propagate_filter(Node *node, PropagateMode filter);
 
     VAPrimitiveRef *attach_watcher(Node3D *node, void *primitive, VAPrimitiveKind kind, std::function<void()> update);
 
@@ -101,6 +130,7 @@ public:
     void _ready() override;
     void _exit_tree() override;
     void _process(double delta) override;
+    void _notification(int what);
     void _validate_property(PropertyInfo &p_property) const;
 
     ::VAWorld *get_handle() const
@@ -117,6 +147,8 @@ public:
     static String get_material_meta_key();
 
     static String get_use_flat_transmission_meta_key();
+
+    static String get_propagate_meta_key();
 
     void register_emitter(va_godot::VAEmitter *emitter, bool is_main_listener);
 
@@ -164,6 +196,13 @@ public:
     void set_rendering_enabled(bool value)
     {
         rendering_enabled = value;
+
+        if (value && OS::get_singleton()->get_name() == "macOS")
+        {
+            UtilityFunctions::push_warning("VAWorld: the debug window is not yet available on macOS. Read more: https://github.com/vercidium-audio/support/issues/52");
+            rendering_enabled = false;
+            return;
+        }
 
         if (value && RenderingServer::get_singleton()->get_current_rendering_method() == "gl_compatibility")
         {
@@ -218,6 +257,18 @@ public:
         return world_is_indoors;
     }
     void set_world_is_indoors(bool value);
+
+    uint32_t get_render_layers() const
+    {
+        return render_layers;
+    }
+    void set_render_layers(uint32_t value);
+
+    uint32_t get_collision_layers() const
+    {
+        return collision_layers;
+    }
+    void set_collision_layers(uint32_t value);
 
     int get_maximum_grouped_eax_count() const
     {
@@ -313,6 +364,9 @@ private:
     Color bounds_color = Color(0.0f, 0.0f, 0.0f, 0.25f);
     float epsilon = 0.01f;
     bool world_is_indoors = false;
+    // A node only inherits a cascading material if its visual render layer / body collision layer is in these masks. A node with its own material is always included. 0xFFFFF = all 20 layers.
+    uint32_t render_layers = 0xFFFFF;
+    uint32_t collision_layers = 0xFFFFF;
     int maximum_grouped_eax_count = 3;
     float meters_per_unit = 1.0f;
     float speed_of_sound = 343.0f;

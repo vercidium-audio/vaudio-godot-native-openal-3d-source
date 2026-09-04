@@ -9,6 +9,10 @@
 #include <cstring>
 #include <string>
 
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
+
 using namespace godot;
 
 static ALManager *singleton = nullptr;
@@ -50,45 +54,88 @@ ALManager::~ALManager()
     shutdown();
 }
 
-// A bare LoadLibraryW(L"soft_oal.dll") only searches PATH and the host executable's directory, not this GDExtension binary's own directory,
-// so it misses the copy SConstruct places alongside it - resolve our own module's path and load soft_oal.dll from beside it instead.
-static std::wstring get_own_module_directory()
+// The OpenAL Soft shared library SConstruct copies next to this GDExtension binary, per platform.
+#ifdef _WIN32
+static const char *OPENAL_LIBRARY_NAME = "soft_oal.dll";
+#elif defined(__APPLE__)
+static const char *OPENAL_LIBRARY_NAME = "libopenal.1.dylib";
+#else
+static const char *OPENAL_LIBRARY_NAME = "libopenal.so.1";
+#endif
+
+// Need to resolve our own module's path - directly loading soft_oal.dll or libopenal.so.1 only searches the OS's default paths, not this GDExtension's directory
+static std::string get_own_module_directory()
 {
+#ifdef _WIN32
     HMODULE self = nullptr;
     GetModuleHandleExW(
         GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
         reinterpret_cast<LPCWSTR>(&get_own_module_directory),
         &self);
 
-    wchar_t path[MAX_PATH];
-    DWORD length = GetModuleFileNameW(self, path, MAX_PATH);
+    char path[MAX_PATH];
+    DWORD length = GetModuleFileNameA(self, path, MAX_PATH);
 
     if (length == 0 || length == MAX_PATH)
-    {
-        return L"";
-    }
+        return "";
 
-    std::wstring result(path, length);
-    size_t last_slash = result.find_last_of(L"\\/");
+    std::string result(path, length);
+#else
+    Dl_info info;
+    if (dladdr(reinterpret_cast<const void *>(&get_own_module_directory), &info) == 0 || !info.dli_fname)
+        return "";
 
-    if (last_slash == std::wstring::npos)
-    {
-        return L"";
-    }
+    std::string result(info.dli_fname);
+#endif
+
+    size_t last_slash = result.find_last_of("\\/");
+
+    if (last_slash == std::string::npos)
+        return "";
 
     return result.substr(0, last_slash + 1);
 }
 
+static va_dynamic_library open_library(const char *path)
+{
+#ifdef _WIN32
+    return LoadLibraryA(path);
+#else
+    return dlopen(path, RTLD_NOW | RTLD_LOCAL);
+#endif
+}
+
+static void *library_symbol(va_dynamic_library library, const char *name)
+{
+#ifdef _WIN32
+    return reinterpret_cast<void *>(GetProcAddress(library, name));
+#else
+    return dlsym(library, name);
+#endif
+}
+
+static void close_library(va_dynamic_library library)
+{
+#ifdef _WIN32
+    FreeLibrary(library);
+#else
+    dlclose(library);
+#endif
+}
+
 bool ALManager::load_library()
 {
-    std::wstring directory = get_own_module_directory();
-    std::wstring full_path = directory + L"soft_oal.dll";
+    std::string full_path = get_own_module_directory() + OPENAL_LIBRARY_NAME;
 
-    library = LoadLibraryW(full_path.c_str());
+    library = open_library(full_path.c_str());
+
+    // Fall back to the OS's default search path if the binary isn't next in this GDExtension's folder
+    if (!library)
+        library = open_library(OPENAL_LIBRARY_NAME);
 
     if (!library)
     {
-        VA_ERROR("Failed to load soft_oal.dll from ", String(full_path.c_str()));
+        VA_ERROR("Failed to load ", OPENAL_LIBRARY_NAME, " from ", String(full_path.c_str()));
         return false;
     }
 
@@ -96,13 +143,13 @@ bool ALManager::load_library()
 }
 
 template <typename T>
-static bool resolve(HMODULE library, const char *name, T &out_fn)
+static bool resolve(va_dynamic_library library, const char *name, T &out_fn)
 {
-    out_fn = reinterpret_cast<T>(GetProcAddress(library, name));
+    out_fn = reinterpret_cast<T>(library_symbol(library, name));
 
     if (!out_fn)
     {
-        VA_ERROR("soft_oal.dll is missing expected export: ", name);
+        VA_ERROR(OPENAL_LIBRARY_NAME, " is missing expected export: ", name);
         return false;
     }
 
@@ -215,7 +262,7 @@ void ALManager::unload_library()
 {
     if (library)
     {
-        FreeLibrary(library);
+        close_library(library);
         library = nullptr;
     }
 }

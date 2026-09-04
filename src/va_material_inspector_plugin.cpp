@@ -19,6 +19,11 @@ namespace
 
 const int FIRST_SELECTABLE_BUILTIN_INDEX = 1;
 
+// Index 0 is the default ("All") and is never written as metadata - it's the absence of the key.
+const char *const PROPAGATE_MODES[] = {"Inherit", "All", "Colliders only", "Visuals only"};
+const char *const PROPAGATE_MODE_META_VALUES[] = {"", "all", "colliders", "visuals"};
+const int PROPAGATE_MODE_COUNT = 4;
+
 // Custom materials only register their name with the running ::VAWorld at runtime, so at edit time this walks the scene tree directly instead.
 void find_custom_materials_recursive(Node *node, PackedStringArray &out_names)
 {
@@ -129,6 +134,46 @@ void VAMaterialInspectorPlugin::_parse_end(Object *object)
     permeation_checkbox->connect("toggled", callable_mp(this, &VAMaterialInspectorPlugin::on_use_flat_transmission_toggled).bind(node));
     permeation_row->add_child(permeation_checkbox);
 
+    // Propagation controls only matter when this node has children to cascade into.
+    if (node->get_child_count() > 0)
+    {
+        StringName propagate_meta_key = VAWorld::get_propagate_meta_key();
+
+        HBoxContainer *propagate_row = memnew(HBoxContainer);
+        section->add_child(propagate_row);
+
+        Label *propagate_label = memnew(Label);
+        propagate_label->set_text("Propagate To");
+        propagate_label->set_tooltip_text("Which child nodes a material set on this node cascades down to.\n\nInherit: use the parent node's setting\nAll: every child\nColliders only: only collision shape children - skips the visual mesh of a mesh + collider pair\nVisuals only: only mesh / non-collision children");
+        propagate_label->set_custom_minimum_size(Vector2(140, 0));
+        propagate_row->add_child(propagate_label);
+
+        OptionButton *propagate_button = memnew(OptionButton);
+        propagate_button->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+
+        for (int i = 0; i < PROPAGATE_MODE_COUNT; i++)
+            propagate_button->add_item(PROPAGATE_MODES[i]);
+
+        int propagate_selected = 0;
+        if (node->has_meta(propagate_meta_key))
+        {
+            String current = String(node->get_meta(propagate_meta_key)).to_lower();
+
+            for (int i = 1; i < PROPAGATE_MODE_COUNT; i++)
+            {
+                if (current == PROPAGATE_MODE_META_VALUES[i])
+                {
+                    propagate_selected = i;
+                    break;
+                }
+            }
+        }
+
+        propagate_button->select(propagate_selected);
+        propagate_button->connect("item_selected", callable_mp(this, &VAMaterialInspectorPlugin::on_propagate_selected).bind(node));
+        propagate_row->add_child(propagate_button);
+    }
+
     add_custom_control(section);
 }
 
@@ -161,6 +206,20 @@ void VAMaterialInspectorPlugin::on_use_flat_transmission_toggled(bool toggled_on
     sync_running_game(node);
 }
 
+void VAMaterialInspectorPlugin::on_propagate_selected(int32_t index, Node *node)
+{
+    StringName propagate_meta_key = VAWorld::get_propagate_meta_key();
+
+    if (index == 0)
+        node->remove_meta(propagate_meta_key);
+    else
+        node->set_meta(propagate_meta_key, String(PROPAGATE_MODE_META_VALUES[index]));
+
+    EditorInterface::get_singleton()->mark_scene_as_unsaved();
+
+    sync_running_game(node);
+}
+
 void VAMaterialInspectorPlugin::sync_running_game(Node *node)
 {
     // No way to reach a Node* in the running game's separate process directly, so this sends the node's path (relative to
@@ -178,6 +237,9 @@ void VAMaterialInspectorPlugin::sync_running_game(Node *node)
     StringName use_flat_transmission_meta_key = VAWorld::get_use_flat_transmission_meta_key();
     Variant use_flat_transmission = node->has_meta(use_flat_transmission_meta_key) ? node->get_meta(use_flat_transmission_meta_key) : Variant();
 
+    StringName propagate_meta_key = VAWorld::get_propagate_meta_key();
+    String propagate = node->has_meta(propagate_meta_key) ? String(node->get_meta(propagate_meta_key)) : String();
+
     NodePath node_path = scene_root->get_path_to(node);
-    debugger_plugin->sync_primitive(scene_root->get_name(), node_path, material, use_flat_transmission);
+    debugger_plugin->sync_primitive(scene_root->get_name(), node_path, material, use_flat_transmission, propagate);
 }

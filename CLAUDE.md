@@ -3,11 +3,23 @@
 This repo is a native Godot GDExtension (C++) plugin wrapping the vaudio C SDK, with OpenAL
 Soft as the audio backend, for non-Mono ("Native Godot") projects.
 
-This plugin links against the package vaudionative C DLL, not the source.
+This plugin links against the packaged vaudionative shared library (vaudionative.dll / libvaudionative.so / libvaudionative.dylib), not the source. Windows, Linux and macOS are supported.
 
 # How to use
 
-To build, run build.bat.
+To build on Windows, run build.bat. To build on Linux/macOS, run build-unix.sh (auto-detects the host: Linux builds an x86_64 .so, macOS builds an arm64 .dylib).
+
+The vendored binaries under `thirdparty/` are per-platform and git-ignored - you supply them yourself:
+- `thirdparty/vaudio/lib/win64/` : `vaudionative.dll` + `vaudionative.lib` (+ `glfw3.dll`)
+- `thirdparty/vaudio/lib/linux/` : `libvaudionative.so`
+- `thirdparty/vaudio/lib/mac/` : `libvaudionative.dylib`
+- `thirdparty/openal/lib/win64/` : `soft_oal.dll`
+- `thirdparty/openal/lib/linux/` : `libopenal.so.1`
+- `thirdparty/openal/lib/mac/` : `libopenal.1.dylib`
+
+OpenAL Soft is loaded at runtime from beside the plugin binary (LoadLibrary on Windows, dlopen on Linux/macOS), so the matching OpenAL shared library is copied into `bin/` by the build and ships in the release zip. There is no OpenAL import lib - all entry points are resolved manually in `ALManager` (`src/openal/al_manager.cpp`).
+
+macOS is Apple Silicon (arm64) only - the vendored `libopenal.1.dylib` is arm64, so the plugin is built `arch=arm64`, not universal.
 
 # C++ code style
 
