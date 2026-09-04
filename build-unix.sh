@@ -46,6 +46,8 @@ else
     install_name_tool -id "@loader_path/libvaudionative.dylib" "$BIN_DIR/libvaudionative.dylib" 2>/dev/null || true
 fi
 
+[ -f "$BIN_DIR/vaudio-render-child" ] && chmod +x "$BIN_DIR/vaudio-render-child"
+
 copy_to() {
     local dest="$1/bin"
     [ -d "$dest" ] || { echo "$dest missing - skipping"; return; }
@@ -54,6 +56,7 @@ copy_to() {
     for lib in "${RUNTIME_LIBS[@]}"; do
         [ -f "$BIN_DIR/$lib" ] && cp -f "$BIN_DIR/$lib" "$dest/"
     done
+    [ -f "$BIN_DIR/vaudio-render-child" ] && cp -f "$BIN_DIR/vaudio-render-child" "$dest/"
 }
 
 if [ -n "${VAUDIO_RELEASE_DIR:-}" ]; then copy_to "$VAUDIO_RELEASE_DIR"; else echo "VAUDIO_RELEASE_DIR not set - skipping copy to release repo"; fi

@@ -73,5 +73,12 @@ openal_dll_copy = env.Command(
 )
 env.Depends(library, openal_dll_copy)
 
+# vaudio-render-child (the out-of-process debug renderer) only ships in vaudio's dev package, so it may not be vendored here - copy it into bin/ if present, skip silently otherwise.
+render_child_name = "vaudio-render-child.exe" if platform == "windows" else "vaudio-render-child"
+render_child_src = vaudio_libdir + render_child_name
+if os.path.isfile(render_child_src):
+    render_child_copy = env.Command(bin_dir + render_child_name, render_child_src, Copy("$TARGET", "$SOURCE"))
+    env.Depends(library, render_child_copy)
+
 env.NoCache(library)
 Default(library)
