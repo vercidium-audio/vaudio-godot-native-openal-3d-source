@@ -46,7 +46,7 @@ private:
     float ambient_permeation_energy_cap = 0.15f;
 
     int type = 0;
-    int refresh_ray_count = 16;
+    int trail_refresh_count = 16;
     float refresh_distance_threshold = 1.0f;
     int scattering_seed = 0;
 
@@ -69,6 +69,9 @@ public:
 
     void _enter_tree() override;
     void _exit_tree() override;
+
+    // Compatibility shim: forwards the pre-1.9.0 "refresh_ray_count" property to trail_refresh_count so existing .tscn/.tres files keep loading.
+    bool _set(const StringName &p_name, const Variant &p_value);
 
     void process_raytracing(double delta);
 
@@ -125,8 +128,8 @@ public:
 
     int get_type() const;
     void set_type(int value);
-    int get_refresh_ray_count() const;
-    void set_refresh_ray_count(int value);
+    int get_trail_refresh_count() const;
+    void set_trail_refresh_count(int value);
     float get_refresh_distance_threshold() const;
     void set_refresh_distance_threshold(float value);
     int get_scattering_seed() const;
