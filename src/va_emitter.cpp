@@ -320,7 +320,7 @@ void VAEmitter::apply_properties_to_handle()
     vaEmitterSetAmbientPermeationEnergyCap(emitter, ambient_permeation_energy_cap);
 
     vaEmitterSetType(emitter, type);
-    vaEmitterSetTrailRefreshCount(emitter, refresh_ray_count);
+    vaEmitterSetTrailRefreshCount(emitter, trail_refresh_count);
     vaEmitterSetRefreshDistanceThreshold(emitter, refresh_distance_threshold);
     vaEmitterSetScatteringSeed(emitter, scattering_seed);
     vaEmitterSetClampPosition(emitter, clamp_position);
