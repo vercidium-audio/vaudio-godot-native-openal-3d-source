@@ -233,12 +233,6 @@ public:
     }
     void set_epsilon(float value);
 
-    bool get_world_is_indoors() const
-    {
-        return world_is_indoors;
-    }
-    void set_world_is_indoors(bool value);
-
     uint32_t get_render_layers() const
     {
         return render_layers;
@@ -344,7 +338,6 @@ private:
     Vector3 bounds_size = Vector3(200, 100, 200);
     Color bounds_color = Color(0.0f, 0.0f, 0.0f, 0.25f);
     float epsilon = 0.01f;
-    bool world_is_indoors = false;
     // A node only inherits a cascading material if its visual render layer / body collision layer is in these masks. A node with its own material is always included. 0xFFFFF = all 20 layers.
     uint32_t render_layers = 0xFFFFF;
     uint32_t collision_layers = 0xFFFFF;
