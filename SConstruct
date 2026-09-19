@@ -73,12 +73,12 @@ openal_dll_copy = env.Command(
 )
 env.Depends(library, openal_dll_copy)
 
-# vaudio-render-child (the out-of-process debug renderer) only ships in vaudio's dev package, so it may not be vendored here - copy it into bin/ if present, skip silently otherwise.
-render_child_name = "vaudio-debug-window.exe" if platform == "windows" else "vaudio-debug-window"
-render_child_src = vaudio_libdir + render_child_name
-if os.path.isfile(render_child_src):
-    render_child_copy = env.Command(bin_dir + render_child_name, render_child_src, Copy("$TARGET", "$SOURCE"))
-    env.Depends(library, render_child_copy)
+# vaudio-debug-window (the out-of-process debug renderer) only ships in vaudio's dev package, so it may not be vendored here - copy it into bin/ if present, skip silently otherwise.
+debug_window_name = "vaudio-debug-window.exe" if platform == "windows" else "vaudio-debug-window"
+debug_window_src = vaudio_libdir + debug_window_name
+if os.path.isfile(debug_window_src):
+    debug_window_copy = env.Command(bin_dir + debug_window_name, debug_window_src, Copy("$TARGET", "$SOURCE"))
+    env.Depends(library, debug_window_copy)
 
 # vaudio-debug-window on Linux/macOS is dynamically linked against GLFW via @loader_path/$ORIGIN - vendor it alongside when present (dev builds only, not shipped on Windows where GLFW is statically linked).
 if platform in ("linux", "macos"):
