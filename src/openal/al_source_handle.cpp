@@ -111,6 +111,11 @@ void ALSourceHandle::set_reference_distance(float value)
     ALManager::get_singleton()->al_sourcef()(handle, AL_REFERENCE_DISTANCE, value);
 }
 
+void ALSourceHandle::set_rolloff_factor(float value)
+{
+    ALManager::get_singleton()->al_sourcef()(handle, AL_ROLLOFF_FACTOR, value);
+}
+
 void ALSourceHandle::set_position(const Vector3 &position)
 {
     ALfloat values[3] = {position.x, position.y, position.z};

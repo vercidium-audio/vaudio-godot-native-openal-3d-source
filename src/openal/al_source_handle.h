@@ -38,6 +38,7 @@ public:
     void set_relative(bool value);
     void set_max_distance(float value);
     void set_reference_distance(float value);
+    void set_rolloff_factor(float value);
     void set_position(const Vector3 &position);
 
     // Attaches (or clears, if filter_handle is 0/AL_FILTER_NULL) an EFX lowpass filter to this source's dry/direct path.

@@ -13,5 +13,8 @@
 		<member name="reference_distance" type="float" setter="set_reference_distance" getter="get_reference_distance" default="8.0">
 			The distance in meters at which the sound is heard at its unattenuated [member ALSource.gain]. Volume falls off with distance beyond this point.
 		</member>
+		<member name="rolloff_factor" type="float" setter="set_rolloff_factor" getter="get_rolloff_factor" default="1.0">
+			How quickly the sound attenuates with distance beyond [member reference_distance]. Higher values fall off faster.
+		</member>
 	</members>
 </class>
