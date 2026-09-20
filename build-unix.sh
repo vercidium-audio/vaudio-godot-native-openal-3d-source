@@ -24,10 +24,12 @@ case "$(uname -s)" in
     *) echo "Unsupported host: $(uname -s)" >&2; exit 1 ;;
 esac
 
+scons platform="$PLATFORM" arch="$ARCH" target=editor
 scons platform="$PLATFORM" arch="$ARCH" target=template_debug
 scons platform="$PLATFORM" arch="$ARCH" target=template_release
 
 BIN_DIR="addons/vaudio-godot-native-openal-3d/bin"
+EDITOR_LIB="libvaudiogodotnativeopenal3d.${PLATFORM}.editor.${ARCH}${LIBEXT}"
 DEBUG_LIB="libvaudiogodotnativeopenal3d.${PLATFORM}.template_debug.${ARCH}${LIBEXT}"
 RELEASE_LIB="libvaudiogodotnativeopenal3d.${PLATFORM}.template_release.${ARCH}${LIBEXT}"
 
@@ -40,7 +42,7 @@ else
 
     # libvaudionative.dylib is linked with no -install_name, so it records its absolute build-machine path -
     # rewrite the plugin's reference to it (and its own id) to @loader_path so the copy shipped in bin/ resolves.
-    for plugin in "$BIN_DIR/$DEBUG_LIB" "$BIN_DIR/$RELEASE_LIB"; do
+    for plugin in "$BIN_DIR/$EDITOR_LIB" "$BIN_DIR/$DEBUG_LIB" "$BIN_DIR/$RELEASE_LIB"; do
         dep=$(otool -L "$plugin" | awk '/libvaudionative\.dylib/ {print $1; exit}')
         [ -n "$dep" ] && install_name_tool -change "$dep" "@loader_path/libvaudionative.dylib" "$plugin"
     done
@@ -53,7 +55,7 @@ copy_to() {
     local dest="$1/bin"
     [ -d "$dest" ] || { echo "$dest missing - skipping"; return; }
     echo "Copying build output to $dest"
-    cp -f "$BIN_DIR/$DEBUG_LIB" "$BIN_DIR/$RELEASE_LIB" "$dest/"
+    cp -f "$BIN_DIR/$EDITOR_LIB" "$BIN_DIR/$DEBUG_LIB" "$BIN_DIR/$RELEASE_LIB" "$dest/"
     for lib in "${RUNTIME_LIBS[@]}"; do
         [ -f "$BIN_DIR/$lib" ] && cp -f "$BIN_DIR/$lib" "$dest/"
     done
