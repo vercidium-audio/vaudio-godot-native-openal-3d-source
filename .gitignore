@@ -26,3 +26,6 @@ user_context.md
 .DS_Store
 addons/.DS_Store
 addons/vaudio-godot-native-openal-3d/.DS_Store
+
+# Build logs
+*.log
