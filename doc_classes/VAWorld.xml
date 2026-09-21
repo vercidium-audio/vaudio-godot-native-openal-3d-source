@@ -80,9 +80,6 @@
 		<member name="epsilon" type="float" setter="set_epsilon" getter="get_epsilon" default="0.01">
 			The epsilon value used for raytracing and primitive intersections.
 		</member>
-		<member name="world_is_indoors" type="bool" setter="set_world_is_indoors" getter="get_world_is_indoors" default="false">
-			Whether the entire world is considered indoors or outdoors. When [code]false[/code], reverb rays stop accumulating energy after hitting the world edge.
-		</member>
 		<member name="maximum_grouped_eax_count" type="int" setter="set_maximum_grouped_eax_count" getter="get_maximum_grouped_eax_count" default="3">
 			The maximum number of grouped EAX reverb properties shared across all emitters that affect grouped EAX. Higher values increase accuracy but are more expensive to run.
 		</member>

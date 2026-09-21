@@ -10,9 +10,9 @@ This plugin links against the packaged vaudionative shared library (vaudionative
 To build on Windows, run build.bat. To build on Linux/macOS, run build-unix.sh (auto-detects the host: Linux builds an x86_64 .so, macOS builds an arm64 .dylib).
 
 The vendored binaries under `thirdparty/` are per-platform and git-ignored - you supply them yourself:
-- `thirdparty/vaudio/lib/win64/` : `vaudionative.dll` + `vaudionative.lib` (+ `glfw3.dll`)
-- `thirdparty/vaudio/lib/linux/` : `libvaudionative.so`
-- `thirdparty/vaudio/lib/mac/` : `libvaudionative.dylib`
+- `thirdparty/vaudio/lib/win64/` : `vaudionative.dll` + `vaudionative.lib` (+ `glfw3.dll`) (+ `vaudio-debug-window.exe`, optional, dev builds only - see below)
+- `thirdparty/vaudio/lib/linux/` : `libvaudionative.so` (+ `vaudio-debug-window`, optional, dev builds only)
+- `thirdparty/vaudio/lib/mac/` : `libvaudionative.dylib` (+ `vaudio-debug-window`, optional, dev builds only)
 - `thirdparty/openal/lib/win64/` : `soft_oal.dll`
 - `thirdparty/openal/lib/linux/` : `libopenal.so.1`
 - `thirdparty/openal/lib/mac/` : `libopenal.1.dylib`
@@ -20,6 +20,8 @@ The vendored binaries under `thirdparty/` are per-platform and git-ignored - you
 OpenAL Soft is loaded at runtime from beside the plugin binary (LoadLibrary on Windows, dlopen on Linux/macOS), so the matching OpenAL shared library is copied into `bin/` by the build and ships in the release zip. There is no OpenAL import lib - all entry points are resolved manually in `ALManager` (`src/openal/al_manager.cpp`).
 
 macOS is Apple Silicon (arm64) only - the vendored `libopenal.1.dylib` is arm64, so the plugin is built `arch=arm64`, not universal.
+
+`vaudio-debug-window` renders the raytracing simulation to a separate window. It only ships in vaudio's `dev` package, not `production`, so the build scripts only copy it into `bin/` if it exists.
 
 # C++ code style
 

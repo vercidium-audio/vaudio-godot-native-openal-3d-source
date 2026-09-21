@@ -14,6 +14,10 @@ void ALSource3D::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_reference_distance", "value"), &ALSource3D::set_reference_distance);
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "reference_distance", PROPERTY_HINT_RANGE, "0.0,1000.0,0.1,or_greater"), "set_reference_distance", "get_reference_distance");
 
+    ClassDB::bind_method(D_METHOD("get_rolloff_factor"), &ALSource3D::get_rolloff_factor);
+    ClassDB::bind_method(D_METHOD("set_rolloff_factor", "value"), &ALSource3D::set_rolloff_factor);
+    ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "rolloff_factor", PROPERTY_HINT_RANGE, "0.0,10.0,0.1,or_greater"), "set_rolloff_factor", "get_rolloff_factor");
+
     // Script-only alias for `reference_distance` - not exposed in the inspector, see al_source3d.h's get_unit_size().
     ClassDB::bind_method(D_METHOD("get_unit_size"), &ALSource3D::get_unit_size);
     ClassDB::bind_method(D_METHOD("set_unit_size", "value"), &ALSource3D::set_unit_size);
@@ -32,6 +36,7 @@ void ALSource3D::configure_source(ALSourceHandle &source)
 {
     source.set_max_distance(max_distance);
     source.set_reference_distance(reference_distance);
+    source.set_rolloff_factor(rolloff_factor);
     source.set_position(get_global_position());
 }
 
@@ -65,5 +70,15 @@ void ALSource3D::set_reference_distance(float value)
     for (auto &source : get_sources())
     {
         source->set_reference_distance(value);
+    }
+}
+
+void ALSource3D::set_rolloff_factor(float value)
+{
+    rolloff_factor = value;
+
+    for (auto &source : get_sources())
+    {
+        source->set_rolloff_factor(value);
     }
 }

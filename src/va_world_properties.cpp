@@ -58,17 +58,6 @@ void VAWorld::set_epsilon(float value)
         VA_ERROR_NAMED_RESULT(result, "Failed to set world epsilon (may be NaN/Infinity)");
 }
 
-void VAWorld::set_world_is_indoors(bool value)
-{
-    world_is_indoors = value;
-
-    if (!world)
-        return;
-
-    // No need to check result - world is defined
-    vaWorldSetWorldIsIndoors(world, value);
-}
-
 void VAWorld::set_render_layers(uint32_t value)
 {
     if (render_layers == value)

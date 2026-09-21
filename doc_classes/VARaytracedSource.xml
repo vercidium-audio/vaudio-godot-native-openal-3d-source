@@ -7,6 +7,32 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="is_raytraced" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] once the world has completed at least one raytracing pass since this source joined it, so its reverb/ambience results are populated. This is [i]not[/i] the same as the listener having muffled this source - use [method is_raytraced_by_listener] for that.
+			</description>
+		</method>
+		<method name="is_raytraced_by_listener" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] once the world's listener has actually raytraced this source, i.e. [method get_muffling_gain_lf] / [method get_muffling_gain_hf] reflect a real listener-to-source occlusion result rather than the unmuffled default. Stricter than [method is_raytraced].
+			</description>
+		</method>
+		<method name="get_muffling_gain_lf" qualifiers="const">
+			<return type="float" />
+			<description>
+				How muffled this source currently is, as a low-frequency gain in the range [code]0..1[/code] ([code]1[/code] = not muffled at all). Returns [code]1.0[/code] until the listener has raytraced this source - guard with [method is_raytraced_by_listener].
+			</description>
+		</method>
+		<method name="get_muffling_gain_hf" qualifiers="const">
+			<return type="float" />
+			<description>
+				How muffled this source currently is, as a high-frequency gain in the range [code]0..1[/code] ([code]1[/code] = not muffled at all). High frequencies drop first through obstacles, so [code]1.0 - get_muffling_gain_hf()[/code] is a good "how muffled" indicator. Returns [code]1.0[/code] until the listener has raytraced this source - guard with [method is_raytraced_by_listener].
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="raytrace_once" type="bool" setter="set_raytrace_once" getter="get_raytrace_once" default="true">
 			Raytrace once on playback, then remove the emitter. Recommended for short sounds.

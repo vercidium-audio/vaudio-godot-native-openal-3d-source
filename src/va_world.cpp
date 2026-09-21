@@ -38,8 +38,6 @@ void VAWorld::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_bounds_color", "value"), &VAWorld::set_bounds_color);
     ClassDB::bind_method(D_METHOD("get_epsilon"), &VAWorld::get_epsilon);
     ClassDB::bind_method(D_METHOD("set_epsilon", "value"), &VAWorld::set_epsilon);
-    ClassDB::bind_method(D_METHOD("get_world_is_indoors"), &VAWorld::get_world_is_indoors);
-    ClassDB::bind_method(D_METHOD("set_world_is_indoors", "value"), &VAWorld::set_world_is_indoors);
     ClassDB::bind_method(D_METHOD("get_render_layers"), &VAWorld::get_render_layers);
     ClassDB::bind_method(D_METHOD("set_render_layers", "value"), &VAWorld::set_render_layers);
     ClassDB::bind_method(D_METHOD("get_collision_layers"), &VAWorld::get_collision_layers);
@@ -53,7 +51,6 @@ void VAWorld::_bind_methods()
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "bounds_size", PROPERTY_HINT_RANGE, "1,1000,1,or_greater"), "set_bounds_size", "get_bounds_size");
     ADD_PROPERTY(PropertyInfo(Variant::COLOR, "bounds_color"), "set_bounds_color", "get_bounds_color");
     ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "epsilon"), "set_epsilon", "get_epsilon");
-    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "world_is_indoors"), "set_world_is_indoors", "get_world_is_indoors");
 
     ADD_GROUP("Layers", "");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "render_layers", PROPERTY_HINT_LAYERS_3D_RENDER), "set_render_layers", "get_render_layers");
@@ -176,7 +173,6 @@ VAWorld::VAWorld()
     set_position(get_position());
     set_bounds_size(bounds_size);
     set_epsilon(epsilon);
-    set_world_is_indoors(world_is_indoors);
     set_maximum_grouped_eax_count(maximum_grouped_eax_count);
     set_meters_per_unit(meters_per_unit);
     set_speed_of_sound(speed_of_sound);

@@ -20,6 +20,7 @@ void VARaytracedSource::_bind_methods()
     ClassDB::bind_method(D_METHOD("get_muffling_gain_lf"), &VARaytracedSource::get_muffling_gain_lf);
     ClassDB::bind_method(D_METHOD("get_muffling_gain_hf"), &VARaytracedSource::get_muffling_gain_hf);
     ClassDB::bind_method(D_METHOD("is_raytraced"), &VARaytracedSource::is_raytraced);
+    ClassDB::bind_method(D_METHOD("is_raytraced_by_listener"), &VARaytracedSource::is_raytraced_by_listener);
 
     // Direct port of VASourceProperties.cs's groups (Reverb/Muffling/Ambience/Advanced) - a subset of VAEmitter's own property surface; Debug Rendering colors not ported, same as VAEmitter.
     ADD_GROUP("Reverb", "");
@@ -98,9 +99,9 @@ void VARaytracedSource::_bind_methods()
     ClassDB::bind_method(D_METHOD("set_type", "value"), &VARaytracedSource::set_type);
     ADD_PROPERTY(PropertyInfo(Variant::INT, "type"), "set_type", "get_type");
 
-    ClassDB::bind_method(D_METHOD("get_refresh_ray_count"), &VARaytracedSource::get_refresh_ray_count);
-    ClassDB::bind_method(D_METHOD("set_refresh_ray_count", "value"), &VARaytracedSource::set_refresh_ray_count);
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "refresh_ray_count"), "set_refresh_ray_count", "get_refresh_ray_count");
+    ClassDB::bind_method(D_METHOD("get_trail_refresh_count"), &VARaytracedSource::get_trail_refresh_count);
+    ClassDB::bind_method(D_METHOD("set_trail_refresh_count", "value"), &VARaytracedSource::set_trail_refresh_count);
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "trail_refresh_count"), "set_trail_refresh_count", "get_trail_refresh_count");
 
     ClassDB::bind_method(D_METHOD("get_refresh_distance_threshold"), &VARaytracedSource::get_refresh_distance_threshold);
     ClassDB::bind_method(D_METHOD("set_refresh_distance_threshold", "value"), &VARaytracedSource::set_refresh_distance_threshold);
@@ -252,7 +253,7 @@ void VARaytracedSource::apply_properties_to_emitter()
     emitter->set_ambient_permeation_energy_cap(ambient_permeation_energy_cap);
 
     emitter->set_type(type);
-    emitter->set_refresh_ray_count(refresh_ray_count);
+    emitter->set_trail_refresh_count(trail_refresh_count);
     emitter->set_refresh_distance_threshold(refresh_distance_threshold);
     emitter->set_scattering_seed(scattering_seed);
 }
@@ -260,6 +261,16 @@ void VARaytracedSource::apply_properties_to_emitter()
 bool VARaytracedSource::is_raytraced() const
 {
     return emitter && emitter->is_raytraced();
+}
+
+bool VARaytracedSource::is_raytraced_by_listener() const
+{
+    if (!is_raytraced() || !va_world)
+        return false;
+
+    va_godot::VAEmitter *listener = va_world->get_listener();
+
+    return listener && listener != emitter && listener->has_raytraced_target(emitter);
 }
 
 void VARaytracedSource::process_raytracing(double delta)
@@ -546,19 +557,30 @@ void VARaytracedSource::set_type(int value)
     }
 }
 
-int VARaytracedSource::get_refresh_ray_count() const
+int VARaytracedSource::get_trail_refresh_count() const
 {
-    return refresh_ray_count;
+    return trail_refresh_count;
 }
 
-void VARaytracedSource::set_refresh_ray_count(int value)
+void VARaytracedSource::set_trail_refresh_count(int value)
 {
-    refresh_ray_count = value;
+    trail_refresh_count = value;
 
     if (emitter)
     {
-        emitter->set_refresh_ray_count(refresh_ray_count);
+        emitter->set_trail_refresh_count(trail_refresh_count);
     }
+}
+
+bool VARaytracedSource::_set(const StringName &p_name, const Variant &p_value)
+{
+    if (p_name == StringName("refresh_ray_count"))
+    {
+        set_trail_refresh_count(p_value);
+        return true;
+    }
+
+    return false;
 }
 
 float VARaytracedSource::get_refresh_distance_threshold() const

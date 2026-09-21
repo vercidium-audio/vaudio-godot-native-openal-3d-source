@@ -6,8 +6,6 @@
 #include <godot_cpp/classes/csg_sphere3d.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/node3d.hpp>
-#include <godot_cpp/classes/os.hpp>
-#include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/property_info.hpp>
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -197,23 +195,6 @@ public:
     {
         rendering_enabled = value;
 
-        if (value && OS::get_singleton()->get_name() == "macOS")
-        {
-            UtilityFunctions::push_warning("VAWorld: the debug window is not yet available on macOS. Read more: https://github.com/vercidium-audio/support/issues/52");
-            rendering_enabled = false;
-            return;
-        }
-
-        if (value && RenderingServer::get_singleton()->get_current_rendering_method() == "gl_compatibility")
-        {
-            UtilityFunctions::push_warning("VAWorld: rendering_enabled was not applied because the "
-                "project's renderer is gl_compatibility - the vaudio debug render window uses its own "
-                "native OpenGL context, which is known to crash the engine when the project also uses "
-                "gl_compatibility. Switch to Forward+ or Mobile to use the debug render window.");
-            rendering_enabled = false;
-            return;
-        }
-
         if (world)
             vaWorldSetRenderingEnabled(world, value);
     }
@@ -251,12 +232,6 @@ public:
         return epsilon;
     }
     void set_epsilon(float value);
-
-    bool get_world_is_indoors() const
-    {
-        return world_is_indoors;
-    }
-    void set_world_is_indoors(bool value);
 
     uint32_t get_render_layers() const
     {
@@ -363,7 +338,6 @@ private:
     Vector3 bounds_size = Vector3(200, 100, 200);
     Color bounds_color = Color(0.0f, 0.0f, 0.0f, 0.25f);
     float epsilon = 0.01f;
-    bool world_is_indoors = false;
     // A node only inherits a cascading material if its visual render layer / body collision layer is in these masks. A node with its own material is always included. 0xFFFFF = all 20 layers.
     uint32_t render_layers = 0xFFFFF;
     uint32_t collision_layers = 0xFFFFF;

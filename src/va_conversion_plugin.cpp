@@ -227,8 +227,10 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
 
     if (is_spatialised_target)
     {
-        // Spatialised properties
-        copy_property(old_node, new_base_node, "max_distance", "max_distance");
+        // Spatialised properties. AudioStreamPlayer3D's max_distance of 0.0 means "unlimited" there, but is literal here, so skip the copy and keep our own default.
+        if (has_property(old_node, "max_distance") && double(old_node->get("max_distance")) != 0.0)
+            copy_property(old_node, new_base_node, "max_distance", "max_distance");
+
         copy_property(old_node, new_base_node, "unit_size", "reference_distance");
     }
 
@@ -249,6 +251,7 @@ void ConversionContextMenuPlugin::convert_node(Node *old_node, const String &tar
         {
             copy_property(old_node, new_base_node, "max_distance", "max_distance");
             copy_property(old_node, new_base_node, "reference_distance", "reference_distance");
+            copy_property(old_node, new_base_node, "rolloff_factor", "rolloff_factor");
         }
     }
 
