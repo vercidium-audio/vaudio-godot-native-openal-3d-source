@@ -6,7 +6,7 @@
 #define IS_EDITOR_HINT() (godot::Engine::get_singleton()->is_editor_hint())
 
 // Plugin-wide log tag, prepended by VA_LOG/VA_WARN/VA_ERROR so it doesn't need to be retyped at every call site.
-#define VA_LOG_TAG "[vaudio-godot-native-openal-3d] "
+#define VA_LOG_TAG "[vaudio-godot-native-openal] "
 
 // Logging macros so call sites don't have to retype the tag. Args are forwarded as-is (Godot's print/push_warning/push_error take a comma-separated arg list, not a format string), e.g. VA_ERROR(get_name(), ": failed to decode").
 #define VA_LOG(...) (godot::UtilityFunctions::print(VA_LOG_TAG, __VA_ARGS__))

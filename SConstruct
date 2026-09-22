@@ -11,8 +11,8 @@ env = SConscript("extern/godot-cpp/SConstruct")
 # - CPPDEFINES are for pre-processor defines
 # - LINKFLAGS are for linking flags
 
-env.Append(CPPPATH=["src/", "thirdparty/vaudio/include/", "thirdparty/openal/include/"])
-sources = Glob("src/*.cpp") + Glob("src/openal/*.cpp")
+env.Append(CPPPATH=["src/", "common/", "thirdparty/vaudio/include/", "thirdparty/openal/include/"])
+sources = Glob("src/*.cpp") + Glob("src/openal/*.cpp") + Glob("common/*.cpp") + Glob("common/openal/*.cpp")
 
 if env["target"] in ["editor", "template_debug"]:
     doc_data = env.GodotCPPDocData("src/gen/doc_data.gen.cpp", source=Glob("doc_classes/*.xml"))
