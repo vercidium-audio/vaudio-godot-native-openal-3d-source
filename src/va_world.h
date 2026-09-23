@@ -42,6 +42,9 @@ enum class PropagateMode
     Visuals,
 };
 
+// Copies a raw ::VAEAXReverb's fields into an OpenAL-facing VAEAXReverbParams. Defined once in common/va_world_common.cpp since it's dimension-agnostic; declared here so each repo's own va_world.cpp (which computes the listener-relative pan differently) can still call it from on_reverb_updated().
+VAEAXReverbParams CopyReverbParams(const VAEAXReverb *eax);
+
 // Name collision: the vaudio C SDK's opaque handle type is also called "VAWorld" (global namespace); inside va_godot, 'VAWorld' means this class and '::VAWorld' the SDK handle.
 // This is a Node3D purely so the editor can draw a gizmo for the bounds_position/bounds_size AABB (see VAWorldGizmoPlugin) - the node's own transform is otherwise unused by vaudio.
 class VAWorld : public Node3D
