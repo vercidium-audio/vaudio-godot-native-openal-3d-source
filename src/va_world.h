@@ -28,6 +28,12 @@ extern "C"
 
 using namespace godot;
 
+// Metadata keys used to tag scene-tree nodes with vaudio material/primitive/propagate state. Defined once in common/va_world_primitives_common.cpp since they're dimension-agnostic; declared here (file scope, not namespaced, matching how they're called unqualified from within namespace va_godot) so each repo's own va_world_primitives.cpp (whose create_primitive/add_primitive/remove_primitive overloads differ per dimension) can still read/write the same metadata.
+const StringName &PrimitiveMetaKey();
+const StringName &MaterialMetaKey();
+const StringName &UseFlatTransmissionMetaKey();
+const StringName &PropagateMetaKey();
+
 namespace va_godot
 {
 

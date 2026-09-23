@@ -20,6 +20,7 @@ protected:
     static void _bind_methods();
 
 public:
+    // Defined in common/va_debugger_plugin_common.cpp - identical between 2D and 3D.
     void sync_primitive(const String &scene_root_name, const NodePath &node_path, const String &material,
         const Variant &use_flat_transmission, const String &propagate);
 
