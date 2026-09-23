@@ -19,7 +19,7 @@ inline VAWorld *find_va_world_recursive(Node *node)
         return world;
 
     TypedArray<Node> children = node->get_children();
-    
+
     for (int i = 0; i < children.size(); i++)
     {
         Node *child = Object::cast_to<Node>(children[i]);
