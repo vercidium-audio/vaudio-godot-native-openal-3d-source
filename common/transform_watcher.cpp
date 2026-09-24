@@ -17,8 +17,12 @@ void TransformWatcher::_ready()
 
 void TransformWatcher::_notification(int what)
 {
-    if (what == NOTIFICATION_TRANSFORM_CHANGED && on_transform_changed)
-    {
+    if (what != NOTIFICATION_TRANSFORM_CHANGED)
+        return;
+
+    // Godot only re-queues NOTIFICATION_TRANSFORM_CHANGED for a Node2D/Node3D once its cached global transform has been read again. Without this line, only the first move after the node enters the tree ever fires
+    get_global_transform();
+
+    if (on_transform_changed)
         on_transform_changed();
-    }
 }
