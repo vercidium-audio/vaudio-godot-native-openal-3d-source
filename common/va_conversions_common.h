@@ -52,6 +52,7 @@ inline String VAResultToString(VAResult result)
         case VA_TRUE: return "VA_TRUE";
         case VA_FALSE: return "VA_FALSE";
         case VA_WRONG_DIMENSION: return "VA_WRONG_DIMENSION";
+        case VA_MISSING_MATERIAL_CALLBACK: return "VA_MISSING_MATERIAL_CALLBACK";
         default: return "UNKNOWN(" + String::num_int64(result) + ")";
     }
 }
